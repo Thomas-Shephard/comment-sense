@@ -1,0 +1,61 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          cache: true
+          cache-dependency-path: |
+            CommentSense.slnx
+            global.json
+            .config/dotnet-tools.json
+            **/Directory.Build.props
+            **/Directory.Packages.props
+            **/*.csproj
+      - name: Set up JDK 17
+        if: env.SONAR_TOKEN != ''
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Restore Tools
+        run: dotnet tool restore
+      - name: Run SonarScanner Begin
+        if: env.SONAR_TOKEN != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: dotnet sonarscanner begin /k:"${{ vars.SONAR_PROJECT_KEY }}" /o:"${{ vars.SONAR_ORGANIZATION }}" /d:sonar.host.url="${{ vars.SONAR_HOST_URL }}" /d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml /d:sonar.qualitygate.wait=true
+      - name: Build
+        run: dotnet build CommentSense.slnx --configuration Release
+      - name: Test
+        run: dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings --results-directory ./coverage
+      - name: Run SonarScanner End
+        if: env.SONAR_TOKEN != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: dotnet sonarscanner end
+      - name: Check Coverage
+        run: dotnet coveragechecker --format Cobertura --glob-patterns 'coverage/**/coverage.cobertura.xml' --line-threshold 100 --branch-threshold 100
+      - name: Pack
+        run: dotnet pack CommentSense.slnx --configuration Release --no-build --output artifacts/package
+      - name: Upload NuGet Packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts/package/*.nupkg

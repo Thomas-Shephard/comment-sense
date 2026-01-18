@@ -1,0 +1,37 @@
+name: Publish NuGet Package
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish to NuGet.org
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          cache: true
+          cache-dependency-path: |
+            CommentSense.slnx
+            global.json
+            .config/dotnet-tools.json
+            **/Directory.Build.props
+            **/Directory.Packages.props
+            **/*.csproj
+      - name: Restore Tools
+        run: dotnet tool restore
+      - name: Build
+        run: dotnet build CommentSense.slnx --configuration Release
+      - name: Test
+        run: dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings
+      - name: Pack
+        run: dotnet pack CommentSense.slnx --configuration Release --no-build --output artifacts/package
+      - name: Push to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push "artifacts/package/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate

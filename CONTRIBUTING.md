@@ -20,6 +20,19 @@ To submit a pull request, follow these steps:
 - Commit and push your changes to your fork
 - Submit a pull request to the `main` branch of this repository
 
+### Pull Request Title Convention
+To maintain a clean and automated changelog, this project requires pull request titles to follow the [Conventional Commits specification](https://www.conventionalcommits.org/en/v1.0.0/). Titles should be formatted as follows:
+`<type>: <description>`
+
+Common types include:
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation only changes
+- `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc.)
+- `refactor`: A code change that neither fixes a bug nor adds a feature
+- `test`: Adding missing tests or correcting existing tests
+- `chore`: Changes to the build process or auxiliary tools and libraries such as documentation generation
+
 ## Testing Guidelines
 To ensure that changes work as expected, follow these steps:
 - Use the provided NUnit test framework to write tests
