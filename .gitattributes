@@ -1,0 +1,18 @@
+# Set default behavior to automatically normalize line endings to CRLF on checkout
+* text=auto eol=crlf
+
+# C# files
+*.cs diff=csharp
+
+# Project files
+*.csproj merge=union
+*.slnx   merge=union
+*.props  merge=union
+*.targets merge=union
+
+# Documentation and config
+*.md   text
+*.json text
+.editorconfig text
+.gitignore text
+.gitattributes text

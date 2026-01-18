@@ -1,0 +1,23 @@
+<Project>
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <!-- Unified Artifacts Output -->
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+
+    <!-- Analysis & Code Style -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- NuGet Metadata -->
+    <Authors>Thomas Shephard</Authors>
+    <Company>$(Authors)</Company>
+    <Copyright>Copyright (c) $([System.DateTime]::Now.ToString("yyyy")) $(Authors)</Copyright>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Thomas-Shephard/comment-sense</RepositoryUrl>
+  </PropertyGroup>
+</Project>

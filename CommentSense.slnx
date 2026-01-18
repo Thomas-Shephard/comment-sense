@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CommentSense/CommentSense.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CommentSense.Tests/CommentSense.Tests.csproj" />
+  </Folder>
+</Solution>
