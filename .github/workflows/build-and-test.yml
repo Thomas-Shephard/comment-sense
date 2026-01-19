@@ -40,7 +40,7 @@ jobs:
         if: env.SONAR_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: dotnet sonarscanner begin /k:"${{ vars.SONAR_PROJECT_KEY }}" /o:"${{ vars.SONAR_ORGANIZATION }}" /d:sonar.host.url="${{ vars.SONAR_HOST_URL }}" /d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml /d:sonar.qualitygate.wait=true
+        run: dotnet sonarscanner begin /k:"${{ vars.SONAR_PROJECT_KEY }}" /o:"${{ vars.SONAR_ORGANIZATION }}" /d:sonar.host.url="${{ vars.SONAR_HOST_URL }}" /d:sonar.cs.cobertura.reportsPaths="coverage/**/coverage.cobertura.xml"
       - name: Build
         run: dotnet build CommentSense.slnx --configuration Release
       - name: Test
