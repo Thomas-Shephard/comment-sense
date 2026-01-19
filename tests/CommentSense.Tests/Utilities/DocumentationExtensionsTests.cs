@@ -1,6 +1,4 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using CommentSense.Utilities;
 using NUnit.Framework;
 
@@ -30,14 +28,9 @@ public class DocumentationExtensionsTests
     public void HasValidDocumentationWithInheritDocReturnsTrue()
     {
         const string source = """
-            public class BaseClass {
-                /// <summary>Base method</summary>
-                public virtual void M() {}
-            }
-
-            public class DerivedClass : BaseClass {
+            public class C {
                 /// <inheritdoc />
-                public override void M() {}
+                public void M() {}
             }
             """;
         var symbol = GetSymbolFromSource(source, "M");
@@ -48,14 +41,9 @@ public class DocumentationExtensionsTests
     public void HasValidDocumentationWithNestedInheritDocReturnsTrue()
     {
         const string source = """
-            public class BaseClass {
-                /// <summary>Base method</summary>
-                public virtual void M() {}
-            }
-
-            public class DerivedClass : BaseClass {
+            public class C {
                 /// <summary><inheritdoc /></summary>
-                public override void M() {}
+                public void M() {}
             }
             """;
         var symbol = GetSymbolFromSource(source, "M");
@@ -98,7 +86,13 @@ public class DocumentationExtensionsTests
     [Test]
     public void HasValidDocumentationReturnsFalseForNull()
     {
-        Assert.That(DocumentationExtensions.HasValidDocumentation(null), Is.False);
+        Assert.That(((ISymbol?)null).HasValidDocumentation(), Is.False);
+    }
+
+    [Test]
+    public void HasValidDocumentationReturnsFalseForNullString()
+    {
+        Assert.That(DocumentationExtensions.HasValidDocumentation((string?)null), Is.False);
     }
 
     [Test]
@@ -175,5 +169,11 @@ public class DocumentationExtensionsTests
             """;
         var symbol = GetSymbolFromSource(source, "M");
         Assert.That(symbol.HasValidDocumentation(), Is.False);
+    }
+
+    [Test]
+    public void HasValidDocumentationReturnsFalseForMalformedXml()
+    {
+        Assert.That(DocumentationExtensions.HasValidDocumentation("<invalid"), Is.False);
     }
 }

@@ -11,7 +11,11 @@ internal static class DocumentationExtensions
         if (symbol is null)
             return false;
 
-        var xml = symbol.GetDocumentationCommentXml();
+        return HasValidDocumentation(symbol.GetDocumentationCommentXml());
+    }
+
+    internal static bool HasValidDocumentation(string? xml)
+    {
         if (string.IsNullOrWhiteSpace(xml))
         {
             return false;

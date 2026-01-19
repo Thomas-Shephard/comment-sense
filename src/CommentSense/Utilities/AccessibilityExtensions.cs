@@ -19,19 +19,19 @@ internal static class AccessibilityExtensions
         var current = symbol;
         while (current is not null && current.Kind is not SymbolKind.Namespace)
         {
-            switch (current.DeclaredAccessibility)
+            var isAccessible = current.DeclaredAccessibility switch
             {
-                case Accessibility.NotApplicable:
-                case Accessibility.Public:
-                case Accessibility.Protected:
-                case Accessibility.ProtectedOrInternal:
-                    break;
-                case Accessibility.Private:
-                case Accessibility.ProtectedAndInternal:
-                case Accessibility.Internal:
-                default:
-                    return false;
+                Accessibility.Private => false,
+                Accessibility.ProtectedAndInternal => false,
+                Accessibility.Internal => false,
+                _ => true
+            };
+
+            if (!isAccessible)
+            {
+                return false;
             }
+
             current = current.ContainingSymbol;
         }
         return true;

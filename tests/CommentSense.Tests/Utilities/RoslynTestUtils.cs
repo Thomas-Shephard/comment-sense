@@ -39,8 +39,12 @@ public static class RoslynTestUtils
                               {
                                   BaseTypeDeclarationSyntax b => b.Identifier.ValueText == symbolName,
                                   MethodDeclarationSyntax m => m.Identifier.ValueText == symbolName,
+                                  ConstructorDeclarationSyntax c => c.Identifier.ValueText == symbolName,
                                   PropertyDeclarationSyntax p => p.Identifier.ValueText == symbolName,
                                   VariableDeclaratorSyntax v => v.Identifier.ValueText == symbolName,
+                                  LabeledStatementSyntax l => l.Identifier.ValueText == symbolName,
+                                  FromClauseSyntax f => f.Identifier.ValueText == symbolName,
+                                  LetClauseSyntax l => l.Identifier.ValueText == symbolName,
                                   _ => false
                               });
 
