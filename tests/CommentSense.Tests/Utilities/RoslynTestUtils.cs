@@ -9,8 +9,7 @@ public static class RoslynTestUtils
 {
     private static readonly List<MetadataReference> CachedReferences = AppDomain.CurrentDomain.GetAssemblies()
         .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
-        .Select(a => MetadataReference.CreateFromFile(a.Location))
-        .Cast<MetadataReference>()
+        .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))
         .ToList();
 
     public static ISymbol GetSymbolFromSource(string source, string symbolName, bool parseDocumentation = false)
@@ -37,14 +36,14 @@ public static class RoslynTestUtils
         var declaration = root.DescendantNodes()
                               .First(n => n switch
                               {
-                                  BaseTypeDeclarationSyntax b => b.Identifier.ValueText == symbolName,
-                                  MethodDeclarationSyntax m => m.Identifier.ValueText == symbolName,
-                                  ConstructorDeclarationSyntax c => c.Identifier.ValueText == symbolName,
-                                  PropertyDeclarationSyntax p => p.Identifier.ValueText == symbolName,
-                                  VariableDeclaratorSyntax v => v.Identifier.ValueText == symbolName,
-                                  LabeledStatementSyntax l => l.Identifier.ValueText == symbolName,
-                                  FromClauseSyntax f => f.Identifier.ValueText == symbolName,
-                                  LetClauseSyntax l => l.Identifier.ValueText == symbolName,
+                                  BaseTypeDeclarationSyntax baseType => baseType.Identifier.ValueText == symbolName,
+                                  MethodDeclarationSyntax method => method.Identifier.ValueText == symbolName,
+                                  ConstructorDeclarationSyntax constructor => constructor.Identifier.ValueText == symbolName,
+                                  PropertyDeclarationSyntax property => property.Identifier.ValueText == symbolName,
+                                  VariableDeclaratorSyntax variable => variable.Identifier.ValueText == symbolName,
+                                  LabeledStatementSyntax labeledStatement => labeledStatement.Identifier.ValueText == symbolName,
+                                  FromClauseSyntax fromClause => fromClause.Identifier.ValueText == symbolName,
+                                  LetClauseSyntax letClause => letClause.Identifier.ValueText == symbolName,
                                   _ => false
                               });
 
