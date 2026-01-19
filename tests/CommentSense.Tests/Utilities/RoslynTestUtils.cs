@@ -34,7 +34,7 @@ public static class RoslynTestUtils
         // Find the symbol by name
         var root = syntaxTree.GetRoot();
         var declaration = root.DescendantNodes()
-                              .First(n => n switch
+                              .FirstOrDefault(n => n switch
                               {
                                   BaseTypeDeclarationSyntax baseType => baseType.Identifier.ValueText == symbolName,
                                   MethodDeclarationSyntax method => method.Identifier.ValueText == symbolName,
@@ -46,6 +46,11 @@ public static class RoslynTestUtils
                                   LetClauseSyntax letClause => letClause.Identifier.ValueText == symbolName,
                                   _ => false
                               });
+
+        if (declaration == null)
+        {
+            throw new InvalidOperationException($"Could not find declaration for '{symbolName}' in the provided source code.");
+        }
 
         var symbol = semanticModel.GetDeclaredSymbol(declaration);
 
