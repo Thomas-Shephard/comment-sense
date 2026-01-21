@@ -219,4 +219,93 @@ public class DocumentationExtensionsTests
         const string xml = "<member><example>This is an example.</example></member>";
         Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
     }
+
+    [Test]
+    public void GetParamNamesReturnsNames()
+    {
+        const string xml = """<member><param name="p1">p1</param><param name="p2">p2</param></member>""";
+        var result = DocumentationExtensions.GetParamNames(xml).ToList();
+        var expected = new[] { "p1", "p2" };
+        Assert.That(result, Is.EquivalentTo(expected));
+    }
+
+    [Test]
+    public void GetParamNamesIgnoresParamWithoutName()
+    {
+        const string xml = """<member><param>no name</param><param name="p1">p1</param></member>""";
+        var result = DocumentationExtensions.GetParamNames(xml).ToList();
+        var expected = new[] { "p1" };
+        Assert.That(result, Is.EquivalentTo(expected));
+    }
+
+    [Test]
+    public void GetParamNamesIgnoresEmptyParam()
+    {
+        const string xml = """<member><param name="p1"> </param><param name="p2">p2</param></member>""";
+        var result = DocumentationExtensions.GetParamNames(xml).ToList();
+        var expected = new[] { "p2" };
+        Assert.That(result, Is.EquivalentTo(expected));
+    }
+
+    [TestCase(null)]
+    [TestCase("")]
+    public void GetParamNamesReturnsEmptyForNullOrEmpty(string? xml)
+    {
+        Assert.That(DocumentationExtensions.GetParamNames(xml), Is.Empty);
+    }
+
+    [Test]
+    public void TryParseDocumentationReturnsFalseForNull()
+    {
+        var result = DocumentationExtensions.TryParseDocumentation(null, out var element);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.False);
+            Assert.That(element, Is.Not.Null);
+        }
+    }
+
+    [Test]
+    public void TryParseDocumentationReturnsFalseForEmpty()
+    {
+        var result = DocumentationExtensions.TryParseDocumentation(string.Empty, out var element);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.False);
+            Assert.That(element, Is.Not.Null);
+        }
+    }
+
+    [Test]
+    public void TryParseDocumentationReturnsFalseForWhitespace()
+    {
+        var result = DocumentationExtensions.TryParseDocumentation("   ", out var element);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.False);
+            Assert.That(element, Is.Not.Null);
+        }
+    }
+
+    [Test]
+    public void TryParseDocumentationReturnsFalseForInvalidXml()
+    {
+        var result = DocumentationExtensions.TryParseDocumentation("<invalid", out var element);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.False);
+            Assert.That(element, Is.Not.Null);
+        }
+    }
+
+    [Test]
+    public void TryParseDocumentationReturnsTrueForValidXml()
+    {
+        var result = DocumentationExtensions.TryParseDocumentation("<summary>Test</summary>", out var element);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.True);
+            Assert.That(element.Descendants("summary").First().Value, Is.EqualTo("Test"));
+        }
+    }
 }

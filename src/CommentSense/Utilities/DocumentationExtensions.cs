@@ -23,29 +23,64 @@ internal static class DocumentationExtensions
 
     internal static bool HasValidDocumentation(string? xml)
     {
+        return TryParseDocumentation(xml, out var element) && HasValidDocumentation(element);
+    }
+
+    internal static bool HasValidDocumentation(XElement root)
+    {
+        foreach (var descendant in root.Descendants())
+        {
+            var name = descendant.Name.LocalName;
+
+            if (AutoValidTags.Contains(name))
+                return true;
+
+            if (ContentRequiredTags.Contains(name) && (descendant.HasElements || !string.IsNullOrWhiteSpace(descendant.Value)))
+                return true;
+        }
+
+        return false;
+    }
+
+    internal static bool TryParseDocumentation(string? xml, out XElement element)
+    {
         if (string.IsNullOrWhiteSpace(xml))
+        {
+            element = new XElement("root");
             return false;
+        }
 
         try
         {
-            var element = XElement.Parse($"<root>{xml}</root>");
-
-            foreach (var descendant in element.Descendants())
-            {
-                var name = descendant.Name.LocalName;
-
-                if (AutoValidTags.Contains(name))
-                    return true;
-
-                if (ContentRequiredTags.Contains(name) && (descendant.HasElements || !string.IsNullOrWhiteSpace(descendant.Value)))
-                    return true;
-            }
-
-            return false;
+            element = XElement.Parse($"<root>{xml}</root>");
+            return true;
         }
         catch (XmlException)
         {
+            element = new XElement("root");
             return false;
         }
+    }
+
+    internal static bool HasAutoValidTag(XElement root)
+    {
+        return root.Descendants().Any(element => AutoValidTags.Contains(element.Name.LocalName));
+    }
+
+    internal static IEnumerable<string> GetParamNames(XElement root)
+    {
+        return root.Descendants("param")
+            .Where(d => d.HasElements || !string.IsNullOrWhiteSpace(d.Value))
+            .Select(d => d.Attribute("name")?.Value)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .OfType<string>();
+    }
+
+    internal static IEnumerable<string> GetParamNames(string? xml)
+    {
+        if (TryParseDocumentation(xml, out var element))
+            return GetParamNames(element);
+
+        return [];
     }
 }

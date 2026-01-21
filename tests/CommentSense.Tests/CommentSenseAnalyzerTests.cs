@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis.CSharp.Testing;
+using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.Tests;
@@ -117,6 +118,7 @@ public class CommentSenseAnalyzerTests
         var tester = new CSharpAnalyzerTest<CommentSenseAnalyzer, NUnitVerifier>
         {
             TestCode = source,
+            MarkupOptions = MarkupOptions.UseFirstDescriptor
         };
 
         switch (expectDiagnostic)
