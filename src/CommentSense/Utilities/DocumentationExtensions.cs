@@ -6,6 +6,13 @@ namespace CommentSense.Utilities;
 
 internal static class DocumentationExtensions
 {
+    private static readonly HashSet<string> AutoValidTags = [
+        "inheritdoc", "include"
+    ];
+    private static readonly HashSet<string> ContentRequiredTags = [
+        "summary", "remarks", "returns", "value", "param", "typeparam", "exception", "example", "seealso", "permission"
+    ];
+
     public static bool HasValidDocumentation(this ISymbol? symbol)
     {
         if (symbol is null)
@@ -17,41 +24,21 @@ internal static class DocumentationExtensions
     internal static bool HasValidDocumentation(string? xml)
     {
         if (string.IsNullOrWhiteSpace(xml))
-        {
             return false;
-        }
 
         try
         {
-            var element = XElement.Parse(xml);
-            
-            // Check for <inheritdoc />
-            if (element.Descendants("inheritdoc").Any())
-            {
-                return true;
-            }
+            var element = XElement.Parse($"<root>{xml}</root>");
 
-            // Check if any of the major documentation tags have non-whitespace content.
-            var tagsToCheck = new[] { "summary", "remarks", "returns", "value" };
-            if (tagsToCheck.Any(tag =>
-                {
-                    var tagElement = element.Element(tag);
-                    return tagElement is not null && !string.IsNullOrWhiteSpace(tagElement.Value);
-                }))
+            foreach (var descendant in element.Descendants())
             {
-                return true;
-            }
+                var name = descendant.Name.LocalName;
 
-            // Check for <param> tags with content.
-            if (element.Elements("param").Any(p => !string.IsNullOrWhiteSpace(p.Value)))
-            {
-                return true;
-            }
+                if (AutoValidTags.Contains(name))
+                    return true;
 
-            // Check for <exception> tags with content.
-            if (element.Elements("exception").Any(e => !string.IsNullOrWhiteSpace(e.Value)))
-            {
-                return true;
+                if (ContentRequiredTags.Contains(name) && (descendant.HasElements || !string.IsNullOrWhiteSpace(descendant.Value)))
+                    return true;
             }
 
             return false;

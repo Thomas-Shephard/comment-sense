@@ -174,6 +174,49 @@ public class DocumentationExtensionsTests
     [Test]
     public void HasValidDocumentationReturnsFalseForMalformedXml()
     {
-        Assert.That(DocumentationExtensions.HasValidDocumentation("<invalid"), Is.False);
+        const string xml = "<invalid";
+        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.False);
+    }
+
+    [Test]
+    public void HasValidDocumentationWithIncludeTagReturnsTrue()
+    {
+        const string xml = """<member><include file='docs.xml' path='[@name="test"]'/></member>""";
+        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
+    }
+
+    [Test]
+    public void HasValidDocumentationWithNestedElementsInSummaryReturnsTrue()
+    {
+        const string xml = """<member><summary><see cref="T:System.String"/></summary></member>""";
+        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
+    }
+
+    [Test]
+    public void HasValidDocumentationWithEmptyExceptionXmlReturnsFalse()
+    {
+        const string xml = """<member><exception cref="T:System.Exception"/></member>""";
+        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.False);
+    }
+
+    [Test]
+    public void HasValidDocumentationWithEmptyTagsReturnsFalse()
+    {
+        const string xml = "<member><summary> </summary><remarks/></member>";
+        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.False);
+    }
+
+    [Test]
+    public void HasValidDocumentationWithTypeParamReturnsTrue()
+    {
+        const string xml = """<member><typeparam name="T">The type.</typeparam></member>""";
+        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
+    }
+
+    [Test]
+    public void HasValidDocumentationWithExampleReturnsTrue()
+    {
+        const string xml = "<member><example>This is an example.</example></member>";
+        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
     }
 }
