@@ -83,4 +83,13 @@ internal static class DocumentationExtensions
 
         return [];
     }
+
+    internal static IEnumerable<string> GetTypeParamNames(XElement root)
+    {
+        return root.Descendants("typeparam")
+            .Where(d => d.HasElements || !string.IsNullOrWhiteSpace(d.Value))
+            .Select(d => d.Attribute("name")?.Value)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .OfType<string>();
+    }
 }

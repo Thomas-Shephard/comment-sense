@@ -102,15 +102,54 @@ public class CommentSenseAnalyzerTests
     }
 
     [Test]
-    public async Task PublicClassWithMultipleTagsDoesNotReportDiagnostic()
+    public async Task DocumentedPublicPropertyDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>Summary</summary>
-            /// <remarks>Remarks</remarks>
-            public class MyClass { }
+            public class MyClass
+            {
+                /// <summary>Property summary</summary>
+                public int MyProperty { get; set; }
+            }
             """;
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task PublicEventWithInheritdocDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Summary</summary>
+            public class Base
+            {
+                /// <summary>Event summary</summary>
+                public virtual event EventHandler MyEvent;
+            }
+
+            /// <summary>Summary</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc />
+                public override event EventHandler MyEvent;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task PublicClassWithInvalidDocumentationTagsReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <para>This tag alone is not considered valid documentation by our rules</para>
+            public class [|MyClass|]
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
     }
 
     private static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true)
