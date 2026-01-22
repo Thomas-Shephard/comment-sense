@@ -27,7 +27,7 @@ public class AnalysisEngineTests
     }
 
     [Test]
-    public void ShouldReportDiagnosticReturnsFalseForImplicitlyDeclared()
+    public void IsEligibleForAnalysisReturnsFalseForImplicitlyDeclared()
     {
         const string source = "public class C {}";
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
@@ -36,12 +36,12 @@ public class AnalysisEngineTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(ctor.IsImplicitlyDeclared, Is.True);
-            Assert.That(AnalysisEngine.ShouldReportDiagnostic(ctor), Is.False);
+            Assert.That(AnalysisEngine.IsEligibleForAnalysis(ctor), Is.False);
         }
     }
 
     [Test]
-    public void ShouldReportDiagnosticReturnsFalseForPropertyAccessors()
+    public void IsEligibleForAnalysisReturnsFalseForPropertyAccessors()
     {
         const string source = "public class C { public int P { get; set; } }";
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
@@ -55,13 +55,13 @@ public class AnalysisEngineTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(AnalysisEngine.ShouldReportDiagnostic(prop.GetMethod), Is.False);
-            Assert.That(AnalysisEngine.ShouldReportDiagnostic(prop.SetMethod), Is.False);
+            Assert.That(AnalysisEngine.IsEligibleForAnalysis(prop.GetMethod), Is.False);
+            Assert.That(AnalysisEngine.IsEligibleForAnalysis(prop.SetMethod), Is.False);
         }
     }
 
     [Test]
-    public void ShouldReportDiagnosticReturnsFalseForEventAccessors()
+    public void IsEligibleForAnalysisReturnsFalseForEventAccessors()
     {
         const string source = "using System; public class C { public event EventHandler E; }";
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
@@ -75,43 +75,58 @@ public class AnalysisEngineTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(AnalysisEngine.ShouldReportDiagnostic(ev.AddMethod), Is.False);
-            Assert.That(AnalysisEngine.ShouldReportDiagnostic(ev.RemoveMethod), Is.False);
+            Assert.That(AnalysisEngine.IsEligibleForAnalysis(ev.AddMethod), Is.False);
+            Assert.That(AnalysisEngine.IsEligibleForAnalysis(ev.RemoveMethod), Is.False);
         }
     }
 
     [Test]
-    public void ShouldReportDiagnosticReturnsFalseForInaccessibleSymbol()
+    public void IsEligibleForAnalysisReturnsFalseForInaccessibleSymbol()
     {
         const string source = "internal class C { public void M() {} }";
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
         var method = symbol.GetMembers().First(m => m.Name == "M");
 
-        Assert.That(AnalysisEngine.ShouldReportDiagnostic(method), Is.False);
+        Assert.That(AnalysisEngine.IsEligibleForAnalysis(method), Is.False);
     }
 
     [Test]
-    public void ShouldReportDiagnosticReturnsFalseForDocumentedSymbol()
-    {
-        const string source = """
-            public class C {
-            /// <summary>Docs</summary>
-                public void M() {}
-            }
-            """;
-        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C", parseDocumentation: true);
-        var method = symbol.GetMembers().First(m => m.Name == "M");
-
-        Assert.That(AnalysisEngine.ShouldReportDiagnostic(method), Is.False);
-    }
-
-    [Test]
-    public void ShouldReportDiagnosticReturnsTrueForPublicUndocumentedSymbol()
+    public void IsEligibleForAnalysisReturnsTrueForPublicSymbol()
     {
         const string source = "public class C { public void M() {} }";
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
         var method = symbol.GetMembers().First(m => m.Name == "M");
 
-        Assert.That(AnalysisEngine.ShouldReportDiagnostic(method), Is.True);
+        Assert.That(AnalysisEngine.IsEligibleForAnalysis(method), Is.True);
+    }
+
+    [Test]
+    public void GetPrimaryLocationReturnsFirstOfMultipleLocations()
+    {
+        var loc1 = Location.Create("f1.cs", default, default);
+        var loc2 = Location.Create("f2.cs", default, default);
+        var locations = ImmutableArray.Create(loc1, loc2);
+
+        Assert.That(AnalysisEngine.GetPrimaryLocation(locations), Is.EqualTo(loc1));
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForPublicProperty()
+    {
+        const string source = "public class C { public int P { get; set; } }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var prop = symbol.GetMembers().First(m => m.Name == "P");
+
+        Assert.That(AnalysisEngine.IsEligibleForAnalysis(prop), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForPublicField()
+    {
+        const string source = "public class C { public int f; }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var field = symbol.GetMembers().First(m => m.Name == "f");
+
+        Assert.That(AnalysisEngine.IsEligibleForAnalysis(field), Is.True);
     }
 }

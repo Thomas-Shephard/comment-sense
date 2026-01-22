@@ -5,7 +5,7 @@ namespace CommentSense.Utilities;
 
 internal static class AnalysisEngine
 {
-    public static bool ShouldReportDiagnostic(ISymbol symbol)
+    public static bool IsEligibleForAnalysis(ISymbol symbol)
     {
         if (symbol.IsImplicitlyDeclared)
             return false;
@@ -13,13 +13,7 @@ internal static class AnalysisEngine
         if (symbol is IMethodSymbol { MethodKind: MethodKind.PropertyGet or MethodKind.PropertySet or MethodKind.EventAdd or MethodKind.EventRemove or MethodKind.EventRaise })
             return false;
 
-        if (!symbol.IsEffectivelyAccessible())
-            return false;
-
-        if (symbol.HasValidDocumentation())
-            return false;
-
-        return true;
+        return symbol.IsEffectivelyAccessible();
     }
 
     public static Location GetPrimaryLocation(ImmutableArray<Location> locations)

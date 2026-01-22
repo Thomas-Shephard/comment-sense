@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Xml.Linq;
 using CommentSense.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -8,23 +9,44 @@ namespace CommentSense;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class CommentSenseAnalyzer : DiagnosticAnalyzer
 {
-    private const string DiagnosticId = "CSENSE001";
+    private const string MissingDocumentationId = "CSENSE001";
+    private const string MissingParameterDocumentationId = "CSENSE002";
+    private const string StrayParameterDocumentationId = "CSENSE003";
 
-    private static readonly LocalizableString Title = "Public API is missing documentation";
-    private static readonly LocalizableString MessageFormat = "The symbol '{0}' is missing valid documentation";
-    private static readonly LocalizableString Description = "Publicly accessible APIs should be documented to ensure maintainability and clarity.";
     private const string Category = "Documentation";
 
-    private static readonly DiagnosticDescriptor Rule = new(
-        DiagnosticId,
-        Title,
-        MessageFormat,
+    private static readonly DiagnosticDescriptor MissingDocumentationRule = new(
+        MissingDocumentationId,
+        "Public API is missing documentation",
+        "The symbol '{0}' is missing valid documentation",
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: Description);
+        description: "Publicly accessible APIs should be documented to ensure maintainability and clarity.");
 
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
+    private static readonly DiagnosticDescriptor MissingParameterDocumentationRule = new(
+        MissingParameterDocumentationId,
+        "Missing parameter documentation",
+        "The parameter '{0}' is missing documentation",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "All parameters of a publicly accessible member should be documented.");
+
+    private static readonly DiagnosticDescriptor StrayParameterDocumentationRule = new(
+        StrayParameterDocumentationId,
+        "Stray parameter documentation",
+        "The parameter '{0}' in the documentation does not exist in the method signature",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Documentation should not contain <param> tags for parameters that do not exist.");
+
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [
+        MissingDocumentationRule,
+        MissingParameterDocumentationRule,
+        StrayParameterDocumentationRule
+    ];
 
     public override void Initialize(AnalysisContext context)
     {
@@ -41,16 +63,54 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeSymbol(SymbolAnalysisContext context)
     {
-        AnalyzeSymbol(context.Symbol, context.ReportDiagnostic);
-    }
+        var symbol = context.Symbol;
 
-    private static void AnalyzeSymbol(ISymbol symbol, Action<Diagnostic> reportDiagnostic)
-    {
-        if (!AnalysisEngine.ShouldReportDiagnostic(symbol))
+        if (!AnalysisEngine.IsEligibleForAnalysis(symbol))
             return;
 
+        var xml = symbol.GetDocumentationCommentXml();
+
+        if (!DocumentationExtensions.TryParseDocumentation(xml, out var element) || !DocumentationExtensions.HasValidDocumentation(element))
+        {
+            ReportMissingDocs(context, symbol);
+            return;
+        }
+
+        if (DocumentationExtensions.HasAutoValidTag(element))
+            return;
+
+        if (symbol is IMethodSymbol methodSymbol)
+            AnalyzeMethodParameters(context, methodSymbol, element);
+    }
+
+    private static void ReportMissingDocs(SymbolAnalysisContext context, ISymbol symbol)
+    {
         var location = AnalysisEngine.GetPrimaryLocation(symbol.Locations);
-        var diagnostic = Diagnostic.Create(Rule, location, symbol.Name);
-        reportDiagnostic(diagnostic);
+        context.ReportDiagnostic(Diagnostic.Create(MissingDocumentationRule, location, symbol.Name));
+    }
+
+    private static void AnalyzeMethodParameters(SymbolAnalysisContext context, IMethodSymbol method, XElement xml)
+    {
+        var documentedParams = new HashSet<string>(DocumentationExtensions.GetParamNames(xml), StringComparer.Ordinal);
+        var actualParams = new HashSet<string>(StringComparer.Ordinal);
+
+        // CSENSE002: Missing Parameter Documentation
+        foreach (var parameter in method.Parameters)
+        {
+            actualParams.Add(parameter.Name);
+
+            if (documentedParams.Contains(parameter.Name))
+                continue;
+
+            var location = AnalysisEngine.GetPrimaryLocation(parameter.Locations);
+            context.ReportDiagnostic(Diagnostic.Create(MissingParameterDocumentationRule, location, parameter.Name));
+        }
+
+        // CSENSE003: Stray Parameter Documentation
+        foreach (var documentedParam in documentedParams.Where(p => !actualParams.Contains(p)))
+        {
+            var location = AnalysisEngine.GetPrimaryLocation(method.Locations);
+            context.ReportDiagnostic(Diagnostic.Create(StrayParameterDocumentationRule, location, documentedParam));
+        }
     }
 }
