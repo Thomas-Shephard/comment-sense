@@ -2,6 +2,8 @@ using System.Collections.Immutable;
 using System.Xml.Linq;
 using CommentSense.Utilities;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace CommentSense;
@@ -15,6 +17,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
     private const string MissingTypeParameterDocumentationId = "CSENSE004";
     private const string StrayTypeParameterDocumentationId = "CSENSE005";
     private const string MissingReturnValueDocumentationId = "CSENSE006";
+    private const string UnresolvedCrefId = "CSENSE007";
 
     private const string Category = "Documentation";
 
@@ -72,13 +75,23 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Non-void methods of a publicly accessible member should have a <returns> tag to document the return value.");
 
+    private static readonly DiagnosticDescriptor UnresolvedCrefRule = new(
+        UnresolvedCrefId,
+        "Invalid XML documentation reference",
+        "The cref reference '{0}' could not be resolved",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "The 'cref' attribute in XML documentation must refer to a valid symbol.");
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
         StrayParameterDocumentationRule,
         MissingTypeParameterDocumentationRule,
         StrayTypeParameterDocumentationRule,
-        MissingReturnValueDocumentationRule
+        MissingReturnValueDocumentationRule,
+        UnresolvedCrefRule
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -92,6 +105,30 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             SymbolKind.Property,
             SymbolKind.Field,
             SymbolKind.Event);
+
+        context.RegisterSyntaxNodeAction(AnalyzeXmlCref, SyntaxKind.XmlCrefAttribute);
+    }
+
+    private static void AnalyzeXmlCref(SyntaxNodeAnalysisContext context)
+    {
+        var crefAttribute = (XmlCrefAttributeSyntax)context.Node;
+
+        var memberDecl = crefAttribute.FirstAncestorOrSelf<MemberDeclarationSyntax>();
+        if (memberDecl is null)
+            return;
+
+        var symbol = memberDecl is BaseFieldDeclarationSyntax { Declaration.Variables.Count: > 0 } fieldDecl
+            ? context.SemanticModel.GetDeclaredSymbol(fieldDecl.Declaration.Variables[0])
+            : context.SemanticModel.GetDeclaredSymbol(memberDecl);
+
+        if (symbol is null || !AnalysisEngine.IsEligibleForAnalysis(symbol))
+            return;
+
+        var cref = crefAttribute.Cref;
+        var symbolInfo = context.SemanticModel.GetSymbolInfo(cref, context.CancellationToken);
+
+        if (symbolInfo.Symbol is null && symbolInfo.CandidateSymbols.IsEmpty)
+            context.ReportDiagnostic(Diagnostic.Create(UnresolvedCrefRule, cref.GetLocation(), cref.ToString()));
     }
 
     private static void AnalyzeSymbol(SymbolAnalysisContext context)
