@@ -1,10 +1,8 @@
-using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.Tests;
 
-public class CommentSenseAnalyzerTests
+public class CommentSenseAnalyzerTests : CommentSenseTestBase
 {
     [Test]
     public async Task PublicClassWithoutDocumentationReportsDiagnostic()
@@ -150,26 +148,5 @@ public class CommentSenseAnalyzerTests
             """;
 
         await VerifyCSenseAsync(testCode);
-    }
-
-    private static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true)
-    {
-        var tester = new CSharpAnalyzerTest<CommentSenseAnalyzer, NUnitVerifier>
-        {
-            TestCode = source,
-            MarkupOptions = MarkupOptions.UseFirstDescriptor
-        };
-
-        switch (expectDiagnostic)
-        {
-            case false when source.Contains("[|"):
-                Assert.Fail("Test code contains diagnostic markers [| |] but expectDiagnostic is false.");
-                break;
-            case true when !source.Contains("[|"):
-                Assert.Fail("expectDiagnostic is true but test code contains no diagnostic markers [| |].");
-                break;
-        }
-
-        await tester.RunAsync();
     }
 }

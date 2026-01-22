@@ -1,10 +1,8 @@
-using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.Tests;
 
-public class TypeParameterDocumentationTests
+public class TypeParameterDocumentationTests : CommentSenseTestBase
 {
     [Test]
     public async Task MissingTypeParameterDocumentationOnClassReportsDiagnostic()
@@ -45,7 +43,7 @@ public class TypeParameterDocumentationTests
             }
             """;
 
-        await VerifyCSenseAsync(testCode);
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 
     [Test]
@@ -115,7 +113,7 @@ public class TypeParameterDocumentationTests
             }
             """;
 
-        await VerifyCSenseAsync(testCode);
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 
     [Test]
@@ -130,7 +128,7 @@ public class TypeParameterDocumentationTests
             public class Derived<T> : Base<T> { }
             """;
 
-        await VerifyCSenseAsync(testCode);
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 
     [Test]
@@ -147,7 +145,7 @@ public class TypeParameterDocumentationTests
             }
             """;
 
-        await VerifyCSenseAsync(testCode);
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 
     [Test]
@@ -162,16 +160,5 @@ public class TypeParameterDocumentationTests
             """;
 
         await VerifyCSenseAsync(testCode);
-    }
-
-    private static async Task VerifyCSenseAsync(string source)
-    {
-        var tester = new CSharpAnalyzerTest<CommentSenseAnalyzer, NUnitVerifier>
-        {
-            TestCode = source,
-            MarkupOptions = MarkupOptions.UseFirstDescriptor
-        };
-
-        await tester.RunAsync();
     }
 }
