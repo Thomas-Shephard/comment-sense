@@ -12,6 +12,8 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
     private const string MissingDocumentationId = "CSENSE001";
     private const string MissingParameterDocumentationId = "CSENSE002";
     private const string StrayParameterDocumentationId = "CSENSE003";
+    private const string MissingTypeParameterDocumentationId = "CSENSE004";
+    private const string StrayTypeParameterDocumentationId = "CSENSE005";
 
     private const string Category = "Documentation";
 
@@ -42,10 +44,30 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Documentation should not contain <param> tags for parameters that do not exist.");
 
+    private static readonly DiagnosticDescriptor MissingTypeParameterDocumentationRule = new(
+        MissingTypeParameterDocumentationId,
+        "Missing type parameter documentation",
+        "The type parameter '{0}' is missing documentation",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "All type parameters of a publicly accessible member should be documented.");
+
+    private static readonly DiagnosticDescriptor StrayTypeParameterDocumentationRule = new(
+        StrayTypeParameterDocumentationId,
+        "Stray type parameter documentation",
+        "The type parameter '{0}' in the documentation does not exist in the signature",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Documentation should not contain <typeparam> tags for type parameters that do not exist.");
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
-        StrayParameterDocumentationRule
+        StrayParameterDocumentationRule,
+        MissingTypeParameterDocumentationRule,
+        StrayTypeParameterDocumentationRule
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -79,14 +101,47 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (DocumentationExtensions.HasAutoValidTag(element))
             return;
 
-        if (symbol is IMethodSymbol methodSymbol)
-            AnalyzeMethodParameters(context, methodSymbol, element);
+        switch (symbol)
+        {
+            case IMethodSymbol methodSymbol:
+                AnalyzeMethodParameters(context, methodSymbol, element);
+                AnalyzeTypeParameters(context, methodSymbol.TypeParameters, methodSymbol.Locations, element);
+                break;
+            case INamedTypeSymbol namedTypeSymbol:
+                AnalyzeTypeParameters(context, namedTypeSymbol.TypeParameters, namedTypeSymbol.Locations, element);
+                break;
+        }
     }
 
     private static void ReportMissingDocs(SymbolAnalysisContext context, ISymbol symbol)
     {
         var location = AnalysisEngine.GetPrimaryLocation(symbol.Locations);
         context.ReportDiagnostic(Diagnostic.Create(MissingDocumentationRule, location, symbol.Name));
+    }
+
+    private static void AnalyzeTypeParameters(SymbolAnalysisContext context, ImmutableArray<ITypeParameterSymbol> typeParameters, ImmutableArray<Location> symbolLocations, XElement xml)
+    {
+        var documentedTypeParams = new HashSet<string>(DocumentationExtensions.GetTypeParamNames(xml), StringComparer.Ordinal);
+        var actualTypeParams = new HashSet<string>(StringComparer.Ordinal);
+
+        // CSENSE004: Missing Type Parameter Documentation
+        foreach (var typeParameter in typeParameters)
+        {
+            actualTypeParams.Add(typeParameter.Name);
+
+            if (documentedTypeParams.Contains(typeParameter.Name))
+                continue;
+
+            var location = AnalysisEngine.GetPrimaryLocation(typeParameter.Locations);
+            context.ReportDiagnostic(Diagnostic.Create(MissingTypeParameterDocumentationRule, location, typeParameter.Name));
+        }
+
+        // CSENSE005: Stray Type Parameter Documentation
+        foreach (var documentedTypeParam in documentedTypeParams.Where(p => !actualTypeParams.Contains(p)))
+        {
+            var location = AnalysisEngine.GetPrimaryLocation(symbolLocations);
+            context.ReportDiagnostic(Diagnostic.Create(StrayTypeParameterDocumentationRule, location, documentedTypeParam));
+        }
     }
 
     private static void AnalyzeMethodParameters(SymbolAnalysisContext context, IMethodSymbol method, XElement xml)
