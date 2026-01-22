@@ -14,6 +14,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
     private const string StrayParameterDocumentationId = "CSENSE003";
     private const string MissingTypeParameterDocumentationId = "CSENSE004";
     private const string StrayTypeParameterDocumentationId = "CSENSE005";
+    private const string MissingReturnValueDocumentationId = "CSENSE006";
 
     private const string Category = "Documentation";
 
@@ -62,12 +63,22 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "Documentation should not contain <typeparam> tags for type parameters that do not exist.");
 
+    private static readonly DiagnosticDescriptor MissingReturnValueDocumentationRule = new(
+        MissingReturnValueDocumentationId,
+        "Missing return value documentation",
+        "The method '{0}' is missing return value documentation",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Non-void methods of a publicly accessible member should have a <returns> tag to document the return value.");
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
         StrayParameterDocumentationRule,
         MissingTypeParameterDocumentationRule,
-        StrayTypeParameterDocumentationRule
+        StrayTypeParameterDocumentationRule,
+        MissingReturnValueDocumentationRule
     ];
 
     public override void Initialize(AnalysisContext context)
@@ -106,6 +117,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             case IMethodSymbol methodSymbol:
                 AnalyzeMethodParameters(context, methodSymbol, element);
                 AnalyzeTypeParameters(context, methodSymbol.TypeParameters, methodSymbol.Locations, element);
+                AnalyzeReturnValue(context, methodSymbol, element);
                 break;
             case INamedTypeSymbol namedTypeSymbol:
                 AnalyzeTypeParameters(context, namedTypeSymbol.TypeParameters, namedTypeSymbol.Locations, element);
@@ -167,5 +179,32 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             var location = AnalysisEngine.GetPrimaryLocation(method.Locations);
             context.ReportDiagnostic(Diagnostic.Create(StrayParameterDocumentationRule, location, documentedParam));
         }
+    }
+
+    private static void AnalyzeReturnValue(SymbolAnalysisContext context, IMethodSymbol method, XElement xml)
+    {
+        if (method.MethodKind != MethodKind.Ordinary && method.MethodKind != MethodKind.UserDefinedOperator && method.MethodKind != MethodKind.Conversion)
+            return;
+
+        if (method.ReturnsVoid)
+            return;
+
+        if (IsTaskOrValueTask(method.ReturnType))
+            return;
+
+        if (DocumentationExtensions.HasReturnsTag(xml))
+            return;
+
+        var location = AnalysisEngine.GetPrimaryLocation(method.Locations);
+        context.ReportDiagnostic(Diagnostic.Create(MissingReturnValueDocumentationRule, location, method.Name));
+    }
+
+    private static bool IsTaskOrValueTask(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol is not INamedTypeSymbol { Arity: 0 } namedType)
+            return false;
+
+        return (namedType.Name == "Task" && namedType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks") ||
+               (namedType.Name == "ValueTask" && namedType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks");
     }
 }

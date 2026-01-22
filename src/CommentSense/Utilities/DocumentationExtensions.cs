@@ -92,4 +92,10 @@ internal static class DocumentationExtensions
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .OfType<string>();
     }
+
+    internal static bool HasReturnsTag(XElement root)
+    {
+        return root.Descendants("returns")
+            .Any(d => d.HasElements || !string.IsNullOrWhiteSpace(d.Value));
+    }
 }
