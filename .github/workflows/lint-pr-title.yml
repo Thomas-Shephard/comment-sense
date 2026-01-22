@@ -14,7 +14,7 @@ permissions:
 jobs:
   pull-request-title-lint:
     name: Lint Pull Request Title
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Lint Pull Request Title
         id: lint_pr_title
