@@ -1,5 +1,5 @@
 using Microsoft.CodeAnalysis;
-using CommentSense.Utilities;
+using CommentSense.Analyzers.Utilities;
 using NUnit.Framework;
 
 namespace CommentSense.Tests.Utilities;

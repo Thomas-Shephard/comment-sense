@@ -12,12 +12,14 @@
     <PackageReference Include="NUnit.Analyzers" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
     <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\CommentSense\CommentSense.csproj" />
+    <ProjectReference Include="..\..\src\CommentSense.Analyzers\CommentSense.Analyzers.csproj" />
+    <ProjectReference Include="..\..\src\CommentSense.CodeFixes\CommentSense.CodeFixes.csproj" />
   </ItemGroup>
 
 </Project>

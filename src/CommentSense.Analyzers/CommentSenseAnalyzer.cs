@@ -1,23 +1,23 @@
 using System.Collections.Immutable;
 using System.Xml.Linq;
-using CommentSense.Utilities;
+using CommentSense.Analyzers.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace CommentSense;
+namespace CommentSense.Analyzers;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class CommentSenseAnalyzer : DiagnosticAnalyzer
 {
-    private const string MissingDocumentationId = "CSENSE001";
-    private const string MissingParameterDocumentationId = "CSENSE002";
-    private const string StrayParameterDocumentationId = "CSENSE003";
-    private const string MissingTypeParameterDocumentationId = "CSENSE004";
-    private const string StrayTypeParameterDocumentationId = "CSENSE005";
-    private const string MissingReturnValueDocumentationId = "CSENSE006";
-    private const string UnresolvedCrefId = "CSENSE007";
+    internal const string MissingDocumentationId = "CSENSE001";
+    internal const string MissingParameterDocumentationId = "CSENSE002";
+    internal const string StrayParameterDocumentationId = "CSENSE003";
+    internal const string MissingTypeParameterDocumentationId = "CSENSE004";
+    internal const string StrayTypeParameterDocumentationId = "CSENSE005";
+    internal const string MissingReturnValueDocumentationId = "CSENSE006";
+    internal const string UnresolvedCrefId = "CSENSE007";
 
     private const string Category = "Documentation";
 
@@ -182,14 +182,16 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 continue;
 
             var location = AnalysisEngine.GetPrimaryLocation(typeParameter.Locations);
-            context.ReportDiagnostic(Diagnostic.Create(MissingTypeParameterDocumentationRule, location, typeParameter.Name));
+            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", typeParameter.Name);
+            context.ReportDiagnostic(Diagnostic.Create(MissingTypeParameterDocumentationRule, location, properties, typeParameter.Name));
         }
 
         // CSENSE005: Stray Type Parameter Documentation
         foreach (var documentedTypeParam in documentedTypeParams.Where(p => !actualTypeParams.Contains(p)))
         {
             var location = AnalysisEngine.GetPrimaryLocation(symbolLocations);
-            context.ReportDiagnostic(Diagnostic.Create(StrayTypeParameterDocumentationRule, location, documentedTypeParam));
+            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedTypeParam);
+            context.ReportDiagnostic(Diagnostic.Create(StrayTypeParameterDocumentationRule, location, properties, documentedTypeParam));
         }
     }
 
@@ -207,14 +209,16 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 continue;
 
             var location = AnalysisEngine.GetPrimaryLocation(parameter.Locations);
-            context.ReportDiagnostic(Diagnostic.Create(MissingParameterDocumentationRule, location, parameter.Name));
+            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", parameter.Name);
+            context.ReportDiagnostic(Diagnostic.Create(MissingParameterDocumentationRule, location, properties, parameter.Name));
         }
 
         // CSENSE003: Stray Parameter Documentation
         foreach (var documentedParam in documentedParams.Where(p => !actualParams.Contains(p)))
         {
             var location = AnalysisEngine.GetPrimaryLocation(method.Locations);
-            context.ReportDiagnostic(Diagnostic.Create(StrayParameterDocumentationRule, location, documentedParam));
+            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedParam);
+            context.ReportDiagnostic(Diagnostic.Create(StrayParameterDocumentationRule, location, properties, documentedParam));
         }
     }
 

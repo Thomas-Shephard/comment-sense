@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
+using CommentSense.Analyzers;
 using NUnit.Framework;
 
 namespace CommentSense.Tests;

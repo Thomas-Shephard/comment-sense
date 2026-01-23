@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/CommentSense/CommentSense.csproj" />
+    <Project Path="src/CommentSense.Analyzers/CommentSense.Analyzers.csproj" />
+    <Project Path="src/CommentSense.CodeFixes/CommentSense.CodeFixes.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CommentSense.Tests/CommentSense.Tests.csproj" />

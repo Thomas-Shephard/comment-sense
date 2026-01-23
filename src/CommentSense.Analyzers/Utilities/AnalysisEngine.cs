@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 
-namespace CommentSense.Utilities;
+namespace CommentSense.Analyzers.Utilities;
 
 internal static class AnalysisEngine
 {

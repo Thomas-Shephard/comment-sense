@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using CommentSense.Utilities;
+using CommentSense.Analyzers.Utilities;
 using Microsoft.CodeAnalysis;
 using NUnit.Framework;
 

@@ -2,7 +2,7 @@ using System.Xml;
 using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
 
-namespace CommentSense.Utilities;
+namespace CommentSense.Analyzers.Utilities;
 
 internal static class DocumentationExtensions
 {
