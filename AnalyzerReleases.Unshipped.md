@@ -15,3 +15,4 @@ CSENSE008 | Documentation | Warning | Parameter documentation order mismatch
 CSENSE009 | Documentation | Warning | Duplicate parameter documentation
 CSENSE010 | Documentation | Warning | Type parameter documentation order mismatch
 CSENSE011 | Documentation | Warning | Duplicate type parameter documentation
+CSENSE012 | Documentation | Warning | Missing exception documentation
