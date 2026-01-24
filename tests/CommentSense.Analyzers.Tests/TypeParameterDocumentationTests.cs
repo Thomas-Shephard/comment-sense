@@ -162,4 +162,49 @@ public class TypeParameterDocumentationTests : CommentSenseAnalyzerTestBase<Comm
 
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task TypeParameterOrderMismatchReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            /// <typeparam name="T2">T2</typeparam>
+            /// <typeparam name="T1">T1</typeparam>
+            public class {|CSENSE010:MyClass|}<T1, T2>
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task DuplicateTypeParameterDocumentationReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            /// <typeparam name="T1">T1</typeparam>
+            /// <typeparam name="T1">T1 duplicate</typeparam>
+            public class {|CSENSE011:MyClass|}<T1>
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task CorrectTypeParameterOrderDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            /// <typeparam name="T1">T1</typeparam>
+            /// <typeparam name="T2">T2</typeparam>
+            public class MyClass<T1, T2>
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
 }

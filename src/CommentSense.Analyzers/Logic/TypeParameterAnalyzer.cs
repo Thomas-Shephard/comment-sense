@@ -8,17 +8,19 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class TypeParameterAnalyzer
 {
-    public static void Analyze(SymbolAnalysisContext context, ImmutableArray<ITypeParameterSymbol> typeParameters, ImmutableArray<Location> symbolLocations, XElement xml)
+    public static void Analyze(SymbolAnalysisContext context, ImmutableArray<ITypeParameterSymbol> typeParameters, ISymbol symbol, XElement xml)
     {
-        var documentedTypeParams = new HashSet<string>(DocumentationExtensions.GetTypeParamNames(xml), StringComparer.Ordinal);
-        var actualTypeParams = new HashSet<string>(StringComparer.Ordinal);
+        if (typeParameters.IsEmpty && !xml.Descendants("typeparam").Any())
+            return;
+
+        var documentedTypeParamNames = DocumentationExtensions.GetTypeParamNames(xml).ToList();
+        var documentedTypeParamsSet = new HashSet<string>(documentedTypeParamNames, StringComparer.Ordinal);
+        var actualTypeParamIndexMap = typeParameters.Select((p, i) => (p.Name, i)).ToDictionary(x => x.Name, x => x.i, StringComparer.Ordinal);
 
         // CSENSE004: Missing Type Parameter Documentation
         foreach (var typeParameter in typeParameters)
         {
-            actualTypeParams.Add(typeParameter.Name);
-
-            if (documentedTypeParams.Contains(typeParameter.Name))
+            if (documentedTypeParamsSet.Contains(typeParameter.Name))
                 continue;
 
             var location = typeParameter.Locations.GetPrimaryLocation();
@@ -26,12 +28,38 @@ internal static class TypeParameterAnalyzer
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingTypeParameterDocumentationRule, location, properties, typeParameter.Name));
         }
 
-        // CSENSE005: Stray Type Parameter Documentation
-        foreach (var documentedTypeParam in documentedTypeParams.Where(p => !actualTypeParams.Contains(p)))
+        var seenTypeParams = new HashSet<string>(StringComparer.Ordinal);
+        var lastActualIndex = -1;
+
+        foreach (var documentedTypeParam in documentedTypeParamNames)
         {
-            var location = symbolLocations.GetPrimaryLocation();
-            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedTypeParam);
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayTypeParameterDocumentationRule, location, properties, documentedTypeParam));
+            // CSENSE011: Duplicate Type Parameter Documentation
+            if (!seenTypeParams.Add(documentedTypeParam))
+            {
+                var location = symbol.Locations.GetPrimaryLocation();
+                var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedTypeParam);
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.DuplicateTypeParameterDocumentationRule, location, properties, documentedTypeParam));
+                continue;
+            }
+
+            if (!actualTypeParamIndexMap.TryGetValue(documentedTypeParam, out var currentIndex))
+            {
+                // CSENSE005: Stray Type Parameter Documentation
+                var location = symbol.Locations.GetPrimaryLocation();
+                var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedTypeParam);
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayTypeParameterDocumentationRule, location, properties, documentedTypeParam));
+                continue;
+            }
+
+            // CSENSE010: Type Parameter Order Mismatch
+            if (currentIndex < lastActualIndex)
+            {
+                var location = symbol.Locations.GetPrimaryLocation();
+                var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedTypeParam);
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.TypeParameterOrderMismatchRule, location, properties, documentedTypeParam));
+            }
+
+            lastActualIndex = currentIndex;
         }
     }
 }

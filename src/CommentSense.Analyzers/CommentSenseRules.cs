@@ -71,6 +71,42 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: "The 'cref' attribute in XML documentation must refer to a valid symbol.");
 
+    public static readonly DiagnosticDescriptor ParameterOrderMismatchRule = new(
+        CommentSenseDiagnosticIds.ParameterOrderMismatchId,
+        "Parameter documentation order mismatch",
+        "The parameter '{0}' is documented out of order",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "The order of <param> tags should match the order of parameters in the member signature.");
+
+    public static readonly DiagnosticDescriptor DuplicateParameterDocumentationRule = new(
+        CommentSenseDiagnosticIds.DuplicateParameterDocumentationId,
+        "Duplicate parameter documentation",
+        "The parameter '{0}' is documented more than once",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Each parameter should only be documented once.");
+
+    public static readonly DiagnosticDescriptor TypeParameterOrderMismatchRule = new(
+        CommentSenseDiagnosticIds.TypeParameterOrderMismatchId,
+        "Type parameter documentation order mismatch",
+        "The type parameter '{0}' is documented out of order",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "The order of <typeparam> tags should match the order of type parameters in the member signature.");
+
+    public static readonly DiagnosticDescriptor DuplicateTypeParameterDocumentationRule = new(
+        CommentSenseDiagnosticIds.DuplicateTypeParameterDocumentationId,
+        "Duplicate type parameter documentation",
+        "The type parameter '{0}' is documented more than once",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Each type parameter should only be documented once.");
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics = [
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
@@ -78,6 +114,10 @@ internal static class CommentSenseRules
         MissingTypeParameterDocumentationRule,
         StrayTypeParameterDocumentationRule,
         MissingReturnValueDocumentationRule,
-        UnresolvedCrefRule
+        UnresolvedCrefRule,
+        ParameterOrderMismatchRule,
+        DuplicateParameterDocumentationRule,
+        TypeParameterOrderMismatchRule,
+        DuplicateTypeParameterDocumentationRule
     ];
 }

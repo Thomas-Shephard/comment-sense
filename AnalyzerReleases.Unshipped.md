@@ -11,3 +11,7 @@ CSENSE004 | Documentation | Warning | Missing type parameter documentation
 CSENSE005 | Documentation | Warning | Stray type parameter documentation
 CSENSE006 | Documentation | Warning | Missing return value documentation
 CSENSE007 | Documentation | Warning | Invalid XML documentation reference
+CSENSE008 | Documentation | Warning | Parameter documentation order mismatch
+CSENSE009 | Documentation | Warning | Duplicate parameter documentation
+CSENSE010 | Documentation | Warning | Type parameter documentation order mismatch
+CSENSE011 | Documentation | Warning | Duplicate type parameter documentation
