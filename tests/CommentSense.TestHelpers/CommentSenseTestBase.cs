@@ -8,12 +8,13 @@ namespace CommentSense.TestHelpers;
 public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()
 {
-    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true)
+    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true, CompilerDiagnostics compilerDiagnostics = CompilerDiagnostics.Errors)
     {
         var tester = new CSharpAnalyzerTest<TAnalyzer, NUnitVerifier>
         {
             TestCode = source,
-            MarkupOptions = MarkupOptions.UseFirstDescriptor
+            MarkupOptions = MarkupOptions.UseFirstDescriptor,
+            CompilerDiagnostics = compilerDiagnostics
         };
 
         if (expectDiagnostic && !source.Contains("{|") && !source.Contains("[|"))

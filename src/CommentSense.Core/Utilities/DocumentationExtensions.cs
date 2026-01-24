@@ -98,4 +98,13 @@ internal static class DocumentationExtensions
         return root.Descendants("returns")
             .Any(d => d.HasElements || !string.IsNullOrWhiteSpace(d.Value));
     }
+
+    public static IEnumerable<string> GetExceptionCrefs(XElement root)
+    {
+        return root.Descendants("exception")
+            .Where(d => d.HasElements || !string.IsNullOrWhiteSpace(d.Value))
+            .Select(d => d.Attribute("cref")?.Value)
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .OfType<string>();
+    }
 }

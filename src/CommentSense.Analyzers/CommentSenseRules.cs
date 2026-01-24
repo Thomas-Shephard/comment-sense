@@ -107,6 +107,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: "Each type parameter should only be documented once.");
 
+    public static readonly DiagnosticDescriptor MissingExceptionDocumentationRule = new(
+        CommentSenseDiagnosticIds.MissingExceptionDocumentationId,
+        "Missing exception documentation",
+        "The exception type '{0}' is thrown but not documented",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "All exceptions explicitly thrown by a publicly accessible member should be documented with an <exception> tag.");
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics = [
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
@@ -118,6 +127,7 @@ internal static class CommentSenseRules
         ParameterOrderMismatchRule,
         DuplicateParameterDocumentationRule,
         TypeParameterOrderMismatchRule,
-        DuplicateTypeParameterDocumentationRule
+        DuplicateTypeParameterDocumentationRule,
+        MissingExceptionDocumentationRule
     ];
 }

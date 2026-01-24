@@ -51,10 +51,15 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element);
                 TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element);
                 ReturnValueAnalyzer.Analyze(context, methodSymbol, element);
+                ExceptionAnalyzer.Analyze(context, methodSymbol, element, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
                 break;
-            case IPropertySymbol { IsIndexer: true } propertySymbol:
-                ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element);
-                ReturnValueAnalyzer.Analyze(context, propertySymbol, element);
+            case IPropertySymbol propertySymbol:
+                if (propertySymbol.IsIndexer)
+                {
+                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element);
+                    ReturnValueAnalyzer.Analyze(context, propertySymbol, element);
+                }
+                ExceptionAnalyzer.Analyze(context, propertySymbol, element);
                 break;
             case INamedTypeSymbol namedTypeSymbol:
                 TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element);
@@ -67,6 +72,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 if (namedTypeSymbol.GetPrimaryConstructor() is { } primaryCtor)
                 {
                     ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element);
+                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, isPrimaryCtor: true);
                 }
                 break;
         }
