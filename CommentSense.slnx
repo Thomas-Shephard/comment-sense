@@ -1,8 +1,11 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/CommentSense/CommentSense.csproj" />
+    <Project Path="src/CommentSense.Analyzers/CommentSense.Analyzers.csproj" />
+    <Project Path="src/CommentSense.Core/CommentSense.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/CommentSense.Tests/CommentSense.Tests.csproj" />
+    <Project Path="tests/CommentSense.Analyzers.Tests/CommentSense.Analyzers.Tests.csproj" />
+    <Project Path="tests/CommentSense.Core.Tests/CommentSense.Core.Tests.csproj" />
+    <Project Path="tests/CommentSense.TestHelpers/CommentSense.TestHelpers.csproj" />
   </Folder>
 </Solution>

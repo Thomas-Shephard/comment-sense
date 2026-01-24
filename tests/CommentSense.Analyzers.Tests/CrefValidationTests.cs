@@ -1,8 +1,9 @@
+using CommentSense.TestHelpers;
 using NUnit.Framework;
 
-namespace CommentSense.Tests;
+namespace CommentSense.Analyzers.Tests;
 
-public class CrefValidationTests : CommentSenseTestBase
+public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
     [Test]
     public async Task UnresolvedSeeCrefReportsDiagnostic()

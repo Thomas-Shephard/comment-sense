@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace CommentSense.Utilities;
+namespace CommentSense.Core.Utilities;
 
 internal static class AccessibilityExtensions
 {

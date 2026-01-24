@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using NUnit.Framework;
 
-namespace CommentSense.Tests.Utilities;
+namespace CommentSense.TestHelpers;
 
 public static class RoslynTestUtils
 {

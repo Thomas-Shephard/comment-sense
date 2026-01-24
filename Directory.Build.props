@@ -19,5 +19,6 @@
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/Thomas-Shephard/comment-sense</RepositoryUrl>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 </Project>

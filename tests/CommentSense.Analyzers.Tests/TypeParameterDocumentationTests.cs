@@ -1,8 +1,9 @@
+using CommentSense.TestHelpers;
 using NUnit.Framework;
 
-namespace CommentSense.Tests;
+namespace CommentSense.Analyzers.Tests;
 
-public class TypeParameterDocumentationTests : CommentSenseTestBase
+public class TypeParameterDocumentationTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
     [Test]
     public async Task MissingTypeParameterDocumentationOnClassReportsDiagnostic()

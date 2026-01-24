@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
-namespace CommentSense.Tests;
+namespace CommentSense.TestHelpers;
 
 public class NUnitVerifier : IVerifier
 {

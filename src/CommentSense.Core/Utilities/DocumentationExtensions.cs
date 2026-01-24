@@ -2,7 +2,7 @@ using System.Xml;
 using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
 
-namespace CommentSense.Utilities;
+namespace CommentSense.Core.Utilities;
 
 internal static class DocumentationExtensions
 {
@@ -21,12 +21,12 @@ internal static class DocumentationExtensions
         return HasValidDocumentation(symbol.GetDocumentationCommentXml());
     }
 
-    internal static bool HasValidDocumentation(string? xml)
+    public static bool HasValidDocumentation(string? xml)
     {
         return TryParseDocumentation(xml, out var element) && HasValidDocumentation(element);
     }
 
-    internal static bool HasValidDocumentation(XElement root)
+    public static bool HasValidDocumentation(XElement root)
     {
         foreach (var descendant in root.Descendants())
         {
@@ -42,7 +42,7 @@ internal static class DocumentationExtensions
         return false;
     }
 
-    internal static bool TryParseDocumentation(string? xml, out XElement element)
+    public static bool TryParseDocumentation(string? xml, out XElement element)
     {
         if (string.IsNullOrWhiteSpace(xml))
         {
@@ -62,12 +62,12 @@ internal static class DocumentationExtensions
         }
     }
 
-    internal static bool HasAutoValidTag(XElement root)
+    public static bool HasAutoValidTag(XElement root)
     {
         return root.Descendants().Any(element => AutoValidTags.Contains(element.Name.LocalName));
     }
 
-    internal static IEnumerable<string> GetParamNames(XElement root)
+    public static IEnumerable<string> GetParamNames(XElement root)
     {
         return root.Descendants("param")
             .Where(d => d.HasElements || !string.IsNullOrWhiteSpace(d.Value))
@@ -76,7 +76,7 @@ internal static class DocumentationExtensions
             .OfType<string>();
     }
 
-    internal static IEnumerable<string> GetParamNames(string? xml)
+    public static IEnumerable<string> GetParamNames(string? xml)
     {
         if (TryParseDocumentation(xml, out var element))
             return GetParamNames(element);
@@ -84,7 +84,7 @@ internal static class DocumentationExtensions
         return [];
     }
 
-    internal static IEnumerable<string> GetTypeParamNames(XElement root)
+    public static IEnumerable<string> GetTypeParamNames(XElement root)
     {
         return root.Descendants("typeparam")
             .Where(d => d.HasElements || !string.IsNullOrWhiteSpace(d.Value))
@@ -93,7 +93,7 @@ internal static class DocumentationExtensions
             .OfType<string>();
     }
 
-    internal static bool HasReturnsTag(XElement root)
+    public static bool HasReturnsTag(XElement root)
     {
         return root.Descendants("returns")
             .Any(d => d.HasElements || !string.IsNullOrWhiteSpace(d.Value));

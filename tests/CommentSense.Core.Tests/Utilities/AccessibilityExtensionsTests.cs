@@ -1,7 +1,8 @@
-using CommentSense.Utilities;
+using CommentSense.Core.Utilities;
+using CommentSense.TestHelpers;
 using NUnit.Framework;
 
-namespace CommentSense.Tests.Utilities;
+namespace CommentSense.Core.Tests.Utilities;
 
 public class AccessibilityExtensionsTests
 {

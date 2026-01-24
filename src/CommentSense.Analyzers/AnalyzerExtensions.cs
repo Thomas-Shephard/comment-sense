@@ -1,11 +1,12 @@
 using System.Collections.Immutable;
+using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 
-namespace CommentSense.Utilities;
+namespace CommentSense.Analyzers;
 
-internal static class AnalysisEngine
+internal static class AnalyzerExtensions
 {
-    public static bool IsEligibleForAnalysis(ISymbol symbol)
+    public static bool IsEligibleForAnalysis(this ISymbol symbol)
     {
         if (symbol.IsImplicitlyDeclared)
             return false;
@@ -16,7 +17,7 @@ internal static class AnalysisEngine
         return symbol.IsEffectivelyAccessible();
     }
 
-    public static Location GetPrimaryLocation(ImmutableArray<Location> locations)
+    public static Location GetPrimaryLocation(this ImmutableArray<Location> locations)
     {
         if (locations.Length == 0)
             return Location.None;
