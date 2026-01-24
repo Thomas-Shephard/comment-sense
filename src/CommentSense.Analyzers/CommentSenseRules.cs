@@ -116,6 +116,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: "All exceptions explicitly thrown by a publicly accessible member should be documented with an <exception> tag.");
 
+    public static readonly DiagnosticDescriptor StrayReturnValueDocumentationRule = new(
+        CommentSenseDiagnosticIds.StrayReturnValueDocumentationId,
+        "Stray return value documentation",
+        "The symbol '{0}' should not have return value documentation as it returns void or a non-generic Task",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Documentation should not contain <returns> tags for members that do not return a value.");
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics = [
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
@@ -128,6 +137,7 @@ internal static class CommentSenseRules
         DuplicateParameterDocumentationRule,
         TypeParameterOrderMismatchRule,
         DuplicateTypeParameterDocumentationRule,
-        MissingExceptionDocumentationRule
+        MissingExceptionDocumentationRule,
+        StrayReturnValueDocumentationRule
     ];
 }
