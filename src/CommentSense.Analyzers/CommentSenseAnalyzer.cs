@@ -49,7 +49,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         {
             case IMethodSymbol methodSymbol:
                 ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element);
-                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol.Locations, element);
+                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element);
                 ReturnValueAnalyzer.Analyze(context, methodSymbol, element);
                 break;
             case IPropertySymbol { IsIndexer: true } propertySymbol:
@@ -57,7 +57,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 ReturnValueAnalyzer.Analyze(context, propertySymbol, element);
                 break;
             case INamedTypeSymbol namedTypeSymbol:
-                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol.Locations, element);
+                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element);
                 if (namedTypeSymbol is { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null })
                 {
                     ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element);

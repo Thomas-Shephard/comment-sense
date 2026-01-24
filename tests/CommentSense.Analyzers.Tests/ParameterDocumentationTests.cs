@@ -167,4 +167,55 @@ public class ParameterDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
+
+    [Test]
+    public async Task ParameterOrderMismatchReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <param name="p2">p2</param>
+                /// <param name="p1">p1</param>
+                public void {|CSENSE008:MyMethod|}(int p1, int p2) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task DuplicateParameterDocumentationReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <param name="p1">p1</param>
+                /// <param name="p1">p1 duplicate</param>
+                public void {|CSENSE009:MyMethod|}(int p1) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task CorrectParameterOrderDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <param name="p1">p1</param>
+                /// <param name="p2">p2</param>
+                public void MyMethod(int p1, int p2) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
 }

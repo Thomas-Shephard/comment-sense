@@ -10,15 +10,17 @@ internal static class ParameterAnalyzer
 {
     public static void Analyze(SymbolAnalysisContext context, ImmutableArray<IParameterSymbol> parameters, ISymbol symbol, XElement xml)
     {
-        var documentedParams = new HashSet<string>(DocumentationExtensions.GetParamNames(xml), StringComparer.Ordinal);
-        var actualParams = new HashSet<string>(StringComparer.Ordinal);
+        if (parameters.IsEmpty && !xml.Descendants("param").Any())
+            return;
+
+        var documentedParamNames = DocumentationExtensions.GetParamNames(xml).ToList();
+        var documentedParamsSet = new HashSet<string>(documentedParamNames, StringComparer.Ordinal);
+        var actualParamIndexMap = parameters.Select((p, i) => (p.Name, i)).ToDictionary(x => x.Name, x => x.i, StringComparer.Ordinal);
 
         // CSENSE002: Missing Parameter Documentation
         foreach (var parameter in parameters)
         {
-            actualParams.Add(parameter.Name);
-
-            if (documentedParams.Contains(parameter.Name))
+            if (documentedParamsSet.Contains(parameter.Name))
                 continue;
 
             var location = parameter.Locations.GetPrimaryLocation();
@@ -26,12 +28,38 @@ internal static class ParameterAnalyzer
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingParameterDocumentationRule, location, properties, parameter.Name));
         }
 
-        // CSENSE003: Stray Parameter Documentation
-        foreach (var documentedParam in documentedParams.Where(p => !actualParams.Contains(p)))
+        var seenParams = new HashSet<string>(StringComparer.Ordinal);
+        var lastActualIndex = -1;
+
+        foreach (var documentedParam in documentedParamNames)
         {
-            var location = symbol.Locations.GetPrimaryLocation();
-            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedParam);
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayParameterDocumentationRule, location, properties, documentedParam));
+            // CSENSE009: Duplicate Parameter Documentation
+            if (!seenParams.Add(documentedParam))
+            {
+                var location = symbol.Locations.GetPrimaryLocation();
+                var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedParam);
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.DuplicateParameterDocumentationRule, location, properties, documentedParam));
+                continue;
+            }
+
+            if (!actualParamIndexMap.TryGetValue(documentedParam, out var currentIndex))
+            {
+                // CSENSE003: Stray Parameter Documentation
+                var location = symbol.Locations.GetPrimaryLocation();
+                var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedParam);
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayParameterDocumentationRule, location, properties, documentedParam));
+                continue;
+            }
+
+            // CSENSE008: Parameter Order Mismatch
+            if (currentIndex < lastActualIndex)
+            {
+                var location = symbol.Locations.GetPrimaryLocation();
+                var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", documentedParam);
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.ParameterOrderMismatchRule, location, properties, documentedParam));
+            }
+
+            lastActualIndex = currentIndex;
         }
     }
 }
