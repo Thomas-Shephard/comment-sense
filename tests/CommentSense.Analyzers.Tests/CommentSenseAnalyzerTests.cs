@@ -150,4 +150,50 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
 
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task FieldWithDocumentationDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Class</summary>
+            public class C
+            {
+                /// <summary>Field</summary>
+                public int f;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task EventWithDocumentationDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class</summary>
+            public class C
+            {
+                /// <summary>Event</summary>
+                public event EventHandler E;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task PropertyWithDocumentationDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Class</summary>
+            public class C
+            {
+                /// <summary>Property</summary>
+                public int P { get; set; }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
 }

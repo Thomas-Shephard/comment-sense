@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -116,5 +117,144 @@ public class AnalyzerExtensionsTests
         var field = symbol.GetMembers().First(m => m.Name == "f");
 
         Assert.That(field.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsFalseForCompilerServiceNamespace()
+    {
+        const string source = "namespace System.Runtime.CompilerServices { public class IsExternalInit {} }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "IsExternalInit");
+
+        Assert.That(symbol.IsEligibleForAnalysis(), Is.False);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForSymbolInGlobalNamespace()
+    {
+        const string source = "public class GlobalClass {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "GlobalClass");
+
+        Assert.That(symbol.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForSymbolInOtherNamespace()
+    {
+        const string source = "namespace Other { public class C {} }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+
+        Assert.That(symbol.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsFalseForPrimaryConstructor()
+    {
+        const string source = "public class C(int p1) {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var primaryCtor = symbol.GetPrimaryConstructor();
+
+        Assert.That(primaryCtor?.IsEligibleForAnalysis(), Is.False);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsFalseForRecordPositionalProperty()
+    {
+        const string source = "namespace System.Runtime.CompilerServices { public class IsExternalInit {} } public record R(int p1);";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "R");
+        var prop = symbol.GetMembers().OfType<IPropertySymbol>().First(p => p.Name == "p1");
+
+        Assert.That(prop.IsEligibleForAnalysis(), Is.False);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForRecordManualProperty()
+    {
+        const string source = "namespace System.Runtime.CompilerServices { public class IsExternalInit {} } public record R(int p1) { public int P2 { get; init; } }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "R");
+        var prop = symbol.GetMembers().OfType<IPropertySymbol>().First(p => p.Name == "P2");
+
+        Assert.That(prop.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForExplicitConstructor()
+    {
+        const string source = "public class C { public C() {} }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var ctor = symbol.InstanceConstructors.First();
+
+        Assert.That(ctor.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForRecordField()
+    {
+        const string source = "namespace System.Runtime.CompilerServices { public class IsExternalInit {} } public record R(int p1) { public int f1; }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "R");
+        var field = symbol.GetMembers().OfType<IFieldSymbol>().First(f => f.Name == "f1");
+
+        Assert.That(field.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void GetPrimaryConstructorReturnsNullForStaticClass()
+    {
+        const string source = "public static class C {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var result = symbol.GetPrimaryConstructor();
+
+        Assert.That(result, Is.Null);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForTypeParameter()
+    {
+        const string source = "public class C<T> {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var typeParam = symbol.TypeParameters.First();
+
+        Assert.That(typeParam.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsPrimaryConstructorReturnsFalseForMetadataConstructor()
+    {
+        var compilation = CSharpCompilation.Create("TestAssembly",
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+            .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+        var objectType = compilation.GetSpecialType(SpecialType.System_Object);
+        var ctor = objectType.InstanceConstructors.First();
+
+        Assert.That(ctor.IsPrimaryConstructor(), Is.False);
+    }
+
+    [Test]
+    public void IsPrimaryConstructorReturnsTrueForPartialClassPrimaryConstructor()
+    {
+        const string source = "partial class C(int p1); partial class C {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var primaryCtor = symbol.GetPrimaryConstructor();
+
+        Assert.That(primaryCtor, Is.Not.Null);
+        Assert.That(primaryCtor.IsPrimaryConstructor(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForAssembly()
+    {
+        var compilation = CSharpCompilation.Create("TestAssembly");
+        var symbol = compilation.Assembly;
+
+        Assert.That(symbol.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForPublicMethod()
+    {
+        const string source = "public class C { public void M() {} }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var method = symbol.GetMembers().First(m => m.Name == "M");
+
+        Assert.That(method.IsEligibleForAnalysis(), Is.True);
     }
 }

@@ -14,7 +14,8 @@ public static class RoslynTestUtils
 
     public static ISymbol GetSymbolFromSource(string source, string symbolName, bool parseDocumentation = false)
     {
-        var parseOptions = new CSharpParseOptions(documentationMode: parseDocumentation ? DocumentationMode.Parse : DocumentationMode.None);
+        var parseOptions = new CSharpParseOptions(languageVersion: LanguageVersion.Latest,
+            documentationMode: parseDocumentation ? DocumentationMode.Parse : DocumentationMode.None);
         var syntaxTree = CSharpSyntaxTree.ParseText(source, options: parseOptions);
 
         var compilation = CSharpCompilation.Create("TestAssembly",
