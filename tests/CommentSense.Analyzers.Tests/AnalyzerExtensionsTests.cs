@@ -1,17 +1,17 @@
 using System.Collections.Immutable;
-using CommentSense.Utilities;
+using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using NUnit.Framework;
 
-namespace CommentSense.Tests.Utilities;
+namespace CommentSense.Analyzers.Tests;
 
-public class AnalysisEngineTests
+public class AnalyzerExtensionsTests
 {
     [Test]
     public void GetPrimaryLocationReturnsLocationNoneForEmptyArray()
     {
         var locations = ImmutableArray<Location>.Empty;
-        var result = AnalysisEngine.GetPrimaryLocation(locations);
+        var result = locations.GetPrimaryLocation();
 
         Assert.That(result, Is.EqualTo(Location.None));
     }
@@ -21,7 +21,7 @@ public class AnalysisEngineTests
     {
         var location = Location.Create("test.cs", default, default);
         var locations = ImmutableArray.Create(location);
-        var result = AnalysisEngine.GetPrimaryLocation(locations);
+        var result = locations.GetPrimaryLocation();
 
         Assert.That(result, Is.EqualTo(location));
     }
@@ -36,7 +36,7 @@ public class AnalysisEngineTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(ctor.IsImplicitlyDeclared, Is.True);
-            Assert.That(AnalysisEngine.IsEligibleForAnalysis(ctor), Is.False);
+            Assert.That(ctor.IsEligibleForAnalysis(), Is.False);
         }
     }
 
@@ -49,14 +49,8 @@ public class AnalysisEngineTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(prop.GetMethod, Is.Not.Null);
-            Assert.That(prop.SetMethod, Is.Not.Null);
-        }
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(AnalysisEngine.IsEligibleForAnalysis(prop.GetMethod), Is.False);
-            Assert.That(AnalysisEngine.IsEligibleForAnalysis(prop.SetMethod), Is.False);
+            Assert.That(prop.GetMethod?.IsEligibleForAnalysis(), Is.False);
+            Assert.That(prop.SetMethod?.IsEligibleForAnalysis(), Is.False);
         }
     }
 
@@ -69,14 +63,8 @@ public class AnalysisEngineTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(ev.AddMethod, Is.Not.Null);
-            Assert.That(ev.RemoveMethod, Is.Not.Null);
-        }
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(AnalysisEngine.IsEligibleForAnalysis(ev.AddMethod), Is.False);
-            Assert.That(AnalysisEngine.IsEligibleForAnalysis(ev.RemoveMethod), Is.False);
+            Assert.That(ev.AddMethod?.IsEligibleForAnalysis(), Is.False);
+            Assert.That(ev.RemoveMethod?.IsEligibleForAnalysis(), Is.False);
         }
     }
 
@@ -87,7 +75,7 @@ public class AnalysisEngineTests
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
         var method = symbol.GetMembers().First(m => m.Name == "M");
 
-        Assert.That(AnalysisEngine.IsEligibleForAnalysis(method), Is.False);
+        Assert.That(method.IsEligibleForAnalysis(), Is.False);
     }
 
     [Test]
@@ -97,7 +85,7 @@ public class AnalysisEngineTests
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
         var method = symbol.GetMembers().First(m => m.Name == "M");
 
-        Assert.That(AnalysisEngine.IsEligibleForAnalysis(method), Is.True);
+        Assert.That(method.IsEligibleForAnalysis(), Is.True);
     }
 
     [Test]
@@ -107,7 +95,7 @@ public class AnalysisEngineTests
         var loc2 = Location.Create("f2.cs", default, default);
         var locations = ImmutableArray.Create(loc1, loc2);
 
-        Assert.That(AnalysisEngine.GetPrimaryLocation(locations), Is.EqualTo(loc1));
+        Assert.That(locations.GetPrimaryLocation(), Is.EqualTo(loc1));
     }
 
     [Test]
@@ -117,7 +105,7 @@ public class AnalysisEngineTests
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
         var prop = symbol.GetMembers().First(m => m.Name == "P");
 
-        Assert.That(AnalysisEngine.IsEligibleForAnalysis(prop), Is.True);
+        Assert.That(prop.IsEligibleForAnalysis(), Is.True);
     }
 
     [Test]
@@ -127,6 +115,6 @@ public class AnalysisEngineTests
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
         var field = symbol.GetMembers().First(m => m.Name == "f");
 
-        Assert.That(AnalysisEngine.IsEligibleForAnalysis(field), Is.True);
+        Assert.That(field.IsEligibleForAnalysis(), Is.True);
     }
 }

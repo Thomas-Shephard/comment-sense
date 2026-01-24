@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\CommentSense.Core\CommentSense.Core.csproj"/>
+        <ProjectReference Include="..\CommentSense.TestHelpers\CommentSense.TestHelpers.csproj"/>
+    </ItemGroup>
+
+</Project>

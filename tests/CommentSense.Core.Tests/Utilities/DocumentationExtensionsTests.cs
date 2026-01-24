@@ -1,8 +1,9 @@
+using CommentSense.Core.Utilities;
+using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
-using CommentSense.Utilities;
 using NUnit.Framework;
 
-namespace CommentSense.Tests.Utilities;
+namespace CommentSense.Core.Tests.Utilities;
 
 public class DocumentationExtensionsTests
 {

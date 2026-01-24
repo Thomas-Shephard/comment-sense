@@ -1,8 +1,9 @@
+using CommentSense.TestHelpers;
 using NUnit.Framework;
 
-namespace CommentSense.Tests;
+namespace CommentSense.Analyzers.Tests;
 
-public class CommentSenseAnalyzerTests : CommentSenseTestBase
+public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
     [Test]
     public async Task PublicClassWithoutDocumentationReportsDiagnostic()
