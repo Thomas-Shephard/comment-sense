@@ -29,7 +29,7 @@ internal static class CommentSenseRules
     public static readonly DiagnosticDescriptor StrayParameterDocumentationRule = new(
         CommentSenseDiagnosticIds.StrayParameterDocumentationId,
         "Stray parameter documentation",
-        "The parameter '{0}' in the documentation does not exist in the method signature",
+        "The parameter '{0}' in the documentation does not exist in the signature",
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
@@ -56,11 +56,11 @@ internal static class CommentSenseRules
     public static readonly DiagnosticDescriptor MissingReturnValueDocumentationRule = new(
         CommentSenseDiagnosticIds.MissingReturnValueDocumentationId,
         "Missing return value documentation",
-        "The method '{0}' is missing return value documentation",
+        "The symbol '{0}' is missing return value documentation",
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Non-void methods of a publicly accessible member should have a <returns> tag to document the return value.");
+        description: "Publicly accessible non-void members should have a <returns> tag to document the return value.");
 
     public static readonly DiagnosticDescriptor UnresolvedCrefRule = new(
         CommentSenseDiagnosticIds.UnresolvedCrefId,

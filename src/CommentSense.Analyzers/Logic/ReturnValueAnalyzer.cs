@@ -10,21 +10,42 @@ internal static class ReturnValueAnalyzer
 {
     public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, XElement xml)
     {
-        if (method.MethodKind != MethodKind.Ordinary && method.MethodKind != MethodKind.UserDefinedOperator && method.MethodKind != MethodKind.Conversion)
+        Analyze(context, method, method, xml);
+    }
+
+    public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, ISymbol reportSymbol, XElement xml)
+    {
+        if (method.MethodKind != MethodKind.Ordinary &&
+            method.MethodKind != MethodKind.UserDefinedOperator &&
+            method.MethodKind != MethodKind.Conversion &&
+            method.MethodKind != MethodKind.DelegateInvoke)
             return;
 
-        if (method.ReturnsVoid)
+        AnalyzeInternal(context, reportSymbol, method.ReturnType, method.ReturnsVoid, xml);
+    }
+
+    public static void Analyze(SymbolAnalysisContext context, IPropertySymbol property, XElement xml)
+    {
+        if (!property.IsIndexer || property.GetMethod == null)
             return;
 
-        if (IsTaskOrValueTask(method.ReturnType))
+        AnalyzeInternal(context, property, property.Type, false, xml);
+    }
+
+    private static void AnalyzeInternal(SymbolAnalysisContext context, ISymbol symbol, ITypeSymbol returnType, bool returnsVoid, XElement xml)
+    {
+        if (returnsVoid)
+            return;
+
+        if (IsTaskOrValueTask(returnType))
             return;
 
         if (DocumentationExtensions.HasReturnsTag(xml))
             return;
 
-        var location = method.Locations.GetPrimaryLocation();
+        var location = symbol.Locations.GetPrimaryLocation();
         var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", "returns");
-        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, method.Name));
+        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
     }
 
     private static bool IsTaskOrValueTask(ITypeSymbol typeSymbol)
