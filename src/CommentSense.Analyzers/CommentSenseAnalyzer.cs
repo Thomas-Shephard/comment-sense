@@ -63,6 +63,11 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                     ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element);
                     ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element);
                 }
+
+                if (namedTypeSymbol.GetPrimaryConstructor() is { } primaryCtor)
+                {
+                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element);
+                }
                 break;
         }
     }
