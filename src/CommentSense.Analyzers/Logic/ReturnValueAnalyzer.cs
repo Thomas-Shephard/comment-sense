@@ -34,18 +34,26 @@ internal static class ReturnValueAnalyzer
 
     private static void AnalyzeInternal(SymbolAnalysisContext context, ISymbol symbol, ITypeSymbol returnType, bool returnsVoid, XElement xml)
     {
-        if (returnsVoid)
-            return;
-
-        if (IsTaskOrValueTask(returnType))
-            return;
-
-        if (DocumentationExtensions.HasReturnsTag(xml))
-            return;
-
+        bool effectivelyReturnsVoid = returnsVoid || IsTaskOrValueTask(returnType);
+        bool hasReturnsTag = DocumentationExtensions.HasReturnsTag(xml);
         var location = symbol.Locations.GetPrimaryLocation();
+        var symbolName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+
+        if (effectivelyReturnsVoid)
+        {
+            if (hasReturnsTag)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, symbolName));
+            }
+
+            return;
+        }
+
+        if (hasReturnsTag)
+            return;
+
         var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", "returns");
-        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
     }
 
     private static bool IsTaskOrValueTask(ITypeSymbol typeSymbol)

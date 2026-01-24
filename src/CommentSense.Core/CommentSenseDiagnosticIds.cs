@@ -14,4 +14,5 @@ internal static class CommentSenseDiagnosticIds
     public const string TypeParameterOrderMismatchId = "CSENSE010";
     public const string DuplicateTypeParameterDocumentationId = "CSENSE011";
     public const string MissingExceptionDocumentationId = "CSENSE012";
+    public const string StrayReturnValueDocumentationId = "CSENSE013";
 }

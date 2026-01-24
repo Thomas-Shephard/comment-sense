@@ -83,6 +83,90 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     }
 
     [Test]
+    public async Task VoidMethodWithReturnsTagReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <returns>Value</returns>
+                public void {|CSENSE013:MyMethod|}() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task TaskMethodWithReturnsTagReportsDiagnostic()
+    {
+        const string testCode = """
+            using System.Threading.Tasks;
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <returns>Value</returns>
+                public Task {|CSENSE013:MyMethod|}() => Task.CompletedTask;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task ValueTaskMethodWithReturnsTagReportsDiagnostic()
+    {
+        const string testCode = """
+            using System.Threading.Tasks;
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <returns>Value</returns>
+                public ValueTask {|CSENSE013:MyMethod|}() => default;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task GenericTaskMethodWithReturnsTagDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            using System.Threading.Tasks;
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <returns>Value</returns>
+                public Task<int> MyMethod() => Task.FromResult(0);
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task GenericValueTaskMethodWithReturnsTagDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            using System.Threading.Tasks;
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <returns>Value</returns>
+                public ValueTask<int> MyMethod() => default;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
     public async Task GenericTaskMethodWithoutReturnsTagReportsDiagnostic()
     {
         const string testCode = """
