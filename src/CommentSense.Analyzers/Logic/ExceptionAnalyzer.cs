@@ -21,7 +21,7 @@ internal static class ExceptionAnalyzer
         foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(dt => t.InheritsFromOrEquals(dt))))
         {
             var location = symbol.Locations.GetPrimaryLocation();
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.Name));
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
         }
 
         // CSENSE016: Low Quality Exception Documentation
@@ -81,7 +81,7 @@ internal static class ExceptionAnalyzer
         // Try lookup by name (e.g. "ArgumentNullException" instead of "System.ArgumentNullException")
         return compilation.GetSymbolsWithName(simpleName, SymbolFilter.Type)
                    .OfType<ITypeSymbol>()
-                   .FirstOrDefault(t => (t.ToDisplayString() == typeName || t.Name == typeName) && !t.IsImplicitlyDeclared);
+                   .FirstOrDefault(t => (t.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) == typeName || t.Name == typeName) && !t.IsImplicitlyDeclared);
     }
 
     private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor)

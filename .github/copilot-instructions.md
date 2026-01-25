@@ -56,7 +56,10 @@ When reviewing code or suggesting changes, you **MUST** check for the following:
 1.  **Documentation Updates (CRITICAL):**
     *   If changes were made to public APIs, configuration logic, or core architecture:
     *   **Action:** Verify that ALL relevant documentation is updated. This includes `README.md`, `CONTRIBUTING.md`, XML documentation comments (`/// <summary>`), and these `copilot-instructions.md` themselves. If any documentation is missing or outdated, **explicitly flag this** in your review.
-2.  **Diagnostic IDs:** Ensure new diagnostics follow the `CSENSExxx` naming convention and are added to `SupportedDiagnostics`.
-3.  **Test Coverage:** Ensure new rules or logic branches have corresponding `[Test]` cases in the relevant test projects.
-4.  **Performance:** Ensure `AnalyzeSymbol` is efficient and returns early for ineligible symbols (using `AnalyzerExtensions.IsEligibleForAnalysis`).
-5.  **Backward Compatibility:** Do not change existing diagnostic IDs or significantly alter their triggering logic without a major version bump considerations.
+2.  **Code Consistency:**
+    *   Verify that `Analyzers` inherit from `CommentSenseAnalyzerBase` where applicable.
+    *   Diagnostic messages should generally use `SymbolDisplayFormat.MinimallyQualifiedFormat` when including type names to ensure readability (e.g. `List<T>` instead of just `List` or `System.Collections.Generic.List<T>`).
+3.  **Diagnostic IDs:** Ensure new diagnostics follow the `CSENSExxx` naming convention and are added to `SupportedDiagnostics`.
+4.  **Test Coverage:** Ensure new rules or logic branches have corresponding `[Test]` cases in the relevant test projects.
+5.  **Performance:** Ensure `AnalyzeSymbol` is efficient and returns early for ineligible symbols (using `AnalyzerExtensions.IsEligibleForAnalysis`).
+6.  **Backward Compatibility:** Do not change existing diagnostic IDs or significantly alter their triggering logic without a major version bump considerations.
