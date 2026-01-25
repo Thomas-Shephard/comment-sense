@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -256,5 +257,50 @@ public class AnalyzerExtensionsTests
         var method = symbol.GetMembers().First(m => m.Name == "M");
 
         Assert.That(method.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsInExceptionTagReturnsTrueForSelfClosingExceptionTag()
+    {
+        var cref = SyntaxFactory.XmlCrefAttribute(SyntaxFactory.TypeCref(SyntaxFactory.ParseTypeName("ArgumentNullException")));
+        var element = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("exception"), SyntaxFactory.List<XmlAttributeSyntax>([cref]));
+
+        var attachedCref = (XmlCrefAttributeSyntax)element.Attributes.First();
+
+        Assert.That(attachedCref.IsInExceptionTag(), Is.True);
+    }
+
+    [Test]
+    public void IsInExceptionTagReturnsTrueForStartTagExceptionTag()
+    {
+        var cref = SyntaxFactory.XmlCrefAttribute(SyntaxFactory.TypeCref(SyntaxFactory.ParseTypeName("ArgumentNullException")));
+        var startTag = SyntaxFactory.XmlElementStartTag(SyntaxFactory.XmlName("exception"), SyntaxFactory.List<XmlAttributeSyntax>([cref]));
+
+        var attachedCref = (XmlCrefAttributeSyntax)startTag.Attributes.First();
+
+        Assert.That(attachedCref.IsInExceptionTag(), Is.True);
+    }
+
+    [Test]
+    public void IsInExceptionTagReturnsFalseForOtherTag()
+    {
+        var cref = SyntaxFactory.XmlCrefAttribute(SyntaxFactory.TypeCref(SyntaxFactory.ParseTypeName("String")));
+        var element = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("see"), SyntaxFactory.List<XmlAttributeSyntax>([cref]));
+
+        var attachedCref = (XmlCrefAttributeSyntax)element.Attributes.First();
+
+        Assert.That(attachedCref.IsInExceptionTag(), Is.False);
+    }
+
+    [Test]
+    public void IsInExceptionTagReturnsFalseForDetachedAttribute()
+    {
+        var cref = SyntaxFactory.XmlCrefAttribute(SyntaxFactory.TypeCref(SyntaxFactory.ParseTypeName("ArgumentNullException")));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(cref.Parent, Is.Null);
+            Assert.That(cref.IsInExceptionTag(), Is.False);
+        }
     }
 }

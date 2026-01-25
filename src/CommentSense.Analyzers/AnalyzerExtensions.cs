@@ -60,4 +60,29 @@ internal static class AnalyzerExtensions
 
         return method.DeclaringSyntaxReferences.Any(r => r.GetSyntax() is TypeDeclarationSyntax);
     }
+
+    public static bool InheritsFromOrEquals(this ITypeSymbol type, ITypeSymbol baseType)
+    {
+        var current = type;
+        while (current != null)
+        {
+            if (SymbolEqualityComparer.Default.Equals(current, baseType))
+                return true;
+
+            current = current.BaseType;
+        }
+        return false;
+    }
+
+    public static bool IsInExceptionTag(this XmlCrefAttributeSyntax crefAttribute)
+    {
+        var localName = crefAttribute.Parent switch
+        {
+            XmlEmptyElementSyntax emptyElement => emptyElement.Name.LocalName.ValueText,
+            XmlElementStartTagSyntax startTag => startTag.Name.LocalName.ValueText,
+            _ => null
+        };
+
+        return localName == "exception";
+    }
 }

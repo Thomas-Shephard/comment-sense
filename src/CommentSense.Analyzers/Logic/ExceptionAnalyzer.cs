@@ -18,7 +18,7 @@ internal static class ExceptionAnalyzer
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor);
 
         // CSENSE012: Missing Exception Documentation
-        foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(dt => InheritsFromOrEquals(t, dt))))
+        foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(dt => t.InheritsFromOrEquals(dt))))
         {
             var location = symbol.Locations.GetPrimaryLocation();
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.Name));
@@ -177,7 +177,7 @@ internal static class ExceptionAnalyzer
                             .Where(c => c.Filter == null)
                             .Any(c => c.Declaration == null ||
                                       (semanticModel.GetTypeInfo(c.Declaration.Type).Type is { } caughtType &&
-                                       InheritsFromOrEquals(thrownType, caughtType)));
+                                       thrownType.InheritsFromOrEquals(caughtType)));
 
                         if (isCaught)
                             return true;
@@ -208,18 +208,5 @@ internal static class ExceptionAnalyzer
         }
 
         return semanticModel.GetTypeInfo(catchClause.Declaration.Type, cancellationToken).Type;
-    }
-
-    private static bool InheritsFromOrEquals(ITypeSymbol type, ITypeSymbol baseType)
-    {
-        var current = type;
-        while (current != null)
-        {
-            if (SymbolEqualityComparer.Default.Equals(current, baseType))
-                return true;
-
-            current = current.BaseType;
-        }
-        return false;
     }
 }
