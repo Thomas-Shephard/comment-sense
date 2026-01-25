@@ -125,6 +125,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: "Documentation should not contain <returns> tags for members that do not return a value.");
 
+    public static readonly DiagnosticDescriptor InvalidExceptionCrefRule = new(
+        CommentSenseDiagnosticIds.InvalidExceptionCrefId,
+        "Invalid exception type in documentation",
+        "The type '{0}' documented in an <exception> tag is not an exception type",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "The 'cref' attribute in an <exception> tag should refer to a type that inherits from System.Exception.");
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics = [
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
@@ -138,6 +147,7 @@ internal static class CommentSenseRules
         TypeParameterOrderMismatchRule,
         DuplicateTypeParameterDocumentationRule,
         MissingExceptionDocumentationRule,
-        StrayReturnValueDocumentationRule
+        StrayReturnValueDocumentationRule,
+        InvalidExceptionCrefRule
     ];
 }

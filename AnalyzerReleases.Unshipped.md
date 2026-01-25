@@ -17,3 +17,4 @@ CSENSE010 | Documentation | Warning | Type parameter documentation order mismatc
 CSENSE011 | Documentation | Warning | Duplicate type parameter documentation
 CSENSE012 | Documentation | Warning | Missing exception documentation
 CSENSE013 | Documentation | Warning | Stray return value documentation
+CSENSE014 | Documentation | Warning | Invalid exception type in documentation
