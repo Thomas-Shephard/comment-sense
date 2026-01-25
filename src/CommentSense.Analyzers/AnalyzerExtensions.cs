@@ -17,9 +17,14 @@ internal static class AnalyzerExtensions
 
         switch (symbol)
         {
-            case IMethodSymbol { MethodKind: MethodKind.StaticConstructor or MethodKind.Destructor or MethodKind.PropertyGet or MethodKind.PropertySet or MethodKind.EventAdd or MethodKind.EventRemove or MethodKind.EventRaise }:
-            case IMethodSymbol method when method.IsPrimaryConstructor():
-                return false;
+            case IMethodSymbol method:
+                if (method.MethodKind is not (MethodKind.Ordinary or MethodKind.Constructor or MethodKind.UserDefinedOperator or MethodKind.Conversion or MethodKind.DelegateInvoke))
+                    return false;
+
+                if (method.IsPrimaryConstructor())
+                    return false;
+
+                break;
             case IPropertySymbol or IFieldSymbol:
             {
                 if (symbol.ContainingType is { IsRecord: true } && symbol.DeclaringSyntaxReferences.Any(r => r.GetSyntax() is ParameterSyntax))

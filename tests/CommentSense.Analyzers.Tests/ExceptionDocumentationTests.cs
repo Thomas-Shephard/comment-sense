@@ -113,6 +113,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             {
                 private string _name;
                 /// <summary>Summary</summary>
+                /// <value>The name</value>
                 public string {|CSENSE012:Name|}
                 {
                     get => _name ?? throw new InvalidOperationException();
@@ -174,6 +175,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             public class MyClass(int x)
             {
                 /// <summary>Summary</summary>
+                /// <value>The Y</value>
                 public int {|CSENSE012:Y|} { get; } = x > 0 ? x : throw new ArgumentException();
             }
             """;
@@ -211,6 +213,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             public class MyClass
             {
                 /// <summary>Summary</summary>
+                /// <value>The name</value>
                 public string {|CSENSE012:Name|}
                 {
                     get
@@ -327,7 +330,8 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             {
                 /// <summary>Summary</summary>
                 /// <param name="i">index</param>
-                public int {|CSENSE006:{|CSENSE012:{|CSENSE012:this|}|}|}[int i]
+                /// <value>The value</value>
+                public int {|CSENSE012:{|CSENSE012:this|}|}[int i]
                 {
                     get => throw new IndexOutOfRangeException();
                     set => throw new ArgumentOutOfRangeException();
@@ -350,14 +354,14 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
                 /// <summary>Summary</summary>
                 /// <param name="i">index</param>
                 /// <exception cref="T:System.IndexOutOfRangeException">Thrown when...</exception>
-                public int {|CSENSE006:this|}[int i]
+                public int {|CSENSE014:this|}[int i]
                 {
                     get => throw new IndexOutOfRangeException();
                 }
             }
             """;
 
-        await VerifyCSenseAsync(testCode);
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE014", Microsoft.CodeAnalysis.ReportDiagnostic.Warn)]);
     }
 
     [Test]

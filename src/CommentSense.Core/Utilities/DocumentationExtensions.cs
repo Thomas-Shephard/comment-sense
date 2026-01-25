@@ -103,6 +103,11 @@ internal static class DocumentationExtensions
         return TryParseDocumentation(xml, out var element) && HasReturnsTag(element);
     }
 
+    public static bool HasValueTag(XElement root)
+    {
+        return GetValidElements(root, "value").Any();
+    }
+
     public static IEnumerable<string> GetExceptionCrefs(XElement root)
     {
         return GetElementAttributeValues(root, "exception", "cref");

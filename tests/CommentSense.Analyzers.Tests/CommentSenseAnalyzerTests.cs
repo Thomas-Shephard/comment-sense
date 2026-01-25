@@ -108,6 +108,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             public class MyClass
             {
                 /// <summary>Property summary</summary>
+                /// <value>The value</value>
                 public int MyProperty { get; set; }
             }
             """;
@@ -218,6 +219,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             public class C
             {
                 /// <summary>Property</summary>
+                /// <value>Value</value>
                 public int P { get; set; }
             }
             """;
