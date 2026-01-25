@@ -183,6 +183,34 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
+    public async Task StaticConstructorDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                static MyClass() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task DestructorDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                ~MyClass() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
     public async Task PropertyWithDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
