@@ -15,4 +15,6 @@ internal static class CommentSenseDiagnosticIds
     public const string DuplicateTypeParameterDocumentationId = "CSENSE011";
     public const string MissingExceptionDocumentationId = "CSENSE012";
     public const string StrayReturnValueDocumentationId = "CSENSE013";
+    public const string MissingValueDocumentationId = "CSENSE014";
+    public const string StrayValueDocumentationId = "CSENSE015";
 }

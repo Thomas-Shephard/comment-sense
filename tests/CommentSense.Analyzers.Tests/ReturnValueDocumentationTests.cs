@@ -67,6 +67,37 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     }
 
     [Test]
+    public async Task ConstructorWithValueTagReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <value>Value</value>
+                public {|CSENSE015:MyClass|}() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task PrimaryConstructorWithValueTagReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            /// <param name="x">The x</param>
+            /// <value>Value</value>
+            public class {|CSENSE015:MyClass|}(int x)
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
     public async Task TaskMethodWithoutReturnsTagDoesNotReportDiagnostic()
     {
         const string testCode = """
@@ -368,6 +399,28 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             {
                 /// <inheritdoc />
                 public override int M() => 1;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task ExplicitInterfaceImplementationDoesNotReportDiagnosticByDefault()
+    {
+        const string testCode = """
+            /// <summary>Interface</summary>
+            public interface I
+            {
+                /// <summary>Method</summary>
+                /// <returns>Int</returns>
+                int M();
+            }
+            /// <summary>Class</summary>
+            public class C : I
+            {
+                /// <summary>Summary</summary>
+                int I.M() => 0;
             }
             """;
 

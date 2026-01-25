@@ -126,4 +126,29 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
 
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task VoidDelegateWithReturnsTagReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            /// <returns>Stray</returns>
+            public delegate void {|CSENSE013:MyDelegate|}();
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task TaskDelegateWithReturnsTagReportsDiagnostic()
+    {
+        const string testCode = """
+            using System.Threading.Tasks;
+            /// <summary>Summary</summary>
+            /// <returns>Stray</returns>
+            public delegate Task {|CSENSE013:MyDelegate|}();
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }

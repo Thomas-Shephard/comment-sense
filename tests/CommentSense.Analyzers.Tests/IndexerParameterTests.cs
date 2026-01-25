@@ -15,7 +15,7 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
                 private int[] _arr = new int[10];
 
                 /// <summary>Summary</summary>
-                /// <returns>The value</returns>
+                /// <value>The value</value>
                 public int this[int {|CSENSE002:index|}]
                 {
                     get => _arr[index];
@@ -38,7 +38,7 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
 
                 /// <summary>Summary</summary>
                 /// <param name="index">The index</param>
-                /// <returns>The value</returns>
+                /// <value>The value</value>
                 public int this[int index]
                 {
                     get => _arr[index];
@@ -61,7 +61,7 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
 
                 /// <summary>Summary</summary>
                 /// <param name="x">X</param>
-                /// <returns>The value</returns>
+                /// <value>The value</value>
                 public int this[int x, int {|CSENSE002:y|}]
                 {
                     get => _arr[x, y];
@@ -85,7 +85,7 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
                 /// <summary>Summary</summary>
                 /// <param name="index">The index</param>
                 /// <param name="extra">Extra param</param>
-                /// <returns>The value</returns>
+                /// <value>The value</value>
                 public int {|CSENSE003:this|}[int index]
                 {
                     get => _arr[index];
@@ -108,7 +108,7 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
 
                 /// <summary>Summary</summary>
                 /// <param name="index">Index</param>
-                public int {|CSENSE006:this|}[int index]
+                public int {|CSENSE014:this|}[int index]
                 {
                     get => _arr[index];
                     set => _arr[index] = value;
@@ -116,7 +116,7 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
             }
             """;
 
-        await VerifyCSenseAsync(testCode);
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE014", Microsoft.CodeAnalysis.ReportDiagnostic.Warn)]);
     }
 
     [Test]
@@ -128,7 +128,7 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
             {
                 /// <summary>Summary</summary>
                 /// <param name="index">Index</param>
-                /// <returns>The value</returns>
+                /// <value>The value</value>
                 public virtual int this[int index] => 0;
             }
 

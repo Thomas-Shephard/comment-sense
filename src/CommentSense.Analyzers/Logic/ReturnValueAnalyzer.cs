@@ -15,29 +15,17 @@ internal static class ReturnValueAnalyzer
 
     public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, ISymbol reportSymbol, XElement xml)
     {
-        if (method.MethodKind != MethodKind.Ordinary &&
-            method.MethodKind != MethodKind.UserDefinedOperator &&
-            method.MethodKind != MethodKind.Conversion &&
-            method.MethodKind != MethodKind.DelegateInvoke)
-            return;
+        var location = reportSymbol.Locations.GetPrimaryLocation();
+        var symbolName = reportSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
-        AnalyzeInternal(context, reportSymbol, method.ReturnType, method.ReturnsVoid, xml);
-    }
+        // Methods should not have <value> tag
+        if (DocumentationExtensions.HasValueTag(xml))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayValueDocumentationRule, location, symbolName));
+        }
 
-    public static void Analyze(SymbolAnalysisContext context, IPropertySymbol property, XElement xml)
-    {
-        if (!property.IsIndexer || property.GetMethod == null)
-            return;
-
-        AnalyzeInternal(context, property, property.Type, false, xml);
-    }
-
-    private static void AnalyzeInternal(SymbolAnalysisContext context, ISymbol symbol, ITypeSymbol returnType, bool returnsVoid, XElement xml)
-    {
-        bool effectivelyReturnsVoid = returnsVoid || IsTaskOrValueTask(returnType);
+        bool effectivelyReturnsVoid = method.ReturnsVoid || IsTaskOrValueTask(method.ReturnType);
         bool hasReturnsTag = DocumentationExtensions.HasReturnsTag(xml);
-        var location = symbol.Locations.GetPrimaryLocation();
-        var symbolName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
         if (effectivelyReturnsVoid)
         {
@@ -45,15 +33,32 @@ internal static class ReturnValueAnalyzer
             {
                 context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, symbolName));
             }
+        }
+        else if (!hasReturnsTag)
+        {
+            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", "returns");
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
+        }
+    }
 
-            return;
+    public static void Analyze(SymbolAnalysisContext context, IPropertySymbol property, XElement xml)
+    {
+        var location = property.Locations.GetPrimaryLocation();
+        var symbolName = property.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+
+        // Properties and indexers should not have <returns> tag
+        if (DocumentationExtensions.HasReturnsTag(xml))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, symbolName));
         }
 
-        if (hasReturnsTag)
-            return;
+        bool hasValueTag = DocumentationExtensions.HasValueTag(xml);
 
-        var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", "returns");
-        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
+        if (property.GetMethod != null && !hasValueTag)
+        {
+            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", "value");
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingValueDocumentationRule, location, properties, symbolName));
+        }
     }
 
     private static bool IsTaskOrValueTask(ITypeSymbol typeSymbol)
@@ -61,7 +66,10 @@ internal static class ReturnValueAnalyzer
         if (typeSymbol is not INamedTypeSymbol { Arity: 0 } namedType)
             return false;
 
-        return (namedType.Name == "Task" && namedType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks") ||
-               (namedType.Name == "ValueTask" && namedType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks");
+        if (namedType.Name != "Task" && namedType.Name != "ValueTask")
+            return false;
+
+        var ns = namedType.ContainingNamespace.ToDisplayString();
+        return ns == "System.Threading.Tasks";
     }
 }

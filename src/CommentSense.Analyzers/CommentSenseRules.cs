@@ -119,11 +119,29 @@ internal static class CommentSenseRules
     public static readonly DiagnosticDescriptor StrayReturnValueDocumentationRule = new(
         CommentSenseDiagnosticIds.StrayReturnValueDocumentationId,
         "Stray return value documentation",
-        "The symbol '{0}' should not have return value documentation as it returns void or a non-generic Task",
+        "The symbol '{0}' should not have return value documentation",
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Documentation should not contain <returns> tags for members that do not return a value.");
+        description: "Documentation should not contain <returns> tags for members that do not return a value or for properties/indexers.");
+
+    public static readonly DiagnosticDescriptor MissingValueDocumentationRule = new(
+        CommentSenseDiagnosticIds.MissingValueDocumentationId,
+        "Missing value documentation",
+        "The symbol '{0}' is missing value documentation",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: false,
+        description: "Publicly accessible properties and indexers should have a <value> tag to document the value they represent.");
+
+    public static readonly DiagnosticDescriptor StrayValueDocumentationRule = new(
+        CommentSenseDiagnosticIds.StrayValueDocumentationId,
+        "Stray value documentation",
+        "The symbol '{0}' should not have value documentation",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Documentation should not contain <value> tags for methods.");
 
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics = [
         MissingDocumentationRule,
@@ -138,6 +156,8 @@ internal static class CommentSenseRules
         TypeParameterOrderMismatchRule,
         DuplicateTypeParameterDocumentationRule,
         MissingExceptionDocumentationRule,
-        StrayReturnValueDocumentationRule
+        StrayReturnValueDocumentationRule,
+        MissingValueDocumentationRule,
+        StrayValueDocumentationRule
     ];
 }

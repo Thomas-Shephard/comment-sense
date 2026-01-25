@@ -60,6 +60,7 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
                     /// <summary>Summary</summary>
                     public void MyMethod() { }
                     /// <summary>Summary</summary>
+                    /// <value>Value</value>
                     public int MyProperty { get; set; }
                     /// <summary>Summary</summary>
                     public int MyField;
@@ -101,6 +102,7 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
                     /// <summary>
                     /// See <see cref="{|CSENSE007:Unresolved|}"/>
                     /// </summary>
+                    /// <value>Value</value>
                     public int MyProperty { get; set; }
                 }
             }
