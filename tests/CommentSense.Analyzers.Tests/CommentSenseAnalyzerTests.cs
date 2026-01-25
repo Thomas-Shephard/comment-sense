@@ -21,7 +21,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task PublicMethodWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 public void [|MyMethod|]() { }
@@ -48,7 +48,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task DocumentedPublicClassDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>My summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
             }
@@ -61,7 +61,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task PublicFieldWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 public int [|MyField|];
@@ -75,7 +75,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task PublicPropertyWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 public int [|MyProperty|] { get; set; }
@@ -90,7 +90,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 public event EventHandler [|MyEvent|];
@@ -104,11 +104,11 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task DocumentedPublicPropertyDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Property summary</summary>
-                /// <value>The value</value>
+                /// <summary>This is a summary for the property.</summary>
+                /// <value>Value of the property.</value>
                 public int MyProperty { get; set; }
             }
             """;
@@ -121,14 +121,14 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the base class.</summary>
             public class Base
             {
-                /// <summary>Event summary</summary>
+                /// <summary>This is a summary for the event.</summary>
                 public virtual event EventHandler MyEvent;
             }
 
-            /// <summary>Summary</summary>
+            /// <inheritdoc />
             public class Derived : Base
             {
                 /// <inheritdoc />
@@ -156,10 +156,10 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task FieldWithDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Class</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class C
             {
-                /// <summary>Field</summary>
+                /// <summary>This is a summary for the field.</summary>
                 public int f;
             }
             """;
@@ -172,10 +172,10 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     {
         const string testCode = """
             using System;
-            /// <summary>Class</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class C
             {
-                /// <summary>Event</summary>
+                /// <summary>This is a summary for the event.</summary>
                 public event EventHandler E;
             }
             """;
@@ -187,7 +187,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task StaticConstructorDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 static MyClass() { }
@@ -201,7 +201,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task DestructorDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 ~MyClass() { }
@@ -215,11 +215,11 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task PropertyWithDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Class</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class C
             {
-                /// <summary>Property</summary>
-                /// <value>Value</value>
+                /// <summary>This is a summary for the property.</summary>
+                /// <value>Value of the property.</value>
                 public int P { get; set; }
             }
             """;

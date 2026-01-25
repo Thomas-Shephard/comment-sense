@@ -45,6 +45,8 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (DocumentationExtensions.HasAutoValidTag(element))
             return;
 
+        SummaryAnalyzer.Analyze(context, symbol, element);
+
         switch (symbol)
         {
             case IMethodSymbol methodSymbol:

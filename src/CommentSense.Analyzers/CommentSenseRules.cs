@@ -143,6 +143,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: "Documentation should not contain <value> tags for methods.");
 
+    public static readonly DiagnosticDescriptor LowQualityDocumentationRule = new(
+        CommentSenseDiagnosticIds.LowQualityDocumentationId,
+        "Low-quality documentation",
+        "The {0} documentation for '{1}' is low-quality",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "Documentation should provide value and not just repeat the member name or be empty.");
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics = [
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
@@ -158,6 +167,7 @@ internal static class CommentSenseRules
         MissingExceptionDocumentationRule,
         StrayReturnValueDocumentationRule,
         MissingValueDocumentationRule,
-        StrayValueDocumentationRule
+        StrayValueDocumentationRule,
+        LowQualityDocumentationRule
     ];
 }

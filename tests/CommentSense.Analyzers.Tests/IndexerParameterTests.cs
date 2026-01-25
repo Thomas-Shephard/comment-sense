@@ -9,13 +9,13 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
     public async Task IndexerMissingParameterDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 private int[] _arr = new int[10];
 
-                /// <summary>Summary</summary>
-                /// <value>The value</value>
+                /// <summary>This is a summary for the indexer.</summary>
+                /// <value>Value at the index.</value>
                 public int this[int {|CSENSE002:index|}]
                 {
                     get => _arr[index];
@@ -31,14 +31,14 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
     public async Task IndexerWithDocumentedParameterDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 private int[] _arr = new int[10];
 
-                /// <summary>Summary</summary>
-                /// <param name="index">The index</param>
-                /// <value>The value</value>
+                /// <summary>This is a summary for the indexer.</summary>
+                /// <param name="index">The index into the array.</param>
+                /// <value>Value at the index.</value>
                 public int this[int index]
                 {
                     get => _arr[index];
@@ -54,14 +54,14 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
     public async Task IndexerWithMultipleParametersMissingDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 private int[,] _arr = new int[10,10];
 
-                /// <summary>Summary</summary>
-                /// <param name="x">X</param>
-                /// <value>The value</value>
+                /// <summary>This is a summary for the indexer.</summary>
+                /// <param name="x">The x coordinate.</param>
+                /// <value>Value at the coordinates.</value>
                 public int this[int x, int {|CSENSE002:y|}]
                 {
                     get => _arr[x, y];
@@ -77,15 +77,15 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
     public async Task IndexerWithStrayParameterDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 private int[] _arr = new int[10];
 
-                /// <summary>Summary</summary>
-                /// <param name="index">The index</param>
-                /// <param name="extra">Extra param</param>
-                /// <value>The value</value>
+                /// <summary>This is a summary for the indexer.</summary>
+                /// <param name="index">The index into the array.</param>
+                /// <param name="extra">An extra parameter documentation.</param>
+                /// <value>Value at the index.</value>
                 public int {|CSENSE003:this|}[int index]
                 {
                     get => _arr[index];
@@ -101,13 +101,13 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
     public async Task IndexerMissingReturnValueDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 private int[] _arr = new int[10];
 
-                /// <summary>Summary</summary>
-                /// <param name="index">Index</param>
+                /// <summary>This is a summary for the indexer.</summary>
+                /// <param name="index">The index into the array.</param>
                 public int {|CSENSE014:this|}[int index]
                 {
                     get => _arr[index];
@@ -123,16 +123,16 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
     public async Task IndexerWithInheritDocDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Base class</summary>
+            /// <summary>This is a summary for the base class.</summary>
             public class Base
             {
-                /// <summary>Summary</summary>
-                /// <param name="index">Index</param>
-                /// <value>The value</value>
+                /// <summary>This is a summary for the indexer.</summary>
+                /// <param name="index">The index value.</param>
+                /// <value>Value at the index.</value>
                 public virtual int this[int index] => 0;
             }
 
-            /// <summary>Derived class</summary>
+            /// <inheritdoc />
             public class Derived : Base
             {
                 /// <inheritdoc />
@@ -147,13 +147,13 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
     public async Task WriteOnlyIndexerDoesNotReportMissingReturnValueDocumentation()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 private int[] _arr = new int[10];
 
-                /// <summary>Summary</summary>
-                /// <param name="index">Index</param>
+                /// <summary>This is a summary for the indexer.</summary>
+                /// <param name="index">The index into the array.</param>
                 public int this[int index]
                 {
                     set => _arr[index] = value;

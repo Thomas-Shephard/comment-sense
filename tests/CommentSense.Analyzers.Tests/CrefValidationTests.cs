@@ -12,6 +12,7 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             namespace MyNamespace
             {
                 /// <summary>
+                /// This is a summary for the class.
                 /// See <see cref="{|CSENSE007:UnresolvedType|}"/>
                 /// </summary>
                 public class MyClass { }
@@ -28,7 +29,7 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             namespace MyNamespace
             {
                 /// <summary>
-                /// Summary
+                /// This is a summary for the class.
                 /// </summary>
                 /// <seealso cref="{|CSENSE007:UnresolvedType|}"/>
                 public class MyClass { }
@@ -57,12 +58,12 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
                 /// </summary>
                 public class MyClass
                 {
-                    /// <summary>Summary</summary>
+                    /// <summary>This is a summary for the method.</summary>
                     public void MyMethod() { }
-                    /// <summary>Summary</summary>
-                    /// <value>Value</value>
+                    /// <summary>This is a summary for the property.</summary>
+                    /// <value>Value of the property.</value>
                     public int MyProperty { get; set; }
-                    /// <summary>Summary</summary>
+                    /// <summary>This is a summary for the field.</summary>
                     public int MyField;
                 }
             }
@@ -77,10 +78,11 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
         const string testCode = """
             namespace MyNamespace
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
                     /// <summary>
+                    /// This is a summary for the method.
                     /// See <see cref="{|CSENSE007:Unresolved|}"/>
                     /// </summary>
                     public void MyMethod() { }
@@ -96,13 +98,14 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
         const string testCode = """
             namespace MyNamespace
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
                     /// <summary>
+                    /// This is a summary for the property.
                     /// See <see cref="{|CSENSE007:Unresolved|}"/>
                     /// </summary>
-                    /// <value>Value</value>
+                    /// <value>Value of the property.</value>
                     public int MyProperty { get; set; }
                 }
             }
@@ -116,10 +119,11 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
         const string testCode = """
             namespace MyNamespace
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
                     /// <summary>
+                    /// This is a summary for the field.
                     /// See <see cref="{|CSENSE007:Unresolved|}"/>
                     /// </summary>
                     public int MyField;
@@ -136,10 +140,11 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             using System;
             namespace MyNamespace
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
                     /// <summary>
+                    /// This is a summary for the event.
                     /// See <see cref="{|CSENSE007:Unresolved|}"/>
                     /// </summary>
                     public event EventHandler MyEvent;
@@ -156,10 +161,10 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             using System;
             namespace MyNamespace
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
-                    /// <summary>Summary</summary>
+                    /// <summary>This is a summary for the method.</summary>
                     /// <exception cref="{|CSENSE007:UnresolvedException|}">Thrown when...</exception>
                     public void MyMethod() { }
                 }
@@ -174,10 +179,11 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
         const string testCode = """
             namespace MyNamespace
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
                     /// <summary>
+                    /// This is a summary for the method.
                     /// See <see cref="Unresolved"/>
                     /// </summary>
                     internal void MyMethod() { }
@@ -193,14 +199,15 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
         const string testCode = """
             namespace MyNamespace
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
                     /// <summary>
+                    /// This is a summary for the method.
                     /// See <see cref="M"/>
                     /// </summary>
                     public void M() { }
-                    /// <summary>Summary</summary>
+                    /// <summary>This is a summary for the other method.</summary>
                     /// <param name="i"><see cref="int"/></param>
                     public void M(int i) { }
                 }
@@ -215,6 +222,7 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     {
         const string testCode = """
             /// <summary>
+            /// This is a summary for the namespace.
             /// See <see cref="{|CSENSE007:Unresolved|}"/>
             /// </summary>
             namespace MyNamespace { }
@@ -227,6 +235,7 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     {
         const string testCode = """
             /// <summary>
+            /// This is a summary for the compilation unit.
             /// See <see cref="Unresolved"/>
             /// </summary>
 

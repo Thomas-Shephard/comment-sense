@@ -9,7 +9,7 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task ClassPrimaryConstructorMissingParameterDocumentationReportsDiagnostic()
     {
         await VerifyCSenseAsync("""
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass(int {|CSENSE002:p1|})
             {
             }
@@ -20,8 +20,8 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task ClassPrimaryConstructorDocumentedParameterDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="p1">The first parameter.</param>
             public class MyClass(int p1)
             {
             }
@@ -35,7 +35,7 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     {
         await VerifyCSenseAsync("""
             namespace System.Runtime.CompilerServices { public class IsExternalInit { } }
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the record.</summary>
             public record MyRecord(int {|CSENSE002:p1|});
             """);
     }
@@ -45,8 +45,8 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     {
         const string testCode = """
             namespace System.Runtime.CompilerServices { public class IsExternalInit { } }
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the record.</summary>
+            /// <param name="p1">The first parameter.</param>
             public record MyRecord(int p1);
             """;
 
@@ -58,8 +58,8 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     {
         await VerifyCSenseAsync("""
             namespace System.Runtime.CompilerServices { public class IsExternalInit { } }
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the record.</summary>
+            /// <param name="p1">The first parameter.</param>
             public record MyRecord(int p1)
             {
                 public string {|CSENSE001:P2|} { get; init; }
@@ -71,9 +71,9 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task ClassPrimaryConstructorStrayParameterDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
-            /// <param name="p2">p2</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="p1">The first parameter.</param>
+            /// <param name="p2">The second parameter.</param>
             public class {|CSENSE003:MyClass|}(int p1)
             {
             }
@@ -86,8 +86,8 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task PrimaryConstructorMixedDocumentationReportsDiagnostic()
     {
         await VerifyCSenseAsync("""
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="p1">The first parameter.</param>
             public class MyClass(int p1, int {|CSENSE002:p2|})
             {
             }
@@ -98,7 +98,7 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task StructPrimaryConstructorMissingParameterDocumentationReportsDiagnostic()
     {
         await VerifyCSenseAsync("""
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the struct.</summary>
             public struct MyStruct(int {|CSENSE002:p1|})
             {
             }
@@ -109,11 +109,11 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task PrimaryConstructorWithRegularConstructorReportsDiagnosticsCorrectly()
     {
         await VerifyCSenseAsync("""
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="p1">The first parameter.</param>
             public class MyClass(int p1)
             {
-                /// <summary>Ctor</summary>
+                /// <summary>This is a summary for the constructor.</summary>
                 public MyClass(int {|CSENSE002:p1|}, int {|CSENSE002:p2|}) : this(p1)
                 {
                 }
@@ -125,7 +125,7 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task InternalPrimaryConstructorDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             internal class MyClass(int p1)
             {
             }
@@ -138,8 +138,8 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task GenericTypePrimaryConstructorMissingParameterDocumentationReportsDiagnostic()
     {
         await VerifyCSenseAsync("""
-            /// <summary>Summary</summary>
-            /// <typeparam name="T">T</typeparam>
+            /// <summary>This is a summary for the class.</summary>
+            /// <typeparam name="T">The type parameter.</typeparam>
             public class MyClass<T>(T {|CSENSE002:p1|})
             {
             }
@@ -150,8 +150,8 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task GenericTypePrimaryConstructorMissingTypeParameterDocumentationReportsDiagnostic()
     {
         await VerifyCSenseAsync("""
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="p1">The first parameter.</param>
             public class MyClass<{|CSENSE004:T|}>(int p1)
             {
             }
@@ -162,8 +162,8 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task ClassMemberMatchingPrimaryConstructorParameterNameReportsDiagnostic()
     {
         await VerifyCSenseAsync("""
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="p1">The first parameter.</param>
             public class MyClass(int p1)
             {
                 public int {|CSENSE001:p1|};
@@ -175,8 +175,8 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task ClassMemberNotMatchingPrimaryConstructorParameterNameIsAnalyzed()
     {
         await VerifyCSenseAsync("""
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="p1">The first parameter.</param>
             public class MyClass(int p1)
             {
                 public int {|CSENSE001:p2|};
@@ -188,15 +188,15 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task DocumentationOnClassIsCorrectlyAppliedToPrimaryConstructorOnly()
     {
         await VerifyCSenseAsync("""
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             /// <param name="p1">Primary constructor param</param>
             public class MyClass(int p1)
             {
-                /// <summary>Method</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <param name="p2">Method param</param>
                 public void DoSomething(int p2) { }
 
-                /// <summary>Another Method</summary>
+                /// <summary>This is a summary for another method.</summary>
                 public void AnotherMethod(int {|CSENSE002:p3|}) { }
             }
             """, expectDiagnostic: true);

@@ -18,7 +18,7 @@ public class DocumentationExtensionsTests
     {
         const string source = """
             /// <summary>
-            /// This is a test class.
+            /// This is a summary for the class.
             /// </summary>
             public class TestClass {}
             """;
@@ -65,7 +65,7 @@ public class DocumentationExtensionsTests
     {
         const string source = """
             public class TestClass {
-                /// <param name="x">The x.</param>
+                /// <param name="x">The param x.</param>
                 public void M(int x) {}
             }
             """;
@@ -74,7 +74,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void HasValidDocumentationWithEmptySummaryReturnsFalse()
+    public void HasValidDocumentationWithEmptySummaryReturnsTrue()
     {
         const string source = """
             /// <summary>
@@ -82,7 +82,7 @@ public class DocumentationExtensionsTests
             public class TestClass {}
             """;
         var symbol = GetSymbolFromSource(source, "TestClass");
-        Assert.That(symbol.HasValidDocumentation(), Is.False);
+        Assert.That(symbol.HasValidDocumentation(), Is.True);
     }
 
     [Test]
@@ -148,7 +148,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void HasValidDocumentationWithEmptyParamReturnsFalse()
+    public void HasValidDocumentationWithEmptyParamReturnsTrue()
     {
         const string source = """
             public class C {
@@ -157,11 +157,11 @@ public class DocumentationExtensionsTests
             }
             """;
         var symbol = GetSymbolFromSource(source, "M");
-        Assert.That(symbol.HasValidDocumentation(), Is.False);
+        Assert.That(symbol.HasValidDocumentation(), Is.True);
     }
 
     [Test]
-    public void HasValidDocumentationWithEmptyExceptionReturnsFalse()
+    public void HasValidDocumentationWithEmptyExceptionReturnsTrue()
     {
         const string source = """
             public class C {
@@ -170,7 +170,7 @@ public class DocumentationExtensionsTests
             }
             """;
         var symbol = GetSymbolFromSource(source, "M");
-        Assert.That(symbol.HasValidDocumentation(), Is.False);
+        Assert.That(symbol.HasValidDocumentation(), Is.True);
     }
 
     [Test]
@@ -195,17 +195,17 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void HasValidDocumentationWithEmptyExceptionXmlReturnsFalse()
+    public void HasValidDocumentationWithEmptyExceptionXmlReturnsTrue()
     {
         const string xml = """<member><exception cref="T:System.Exception"/></member>""";
-        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.False);
+        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
     }
 
     [Test]
-    public void HasValidDocumentationWithEmptyTagsReturnsFalse()
+    public void HasValidDocumentationWithEmptyTagsReturnsTrue()
     {
         const string xml = "<member><summary> </summary><remarks/></member>";
-        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.False);
+        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
     }
 
     [Test]
@@ -241,11 +241,11 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetParamNamesIgnoresEmptyParam()
+    public void GetParamNamesIncludesEmptyParam()
     {
         const string xml = """<member><param name="p1"> </param><param name="p2">p2</param></member>""";
         var result = DocumentationExtensions.GetParamNames(xml).ToList();
-        var expected = new[] { "p2" };
+        var expected = new[] { "p1", "p2" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 

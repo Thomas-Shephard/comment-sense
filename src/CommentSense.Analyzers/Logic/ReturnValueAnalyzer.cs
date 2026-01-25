@@ -8,6 +8,10 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class ReturnValueAnalyzer
 {
+    private const string ReturnsTag = "returns";
+    private const string ValueTag = "value";
+    private const string NameProperty = "Name";
+
     public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, XElement xml)
     {
         Analyze(context, method, method, xml);
@@ -36,8 +40,16 @@ internal static class ReturnValueAnalyzer
         }
         else if (!hasReturnsTag)
         {
-            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", "returns");
+            var properties = ImmutableDictionary<string, string?>.Empty.Add(NameProperty, ReturnsTag);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
+        }
+        else
+        {
+            var returnsElements = DocumentationExtensions.GetTargetElements(xml, ReturnsTag);
+            foreach (var _ in returnsElements.Where(e => QualityAnalyzer.IsLowQuality(e, method.ReturnType.Name, [ReturnsTag, "return"])))
+            {
+                QualityAnalyzer.Report(context, reportSymbol, ReturnsTag, symbolName);
+            }
         }
     }
 
@@ -54,10 +66,21 @@ internal static class ReturnValueAnalyzer
 
         bool hasValueTag = DocumentationExtensions.HasValueTag(xml);
 
-        if (property.GetMethod != null && !hasValueTag)
+        if (property.GetMethod == null)
+            return;
+
+        if (!hasValueTag)
         {
-            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", "value");
+            var properties = ImmutableDictionary<string, string?>.Empty.Add(NameProperty, ValueTag);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingValueDocumentationRule, location, properties, symbolName));
+        }
+        else
+        {
+            var valueElements = DocumentationExtensions.GetTargetElements(xml, ValueTag);
+            foreach (var _ in valueElements.Where(e => QualityAnalyzer.IsLowQuality(e, property.Type.Name, [ValueTag]) || QualityAnalyzer.IsLowQuality(e, property.Name)))
+            {
+                QualityAnalyzer.Report(context, property, ValueTag, symbolName);
+            }
         }
     }
 

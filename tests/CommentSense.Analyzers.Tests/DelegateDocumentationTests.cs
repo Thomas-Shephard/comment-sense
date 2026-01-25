@@ -9,8 +9,8 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     public async Task DelegateMissingParameterDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the delegate.</summary>
+            /// <param name="p1">The first parameter.</param>
             public delegate void MyDelegate(int p1, int {|CSENSE002:p2|});
             """;
 
@@ -21,9 +21,9 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     public async Task DelegateWithDocumentedParametersDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
-            /// <param name="p2">p2</param>
+            /// <summary>This is a summary for the delegate.</summary>
+            /// <param name="p1">The first parameter.</param>
+            /// <param name="p2">The second parameter.</param>
             public delegate void MyDelegate(int p1, int p2);
             """;
 
@@ -34,7 +34,7 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     public async Task DelegateMissingTypeParameterDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the delegate.</summary>
             public delegate void MyDelegate<{|CSENSE004:T|}>();
             """;
 
@@ -45,9 +45,9 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     public async Task DelegateWithStrayParameterDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
-            /// <param name="extra">extra</param>
+            /// <summary>This is a summary for the delegate.</summary>
+            /// <param name="p1">The first parameter.</param>
+            /// <param name="extra">An extra parameter.</param>
             public delegate void {|CSENSE003:MyDelegate|}(int p1);
             """;
 
@@ -58,8 +58,8 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     public async Task DelegateMissingReturnValueDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the delegate.</summary>
+            /// <param name="p1">The first parameter.</param>
             public delegate int {|CSENSE006:MyDelegate|}(int p1);
             """;
 
@@ -70,9 +70,9 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     public async Task DelegateWithDocumentedReturnValueDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
-            /// <returns>Returns int</returns>
+            /// <summary>This is a summary for the delegate.</summary>
+            /// <param name="p1">The first parameter.</param>
+            /// <returns>Returns an integer value.</returns>
             public delegate int MyDelegate(int p1);
             """;
 
@@ -83,8 +83,8 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     public async Task VoidDelegateWithoutReturnsTagDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <param name="p1">p1</param>
+            /// <summary>This is a summary for the delegate.</summary>
+            /// <param name="p1">The first parameter.</param>
             public delegate void MyDelegate(int p1);
             """;
 
@@ -96,7 +96,7 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the delegate.</summary>
             public delegate Task MyDelegate();
             """;
 
@@ -108,7 +108,7 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the delegate.</summary>
             public delegate ValueTask MyDelegate();
             """;
 
@@ -120,7 +120,7 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the delegate.</summary>
             public delegate Task<int> {|CSENSE006:MyDelegate|}();
             """;
 
@@ -131,8 +131,8 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     public async Task VoidDelegateWithReturnsTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <returns>Stray</returns>
+            /// <summary>This is a summary for the delegate.</summary>
+            /// <returns>Stray return documentation.</returns>
             public delegate void {|CSENSE013:MyDelegate|}();
             """;
 
@@ -144,8 +144,8 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
-            /// <returns>Stray</returns>
+            /// <summary>This is a summary for the delegate.</summary>
+            /// <returns>Stray return documentation.</returns>
             public delegate Task {|CSENSE013:MyDelegate|}();
             """;
 

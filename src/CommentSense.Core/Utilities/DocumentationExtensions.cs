@@ -35,7 +35,7 @@ internal static class DocumentationExtensions
             if (AutoValidTags.Contains(name))
                 return true;
 
-            if (ContentRequiredTags.Contains(name) && HasContent(element))
+            if (ContentRequiredTags.Contains(name))
                 return true;
         }
 
@@ -121,27 +121,22 @@ internal static class DocumentationExtensions
         return [];
     }
 
-    private static IEnumerable<XElement> GetValidElements(XElement root, string tagName)
-    {
-        return GetTargetElements(root, tagName).Where(HasContent);
-    }
-
-    private static IEnumerable<XElement> GetTargetElements(XElement root, string? tagName = null)
+    public static IEnumerable<XElement> GetTargetElements(XElement root, string? tagName = null)
     {
         var target = root.Name.LocalName == "member" ? root : root.Element("member") ?? root;
         return tagName == null ? target.Elements() : target.Elements(tagName);
     }
 
+    private static IEnumerable<XElement> GetValidElements(XElement root, string tagName)
+    {
+        return GetTargetElements(root, tagName);
+    }
+
     private static IEnumerable<string> GetElementAttributeValues(XElement root, string tagName, string attributeName)
     {
-        return GetValidElements(root, tagName)
+        return GetTargetElements(root, tagName)
                .Select(d => d.Attribute(attributeName)?.Value)
                .Where(v => !string.IsNullOrWhiteSpace(v))
                .OfType<string>();
-    }
-
-    private static bool HasContent(XElement element)
-    {
-        return element.HasElements || !string.IsNullOrWhiteSpace(element.Value);
     }
 }
