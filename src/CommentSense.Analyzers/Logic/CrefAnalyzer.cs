@@ -18,7 +18,10 @@ internal static class CrefAnalyzer
             ? context.SemanticModel.GetDeclaredSymbol(fieldDecl.Declaration.Variables[0])
             : context.SemanticModel.GetDeclaredSymbol(memberDecl);
 
-        if (symbol is null || !symbol.IsEligibleForAnalysis())
+        var tree = context.Node.SyntaxTree;
+        var analyzeInternal = AnalyzerOptions.GetBoolOption(context.Options.AnalyzerConfigOptionsProvider, tree, "analyze_internal", defaultValue: false);
+
+        if (symbol is null || !symbol.IsEligibleForAnalysis(analyzeInternal))
             return;
 
         var cref = crefAttribute.Cref;

@@ -30,8 +30,20 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeSymbol(SymbolAnalysisContext context)
     {
         var symbol = context.Symbol;
+        var tree = symbol.Locations.GetPrimaryLocation().SourceTree;
 
-        if (!symbol.IsEligibleForAnalysis())
+        var analyzeInternal = false;
+        ImmutableHashSet<string> lowQualityTerms = [];
+        ImmutableHashSet<string> ignoredExceptions = [];
+
+        if (tree is not null)
+        {
+            analyzeInternal = AnalyzerOptions.GetBoolOption(context.Options.AnalyzerConfigOptionsProvider, tree, "analyze_internal", defaultValue: false);
+            lowQualityTerms = AnalyzerOptions.GetStringListOption(context.Options.AnalyzerConfigOptionsProvider, tree, "low_quality_terms");
+            ignoredExceptions = AnalyzerOptions.GetStringListOption(context.Options.AnalyzerConfigOptionsProvider, tree, "ignored_exceptions");
+        }
+
+        if (!symbol.IsEligibleForAnalysis(analyzeInternal))
             return;
 
         var xml = symbol.GetDocumentationCommentXml();
@@ -45,37 +57,37 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (DocumentationExtensions.HasAutoValidTag(element))
             return;
 
-        SummaryAnalyzer.Analyze(context, symbol, element);
+        SummaryAnalyzer.Analyze(context, symbol, element, lowQualityTerms);
 
         switch (symbol)
         {
             case IMethodSymbol methodSymbol:
-                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element);
-                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element);
-                ReturnValueAnalyzer.Analyze(context, methodSymbol, element);
-                ExceptionAnalyzer.Analyze(context, methodSymbol, element, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
+                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element, lowQualityTerms);
+                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element, lowQualityTerms);
+                ReturnValueAnalyzer.Analyze(context, methodSymbol, element, lowQualityTerms);
+                ExceptionAnalyzer.Analyze(context, methodSymbol, element, ignoredExceptions, lowQualityTerms, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
                 break;
             case IPropertySymbol propertySymbol:
                 if (propertySymbol.IsIndexer)
                 {
-                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element);
+                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element, lowQualityTerms);
                 }
-                ReturnValueAnalyzer.Analyze(context, propertySymbol, element);
-                ExceptionAnalyzer.Analyze(context, propertySymbol, element);
+                ReturnValueAnalyzer.Analyze(context, propertySymbol, element, lowQualityTerms);
+                ExceptionAnalyzer.Analyze(context, propertySymbol, element, ignoredExceptions, lowQualityTerms);
                 break;
             case INamedTypeSymbol namedTypeSymbol:
-                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element);
+                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element, lowQualityTerms);
                 if (namedTypeSymbol is { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null })
                 {
-                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element);
-                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element);
+                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element, lowQualityTerms);
+                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element, lowQualityTerms);
                 }
 
                 if (namedTypeSymbol.GetPrimaryConstructor() is { } primaryCtor)
                 {
-                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element);
-                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element);
-                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, isPrimaryCtor: true);
+                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element, lowQualityTerms);
+                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, lowQualityTerms);
+                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, ignoredExceptions, lowQualityTerms, isPrimaryCtor: true);
                 }
                 break;
         }

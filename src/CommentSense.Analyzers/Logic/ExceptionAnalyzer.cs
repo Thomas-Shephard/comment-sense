@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Xml.Linq;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -11,14 +12,16 @@ internal static class ExceptionAnalyzer
 {
     private const string ExceptionTag = "exception";
 
-    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, bool isPrimaryCtor = false)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, ImmutableHashSet<string> ignoredExceptions, ImmutableHashSet<string> customLowQualityTerms, bool isPrimaryCtor = false)
     {
         var documentedExceptionElements = DocumentationExtensions.GetTargetElements(xml, ExceptionTag).ToList();
         var documentedTypes = GetDocumentedExceptionTypes(context, documentedExceptionElements);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor);
 
         // CSENSE012: Missing Exception Documentation
-        foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(dt => t.InheritsFromOrEquals(dt))))
+        foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) &&
+                                                         !ignoredExceptions.Contains(t.Name) &&
+                                                         !ignoredExceptions.Contains(t.ToDisplayString())))
         {
             var location = symbol.Locations.GetPrimaryLocation();
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
@@ -32,7 +35,7 @@ internal static class ExceptionAnalyzer
                 continue;
 
             var resolved = ResolveExceptionType(cref, context.Compilation);
-            if (resolved != null && QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name))
+            if (resolved != null && QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, customLowQualityTerms))
             {
                 QualityAnalyzer.Report(context, symbol, ExceptionTag, resolved.Name);
             }

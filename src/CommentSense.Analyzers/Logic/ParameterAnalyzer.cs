@@ -11,7 +11,7 @@ internal static class ParameterAnalyzer
     private const string ParamTag = "param";
     private const string NameProperty = "Name";
 
-    public static void Analyze(SymbolAnalysisContext context, ImmutableArray<IParameterSymbol> parameters, ISymbol symbol, XElement xml)
+    public static void Analyze(SymbolAnalysisContext context, ImmutableArray<IParameterSymbol> parameters, ISymbol symbol, XElement xml, ImmutableHashSet<string> customLowQualityTerms)
     {
         if (parameters.IsEmpty && !xml.Descendants(ParamTag).Any())
             return;
@@ -30,7 +30,7 @@ internal static class ParameterAnalyzer
             actualParamsByName[p.Name] = p;
         }
 
-        ValidateDocumentedParameters(context, symbol, xml, actualParamIndexMap, actualParamsByName);
+        ValidateDocumentedParameters(context, symbol, xml, actualParamIndexMap, actualParamsByName, customLowQualityTerms);
     }
 
     private static void ReportMissingParameters(SymbolAnalysisContext context, ImmutableArray<IParameterSymbol> parameters, HashSet<string> documentedParamsSet)
@@ -46,7 +46,7 @@ internal static class ParameterAnalyzer
         }
     }
 
-    private static void ValidateDocumentedParameters(SymbolAnalysisContext context, ISymbol symbol, XElement xml, Dictionary<string, int> actualParamIndexMap, Dictionary<string, IParameterSymbol> actualParamsByName)
+    private static void ValidateDocumentedParameters(SymbolAnalysisContext context, ISymbol symbol, XElement xml, Dictionary<string, int> actualParamIndexMap, Dictionary<string, IParameterSymbol> actualParamsByName, ImmutableHashSet<string> customLowQualityTerms)
     {
         var seenParams = new HashSet<string>(StringComparer.Ordinal);
         var lastActualIndex = -1;
@@ -72,7 +72,7 @@ internal static class ParameterAnalyzer
             }
 
             // CSENSE016: Low Quality Parameter Documentation
-            if (QualityAnalyzer.IsLowQuality(paramElement, name))
+            if (QualityAnalyzer.IsLowQuality(paramElement, name, customLowQualityTerms))
             {
                 var location = actualParamsByName[name].Locations.GetPrimaryLocation();
                 QualityAnalyzer.Report(context, location, ParamTag, name);

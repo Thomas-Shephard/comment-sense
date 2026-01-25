@@ -7,7 +7,7 @@ namespace CommentSense.Analyzers;
 
 internal static class AnalyzerExtensions
 {
-    public static bool IsEligibleForAnalysis(this ISymbol symbol)
+    public static bool IsEligibleForAnalysis(this ISymbol symbol, bool includeInternal = false)
     {
         if (symbol.IsImplicitlyDeclared)
             return false;
@@ -34,7 +34,7 @@ internal static class AnalyzerExtensions
             }
         }
 
-        return symbol.IsEffectivelyAccessible();
+        return symbol.IsEffectivelyAccessible(includeInternal);
     }
 
     public static Location GetPrimaryLocation(this ImmutableArray<Location> locations)
