@@ -10,10 +10,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void {|CSENSE012:MyMethod|}()
                 {
                     throw new ArgumentNullException();
@@ -29,10 +29,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="T:System.ArgumentNullException">Thrown when...</exception>
                 public void MyMethod()
                 {
@@ -49,10 +49,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="T:System.ArgumentException">Thrown when...</exception>
                 public void MyMethod()
                 {
@@ -69,10 +69,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="T:System.ArgumentNullException">Thrown when...</exception>
                 public void {|CSENSE012:MyMethod|}()
                 {
@@ -89,10 +89,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="T:System.ArgumentNullException">Thrown when...</exception>
                 public void MyMethod()
                 {
@@ -108,12 +108,12 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 private string _name;
-                /// <summary>Summary</summary>
-                /// <value>The name</value>
+                /// <summary>This is a summary for the property.</summary>
+                /// <value>The name.</value>
                 public string {|CSENSE012:Name|}
                 {
                     get => _name ?? throw new InvalidOperationException();
@@ -132,10 +132,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             using System;
             using System.Linq;
             using System.Collections.Generic;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void MyMethod()
                 {
                     IEnumerable<int> x = new[] { 1 }.Select<int, int>(i => i > 0 ? i : throw new InvalidOperationException());
@@ -151,10 +151,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void MyMethod()
                 {
                     void Local() => throw new InvalidOperationException();
@@ -170,12 +170,12 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
-            /// <param name="x">The x</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="x">The x value.</param>
             public class MyClass(int x)
             {
-                /// <summary>Summary</summary>
-                /// <value>The Y</value>
+                /// <summary>This is a summary for the property.</summary>
+                /// <value>The Y property value.</value>
                 public int {|CSENSE012:Y|} { get; } = x > 0 ? x : throw new ArgumentException();
             }
             """;
@@ -188,11 +188,11 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
-            /// <param name="x">The x</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="x">The x value.</param>
             public class MyClass(int x)
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="T:System.InvalidOperationException">Thrown when...</exception>
                 public void SomeMethod()
                 {
@@ -209,11 +209,11 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <value>The name</value>
+                /// <summary>This is a summary for the property.</summary>
+                /// <value>Value of the class.</value>
                 public string {|CSENSE012:Name|}
                 {
                     get
@@ -232,10 +232,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void {|CSENSE012:MyMethod|}()
                 {
                     try { }
@@ -255,10 +255,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="T:System.ArgumentException">Thrown when...</exception>
                 public void MyMethod()
                 {
@@ -279,10 +279,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="T:System.Exception">Thrown when...</exception>
                 public void MyMethod()
                 {
@@ -304,12 +304,12 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
         const string testCode = """
             using System;
             /// <summary>
-            /// Summary
+            /// This is a summary for the class.
             /// <exception cref="T:System.ArgumentNullException">This is nested and should be ignored</exception>
             /// </summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void {|CSENSE012:MyMethod|}()
                 {
                     throw new ArgumentNullException();
@@ -325,12 +325,12 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <param name="i">index</param>
-                /// <value>The value</value>
+                /// <summary>This is a summary for the indexer.</summary>
+                /// <param name="i">The index value.</param>
+                /// <value>Value at the index.</value>
                 public int {|CSENSE012:{|CSENSE012:this|}|}[int i]
                 {
                     get => throw new IndexOutOfRangeException();
@@ -347,12 +347,12 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
-            /// <param name="x">The x</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="x">The x value.</param>
             public class MyClass(int x)
             {
-                /// <summary>Summary</summary>
-                /// <param name="i">index</param>
+                /// <summary>This is a summary for the indexer.</summary>
+                /// <param name="i">The index value.</param>
                 /// <exception cref="T:System.IndexOutOfRangeException">Thrown when...</exception>
                 public int {|CSENSE014:this|}[int i]
                 {
@@ -369,14 +369,54 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
-            /// <param name="x">The x</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="x">The x value.</param>
             public class MyClass(int x)
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the constructor.</summary>
                 public {|CSENSE012:MyClass|}() : this(0)
                 {
                     throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task ExceptionTagWithMissingCrefAttributeDoesNotCountAsDocumented()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a summary for the method.</summary>
+                /// <exception>Missing cref attribute</exception>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    throw new ArgumentNullException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task ExceptionTagWithWhitespaceCrefAttributeDoesNotCountAsDocumented()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a summary for the method.</summary>
+                /// <exception cref="{|CSENSE007:|}">Whitespace cref attribute</exception>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    throw new ArgumentNullException();
                 }
             }
             """;
@@ -390,10 +430,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
         const string testCode = """
             using System;
             using System.IO;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="T:System.IO.IOException">Thrown when...</exception>
                 public void MyMethod()
                 {
@@ -410,10 +450,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="!:System.ArgumentNullException">Unresolved prefix</exception>
                 public void MyMethod()
                 {
@@ -430,10 +470,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="ArgumentNullException">Short name</exception>
                 public void MyMethod()
                 {
@@ -450,11 +490,11 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <param name="x">The x</param>
+                /// <summary>This is a summary for the method.</summary>
+                /// <param name="x">The input value.</param>
                 public void {|CSENSE012:{|CSENSE012:MyMethod|}|}(int x)
                 {
                     if (x < 0) throw new ArgumentOutOfRangeException();
@@ -471,8 +511,8 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
-            /// <param name="x">The x</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="x">The x value.</param>
             public class {|CSENSE012:MyClass|}(int x)
             {
                 private int _y = x > 0 ? x : throw new ArgumentException();
@@ -487,8 +527,8 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
-            /// <param name="x">The x</param>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="x">The x value.</param>
             /// <exception cref="T:System.ArgumentException">Thrown when...</exception>
             public class MyClass(int x)
             {
@@ -506,19 +546,19 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             using System;
             using System.IO;
 
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the callee class.</summary>
             public class Callee
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the work method.</summary>
                 /// <exception cref="T:System.IO.IOException">Thrown when...</exception>
                 public void DoWork() { }
             }
 
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the caller class.</summary>
             public class Caller
             {
-                /// <summary>Summary</summary>
-                /// <param name="c">The callee</param>
+                /// <summary>This is a summary for the calling method.</summary>
+                /// <param name="c">The callee instance.</param>
                 /// <exception cref="T:System.IO.IOException">Propagated from Callee</exception>
                 public void MyMethod(Callee c)
                 {
@@ -535,10 +575,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void MyMethod()
                 {
                     try
@@ -561,10 +601,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void {|CSENSE012:MyMethod|}()
                 {
                     try
@@ -587,10 +627,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void {|CSENSE012:MyMethod|}()
                 {
                     try { }
@@ -610,10 +650,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void MyMethod()
                 {
                     try
@@ -640,12 +680,12 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the exception class.</summary>
             class Ex : Exception { }
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the main class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <exception cref="Ex">Short name</exception>
                 public void MyMethod()
                 {
@@ -662,10 +702,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void MyMethod()
                 {
                     try
@@ -688,10 +728,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void {|CSENSE012:MyMethod|}()
                 {
                     try
@@ -714,10 +754,10 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     {
         const string testCode = """
             using System;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void {|CSENSE012:MyMethod|}()
                 {
                     // Orphaned throw (compiler error CS0156, ignored by test config)
@@ -733,14 +773,14 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     public async Task FallbackResolutionForUnqualifiedTypeWithoutUsing()
     {
         const string testCode2 = """
-            namespace N1 { /// <summary>Sum</summary>
+            namespace N1 { /// <summary>This is a summary for the exception class.</summary>
             public class MyEx : System.Exception {} }
             namespace N2
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
-                    /// <summary>Summary</summary>
+                    /// <summary>This is a summary for the method.</summary>
                     #pragma warning disable CSENSE007 // Unresolved cref (expected)
                     /// <exception cref="MyEx">Not imported, so standard resolution fails</exception>
                     #pragma warning restore CSENSE007
@@ -759,14 +799,14 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     public async Task FallbackResolutionForShortTypeWithoutUsing()
     {
         const string testCode = """
-            namespace N1 { /// <summary>Sum</summary>
+            namespace N1 { /// <summary>This is a summary for the exception class.</summary>
             public class Ex : System.Exception {} }
             namespace N2
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
-                    /// <summary>Summary</summary>
+                    /// <summary>This is a summary for the method.</summary>
                     #pragma warning disable CSENSE007 // Unresolved cref (expected)
                     /// <exception cref="Ex">Not imported, short name</exception>
                     #pragma warning restore CSENSE007
@@ -785,14 +825,14 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     public async Task FallbackResolutionWithPrefixAndMissingUsing()
     {
         const string testCode = """
-            namespace N1 { /// <summary>Sum</summary>
+            namespace N1 { /// <summary>This is a summary for the exception class.</summary>
             public class MyEx : System.Exception {} }
             namespace N2
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the class.</summary>
                 public class MyClass
                 {
-                    /// <summary>Summary</summary>
+                    /// <summary>This is a summary for the method.</summary>
                     #pragma warning disable CSENSE007 // Unresolved cref (expected)
                     /// <exception cref="T:MyEx">Prefix present, but not imported</exception>
                     #pragma warning restore CSENSE007

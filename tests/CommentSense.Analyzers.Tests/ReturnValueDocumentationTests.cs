@@ -9,10 +9,10 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task NonVoidMethodWithoutReturnsTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public int {|CSENSE006:MyMethod|}() => 0;
             }
             """;
@@ -24,11 +24,11 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task NonVoidMethodWithReturnsTagDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <returns>Value</returns>
+                /// <summary>This is a summary for the method.</summary>
+                /// <returns>Returns an integer value.</returns>
                 public int MyMethod() => 0;
             }
             """;
@@ -40,10 +40,10 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task VoidMethodWithoutReturnsTagDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public void MyMethod() { }
             }
             """;
@@ -55,10 +55,10 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task ConstructorDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the constructor.</summary>
                 public MyClass() { }
             }
             """;
@@ -70,11 +70,11 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task ConstructorWithValueTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <value>Value</value>
+                /// <summary>This is a summary for the constructor.</summary>
+                /// <value>A stray value tag.</value>
                 public {|CSENSE015:MyClass|}() { }
             }
             """;
@@ -86,9 +86,9 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task PrimaryConstructorWithValueTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
-            /// <param name="x">The x</param>
-            /// <value>Value</value>
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="x">The input value.</param>
+            /// <value>A stray value tag.</value>
             public class {|CSENSE015:MyClass|}(int x)
             {
             }
@@ -102,10 +102,10 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public Task MyMethod() => Task.CompletedTask;
             }
             """;
@@ -117,11 +117,11 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task VoidMethodWithReturnsTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <returns>Value</returns>
+                /// <summary>This is a summary for the method.</summary>
+                /// <returns>A stray returns tag.</returns>
                 public void {|CSENSE013:MyMethod|}() { }
             }
             """;
@@ -134,11 +134,11 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <returns>Value</returns>
+                /// <summary>This is a summary for the method.</summary>
+                /// <returns>A stray returns tag.</returns>
                 public Task {|CSENSE013:MyMethod|}() => Task.CompletedTask;
             }
             """;
@@ -151,11 +151,11 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <returns>Value</returns>
+                /// <summary>This is a summary for the method.</summary>
+                /// <returns>A stray returns tag.</returns>
                 public ValueTask {|CSENSE013:MyMethod|}() => default;
             }
             """;
@@ -168,11 +168,11 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <returns>Value</returns>
+                /// <summary>This is a summary for the method.</summary>
+                /// <returns>Returns an integer value.</returns>
                 public Task<int> MyMethod() => Task.FromResult(0);
             }
             """;
@@ -185,11 +185,11 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <returns>Value</returns>
+                /// <summary>This is a summary for the method.</summary>
+                /// <returns>Returns an integer value.</returns>
                 public ValueTask<int> MyMethod() => default;
             }
             """;
@@ -202,10 +202,10 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public Task<int> {|CSENSE006:MyMethod|}() => Task.FromResult(0);
             }
             """;
@@ -218,10 +218,10 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public ValueTask MyMethod() => default;
             }
             """;
@@ -234,10 +234,10 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     {
         const string testCode = """
             using System.Threading.Tasks;
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public ValueTask<int> {|CSENSE006:MyMethod|}() => default;
             }
             """;
@@ -251,13 +251,13 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
         const string testCode = """
             namespace Other
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the custom task class.</summary>
                 public class Task { }
             }
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public Other.Task {|CSENSE006:MyMethod|}() => new Other.Task();
             }
             """;
@@ -269,12 +269,12 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task GlobalNamespaceTaskTypeReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the custom task class.</summary>
             public class Task { }
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public Task {|CSENSE006:MyMethod|}() => new Task();
             }
             """;
@@ -288,13 +288,13 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
         const string testCode = """
             namespace Other
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the custom value task struct.</summary>
                 public struct ValueTask { }
             }
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public Other.ValueTask {|CSENSE006:MyMethod|}() => new Other.ValueTask();
             }
             """;
@@ -303,13 +303,28 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     }
 
     [Test]
+    public async Task UnresolvedTaskTypeDoesNotCrash()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a summary for the method.</summary>
+                public Task {|CSENSE006:MyMethod|}() => null;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: true, compilerDiagnostics: Microsoft.CodeAnalysis.Testing.CompilerDiagnostics.None);
+    }
+
+    [Test]
     public async Task ArrayReturnTypeWithoutReturnsTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 public int[] {|CSENSE006:MyMethod|}() => new int[0];
             }
             """;
@@ -321,12 +336,12 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task UserDefinedOperatorWithoutReturnsTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <param name="a">a</param>
-                /// <param name="b">b</param>
+                /// <summary>This is a summary for the operator.</summary>
+                /// <param name="a">The first operand.</param>
+                /// <param name="b">The second operand.</param>
                 public static MyClass operator{|CSENSE006:+|}(MyClass a, MyClass b) => a;
             }
             """;
@@ -338,11 +353,11 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task ConversionOperatorWithoutReturnsTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <param name="a">a</param>
+                /// <summary>This is a summary for the operator.</summary>
+                /// <param name="a">The operand.</param>
                 public static explicit operator {|CSENSE006:int|}(MyClass a) => 0;
             }
             """;
@@ -354,12 +369,12 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task EmptyReturnsTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is a summary for the method.</summary>
                 /// <returns></returns>
-                public int {|CSENSE006:MyMethod|}() => 0;
+                public int {|CSENSE016:MyMethod|}() => 0;
             }
             """;
 
@@ -370,11 +385,11 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task AsyncVoidMethodWithReturnsTagReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Summary</summary>
-                /// <returns>Value</returns>
+                /// <summary>This is a summary for the method.</summary>
+                /// <returns>A stray returns tag.</returns>
                 public async void {|CSENSE013:MyMethod|}() { }
             }
             """;
@@ -386,15 +401,15 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task InheritedDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Base</summary>
+            /// <summary>This is a summary for the base class.</summary>
             public class Base
             {
-                /// <summary>Base</summary>
-                /// <returns>Return value</returns>
+                /// <summary>This is a summary for the base method.</summary>
+                /// <returns>Returns an integer value.</returns>
                 public virtual int M() => 0;
             }
 
-            /// <summary>Derived</summary>
+            /// <summary>This is a summary for the derived class.</summary>
             public class Derived : Base
             {
                 /// <inheritdoc />
@@ -409,17 +424,17 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task ExplicitInterfaceImplementationDoesNotReportDiagnosticByDefault()
     {
         const string testCode = """
-            /// <summary>Interface</summary>
+            /// <summary>This is a summary for the interface.</summary>
             public interface I
             {
-                /// <summary>Method</summary>
-                /// <returns>Int</returns>
+                /// <summary>This is a summary for the method.</summary>
+                /// <returns>Returns an integer value.</returns>
                 int M();
             }
-            /// <summary>Class</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class C : I
             {
-                /// <summary>Summary</summary>
+                /// <summary>This is the explicit implementation summary.</summary>
                 int I.M() => 0;
             }
             """;
@@ -431,7 +446,7 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     public async Task IncludedDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
-            /// <summary>Doc</summary>
+            /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
                 /// <include file='docs.xml' path='[@name="test"]'/>

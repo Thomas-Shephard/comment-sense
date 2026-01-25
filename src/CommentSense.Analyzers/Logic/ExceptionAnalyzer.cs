@@ -9,9 +9,12 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class ExceptionAnalyzer
 {
+    private const string ExceptionTag = "exception";
+
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, bool isPrimaryCtor = false)
     {
-        var documentedTypes = GetDocumentedExceptionTypes(context, xml);
+        var documentedExceptionElements = DocumentationExtensions.GetTargetElements(xml, ExceptionTag).ToList();
+        var documentedTypes = GetDocumentedExceptionTypes(context, documentedExceptionElements);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor);
 
         // CSENSE012: Missing Exception Documentation
@@ -20,34 +23,43 @@ internal static class ExceptionAnalyzer
             var location = symbol.Locations.GetPrimaryLocation();
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.Name));
         }
-    }
 
-    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(SymbolAnalysisContext context, XElement xml)
-    {
-        var documentedTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
-        var documentedCrefs = DocumentationExtensions.GetExceptionCrefs(xml).ToList();
-
-        if (documentedCrefs.Count == 0)
-            return documentedTypes;
-
-        foreach (var cref in documentedCrefs)
+        // CSENSE016: Low Quality Exception Documentation
+        foreach (var exceptionElement in documentedExceptionElements)
         {
-            var resolved = DocumentationCommentId.GetFirstSymbolForDeclarationId(cref, context.Compilation);
-            if (resolved is ITypeSymbol ts)
+            var cref = exceptionElement.Attribute("cref")?.Value;
+            if (cref is null || string.IsNullOrWhiteSpace(cref))
+                continue;
+
+            var resolved = ResolveExceptionType(cref, context.Compilation);
+            if (resolved != null && QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name))
             {
-                documentedTypes.Add(ts);
-            }
-            else
-            {
-                var fallback = ResolveExceptionTypeFallback(cref, context.Compilation);
-                if (fallback != null)
-                {
-                    documentedTypes.Add(fallback);
-                }
+                QualityAnalyzer.Report(context, symbol, ExceptionTag, resolved.Name);
             }
         }
+    }
 
-        return documentedTypes;
+    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(SymbolAnalysisContext context, IEnumerable<XElement> exceptionElements)
+    {
+        return new HashSet<ITypeSymbol>(
+            exceptionElements
+                .Select(e => e.Attribute("cref")?.Value)
+                .Where(cref => !string.IsNullOrWhiteSpace(cref))
+                .OfType<string>()
+                .Select(cref => ResolveExceptionType(cref, context.Compilation))
+                .OfType<ITypeSymbol>(),
+            SymbolEqualityComparer.Default);
+    }
+
+    private static ITypeSymbol? ResolveExceptionType(string cref, Compilation compilation)
+    {
+        var resolved = DocumentationCommentId.GetFirstSymbolForDeclarationId(cref, compilation);
+        if (resolved is ITypeSymbol ts)
+        {
+            return ts;
+        }
+
+        return ResolveExceptionTypeFallback(cref, compilation);
     }
 
     private static ITypeSymbol? ResolveExceptionTypeFallback(string cref, Compilation compilation)
