@@ -20,3 +20,4 @@ CSENSE013 | Documentation | Warning | Stray return value documentation
 CSENSE014 | Documentation | Disabled | Missing value documentation
 CSENSE015 | Documentation | Warning | Stray value documentation
 CSENSE016 | Documentation | Warning | Low-quality documentation
+CSENSE017 | Documentation | Warning | Invalid exception type

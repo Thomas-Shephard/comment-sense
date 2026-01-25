@@ -152,6 +152,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: "Documentation should provide value and not just repeat the member name or be empty.");
 
+    public static readonly DiagnosticDescriptor InvalidExceptionTypeRule = new(
+        CommentSenseDiagnosticIds.InvalidExceptionTypeId,
+        "Invalid exception type",
+        "The documented exception type '{0}' is not an Exception",
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "The type referenced in the <exception> tag must derive from System.Exception.");
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics = [
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
@@ -168,6 +177,7 @@ internal static class CommentSenseRules
         StrayReturnValueDocumentationRule,
         MissingValueDocumentationRule,
         StrayValueDocumentationRule,
-        LowQualityDocumentationRule
+        LowQualityDocumentationRule,
+        InvalidExceptionTypeRule
     ];
 }
