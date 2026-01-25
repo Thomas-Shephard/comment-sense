@@ -336,6 +336,22 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     }
 
     [Test]
+    public async Task AsyncVoidMethodWithReturnsTagReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Summary</summary>
+            public class MyClass
+            {
+                /// <summary>Summary</summary>
+                /// <returns>Value</returns>
+                public async void {|CSENSE013:MyMethod|}() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
     public async Task InheritedDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
