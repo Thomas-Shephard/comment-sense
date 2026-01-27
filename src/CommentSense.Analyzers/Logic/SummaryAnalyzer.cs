@@ -17,7 +17,7 @@ internal static class SummaryAnalyzer
         foreach (var _ in summaries.Where(s => QualityAnalyzer.IsLowQuality(s, symbol.Name, customLowQualityTerms) ||
                                                QualityAnalyzer.IsLowQuality(s, symbol.Name, LowQualityValues)))
         {
-            QualityAnalyzer.Report(context, symbol, SummaryTag, symbol.Name);
+            QualityAnalyzer.Report(context, symbol, SummaryTag, symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
         }
     }
 }

@@ -37,7 +37,7 @@ internal static class ExceptionAnalyzer
             var resolved = ResolveExceptionType(cref, context.Compilation);
             if (resolved != null && QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, customLowQualityTerms))
             {
-                QualityAnalyzer.Report(context, symbol, ExceptionTag, resolved.Name);
+                QualityAnalyzer.Report(context, symbol, ExceptionTag, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
             }
         }
     }
