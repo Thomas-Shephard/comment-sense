@@ -12,12 +12,15 @@ internal static class ReturnValueAnalyzer
     private const string ValueTag = "value";
     private const string NameProperty = "Name";
 
-    public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, XElement xml)
+    private static readonly ImmutableHashSet<string> DefaultReturnsKeywords = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, ReturnsTag, "return");
+    private static readonly ImmutableHashSet<string> DefaultValueKeywords = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, ValueTag);
+
+    public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, XElement xml, ImmutableHashSet<string> customLowQualityTerms)
     {
-        Analyze(context, method, method, xml);
+        Analyze(context, method, method, xml, customLowQualityTerms);
     }
 
-    public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, ISymbol reportSymbol, XElement xml)
+    public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, ISymbol reportSymbol, XElement xml, ImmutableHashSet<string> customLowQualityTerms)
     {
         var location = reportSymbol.Locations.GetPrimaryLocation();
         var symbolName = reportSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
@@ -46,14 +49,15 @@ internal static class ReturnValueAnalyzer
         else
         {
             var returnsElements = DocumentationExtensions.GetTargetElements(xml, ReturnsTag);
-            foreach (var _ in returnsElements.Where(e => QualityAnalyzer.IsLowQuality(e, method.ReturnType.Name, [ReturnsTag, "return"])))
+            foreach (var _ in returnsElements.Where(e => QualityAnalyzer.IsLowQuality(e, method.ReturnType.Name, customLowQualityTerms) ||
+                                                         QualityAnalyzer.IsLowQuality(e, method.ReturnType.Name, DefaultReturnsKeywords)))
             {
                 QualityAnalyzer.Report(context, reportSymbol, ReturnsTag, symbolName);
             }
         }
     }
 
-    public static void Analyze(SymbolAnalysisContext context, IPropertySymbol property, XElement xml)
+    public static void Analyze(SymbolAnalysisContext context, IPropertySymbol property, XElement xml, ImmutableHashSet<string> customLowQualityTerms)
     {
         var location = property.Locations.GetPrimaryLocation();
         var symbolName = property.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
@@ -77,7 +81,9 @@ internal static class ReturnValueAnalyzer
         else
         {
             var valueElements = DocumentationExtensions.GetTargetElements(xml, ValueTag);
-            foreach (var _ in valueElements.Where(e => QualityAnalyzer.IsLowQuality(e, property.Type.Name, [ValueTag]) || QualityAnalyzer.IsLowQuality(e, property.Name)))
+            foreach (var _ in valueElements.Where(e => QualityAnalyzer.IsLowQuality(e, property.Type.Name, customLowQualityTerms) ||
+                                                       QualityAnalyzer.IsLowQuality(e, property.Type.Name, DefaultValueKeywords) ||
+                                                       QualityAnalyzer.IsLowQuality(e, property.Name, customLowQualityTerms)))
             {
                 QualityAnalyzer.Report(context, property, ValueTag, symbolName);
             }

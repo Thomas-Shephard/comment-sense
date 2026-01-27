@@ -9,7 +9,7 @@ namespace CommentSense.TestHelpers;
 public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()
 {
-    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true, CompilerDiagnostics compilerDiagnostics = CompilerDiagnostics.Errors, IEnumerable<(string Id, ReportDiagnostic Severity)>? diagnosticOptions = null)
+    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true, CompilerDiagnostics compilerDiagnostics = CompilerDiagnostics.Errors, IEnumerable<(string Id, ReportDiagnostic Severity)>? diagnosticOptions = null, IDictionary<string, string>? configOptions = null)
     {
         var tester = new CSharpAnalyzerTest<TAnalyzer, NUnitVerifier>
         {
@@ -17,6 +17,12 @@ public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
             MarkupOptions = MarkupOptions.UseFirstDescriptor,
             CompilerDiagnostics = compilerDiagnostics
         };
+
+        if (configOptions != null)
+        {
+            var configText = "is_global = true\n" + string.Join("\n", configOptions.Select(kv => $"{kv.Key} = {kv.Value}"));
+            tester.TestState.AnalyzerConfigFiles.Add(("/.editorconfig", configText));
+        }
 
         if (diagnosticOptions != null)
         {

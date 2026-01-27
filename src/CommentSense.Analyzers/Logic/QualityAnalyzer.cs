@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -6,7 +7,7 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class QualityAnalyzer
 {
-    public static bool IsLowQuality(XElement element, string symbolName, string[]? lowQualityKeywords = null)
+    public static bool IsLowQuality(XElement element, string symbolName, IImmutableSet<string>? lowQualityKeywords = null)
     {
         if (element.HasElements)
             return false;
@@ -14,7 +15,7 @@ internal static class QualityAnalyzer
         return IsLowQualityInternal(element.Value, symbolName, lowQualityKeywords);
     }
 
-    private static bool IsLowQualityInternal(string? content, string symbolName, string[]? lowQualityKeywords = null)
+    private static bool IsLowQualityInternal(string? content, string symbolName, IImmutableSet<string>? lowQualityKeywords = null)
     {
         if (content is null || string.IsNullOrWhiteSpace(content))
             return true;
@@ -30,7 +31,7 @@ internal static class QualityAnalyzer
         if (lowQualityKeywords is null)
             return false;
 
-        return lowQualityKeywords.Any(keyword => string.Equals(normalized, keyword, StringComparison.OrdinalIgnoreCase));
+        return lowQualityKeywords.Contains(normalized);
     }
 
     public static void Report(SymbolAnalysisContext context, ISymbol symbol, string tagName, string targetName)

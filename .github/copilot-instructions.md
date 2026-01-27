@@ -63,3 +63,9 @@ When reviewing code or suggesting changes, you **MUST** check for the following:
 4.  **Test Coverage:** Ensure new rules or logic branches have corresponding `[Test]` cases in the relevant test projects.
 5.  **Performance:** Ensure `AnalyzeSymbol` is efficient and returns early for ineligible symbols (using `AnalyzerExtensions.IsEligibleForAnalysis`).
 6.  **Backward Compatibility:** Do not change existing diagnostic IDs or significantly alter their triggering logic without a major version bump considerations.
+
+## 7. Configuration Options
+The analyzer supports the following `.editorconfig` options:
+*   `comment_sense.low_quality_terms`: Comma-separated list of terms to flag as low quality.
+*   `comment_sense.ignored_exceptions`: Comma-separated list of exceptions to ignore.
+*   `comment_sense.analyze_internal`: Boolean to enable analysis of internal members.
