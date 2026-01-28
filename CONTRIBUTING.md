@@ -39,5 +39,11 @@ To ensure that changes work as expected, follow these steps:
 - Write tests for all new features or bug fixes
 - Ensure all tests pass before submitting a pull request
 
+## Release Process
+This project uses [MinVer](https://github.com/adamralph/minver) for versioning.
+
+Versions are automatically determined by Git tags in the format `vMAJOR.MINOR.PATCH`.
+To create a new release, use the GitHub UI to create a new "Release", which will automatically create the required Git tag and trigger the deployment workflow.
+
 ## License
 By contributing to CommentSense, you agree that your contributions will be licensed under the MIT License.
