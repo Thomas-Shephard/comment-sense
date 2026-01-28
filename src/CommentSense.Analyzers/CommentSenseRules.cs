@@ -8,158 +8,163 @@ internal static class CommentSenseRules
 {
     private const string Category = "Documentation";
 
+    private static LocalizableResourceString CreateResourceString(string name)
+    {
+        return new LocalizableResourceString(name, Resources.ResourceManager, typeof(Resources));
+    }
+
     public static readonly DiagnosticDescriptor MissingDocumentationRule = new(
         CommentSenseDiagnosticIds.MissingDocumentationId,
-        "Public API is missing documentation",
-        "The symbol '{0}' is missing valid documentation",
+        CreateResourceString(nameof(Resources.MissingDocumentationTitle)),
+        CreateResourceString(nameof(Resources.MissingDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Publicly accessible APIs should be documented to ensure maintainability and clarity.");
+        description: CreateResourceString(nameof(Resources.MissingDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor MissingParameterDocumentationRule = new(
         CommentSenseDiagnosticIds.MissingParameterDocumentationId,
-        "Missing parameter documentation",
-        "The parameter '{0}' is missing documentation",
+        CreateResourceString(nameof(Resources.MissingParameterDocumentationTitle)),
+        CreateResourceString(nameof(Resources.MissingParameterDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "All parameters of a publicly accessible member should be documented.");
+        description: CreateResourceString(nameof(Resources.MissingParameterDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor StrayParameterDocumentationRule = new(
         CommentSenseDiagnosticIds.StrayParameterDocumentationId,
-        "Stray parameter documentation",
-        "The parameter '{0}' in the documentation does not exist in the signature",
+        CreateResourceString(nameof(Resources.StrayParameterDocumentationTitle)),
+        CreateResourceString(nameof(Resources.StrayParameterDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Documentation should not contain <param> tags for parameters that do not exist.");
+        description: CreateResourceString(nameof(Resources.StrayParameterDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor MissingTypeParameterDocumentationRule = new(
         CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId,
-        "Missing type parameter documentation",
-        "The type parameter '{0}' is missing documentation",
+        CreateResourceString(nameof(Resources.MissingTypeParameterDocumentationTitle)),
+        CreateResourceString(nameof(Resources.MissingTypeParameterDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "All type parameters of a publicly accessible member should be documented.");
+        description: CreateResourceString(nameof(Resources.MissingTypeParameterDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor StrayTypeParameterDocumentationRule = new(
         CommentSenseDiagnosticIds.StrayTypeParameterDocumentationId,
-        "Stray type parameter documentation",
-        "The type parameter '{0}' in the documentation does not exist in the signature",
+        CreateResourceString(nameof(Resources.StrayTypeParameterDocumentationTitle)),
+        CreateResourceString(nameof(Resources.StrayTypeParameterDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Documentation should not contain <typeparam> tags for type parameters that do not exist.");
+        description: CreateResourceString(nameof(Resources.StrayTypeParameterDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor MissingReturnValueDocumentationRule = new(
         CommentSenseDiagnosticIds.MissingReturnValueDocumentationId,
-        "Missing return value documentation",
-        "The symbol '{0}' is missing return value documentation",
+        CreateResourceString(nameof(Resources.MissingReturnValueDocumentationTitle)),
+        CreateResourceString(nameof(Resources.MissingReturnValueDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Publicly accessible non-void members should have a <returns> tag to document the return value.");
+        description: CreateResourceString(nameof(Resources.MissingReturnValueDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor UnresolvedCrefRule = new(
         CommentSenseDiagnosticIds.UnresolvedCrefId,
-        "Invalid XML documentation reference",
-        "The cref reference '{0}' could not be resolved",
+        CreateResourceString(nameof(Resources.UnresolvedCrefTitle)),
+        CreateResourceString(nameof(Resources.UnresolvedCrefMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "The 'cref' attribute in XML documentation must refer to a valid symbol.");
+        description: CreateResourceString(nameof(Resources.UnresolvedCrefDescription)));
 
     public static readonly DiagnosticDescriptor ParameterOrderMismatchRule = new(
         CommentSenseDiagnosticIds.ParameterOrderMismatchId,
-        "Parameter documentation order mismatch",
-        "The parameter '{0}' is documented out of order",
+        CreateResourceString(nameof(Resources.ParameterOrderMismatchTitle)),
+        CreateResourceString(nameof(Resources.ParameterOrderMismatchMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "The order of <param> tags should match the order of parameters in the member signature.");
+        description: CreateResourceString(nameof(Resources.ParameterOrderMismatchDescription)));
 
     public static readonly DiagnosticDescriptor DuplicateParameterDocumentationRule = new(
         CommentSenseDiagnosticIds.DuplicateParameterDocumentationId,
-        "Duplicate parameter documentation",
-        "The parameter '{0}' is documented more than once",
+        CreateResourceString(nameof(Resources.DuplicateParameterDocumentationTitle)),
+        CreateResourceString(nameof(Resources.DuplicateParameterDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Each parameter should only be documented once.");
+        description: CreateResourceString(nameof(Resources.DuplicateParameterDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor TypeParameterOrderMismatchRule = new(
         CommentSenseDiagnosticIds.TypeParameterOrderMismatchId,
-        "Type parameter documentation order mismatch",
-        "The type parameter '{0}' is documented out of order",
+        CreateResourceString(nameof(Resources.TypeParameterOrderMismatchTitle)),
+        CreateResourceString(nameof(Resources.TypeParameterOrderMismatchMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "The order of <typeparam> tags should match the order of type parameters in the member signature.");
+        description: CreateResourceString(nameof(Resources.TypeParameterOrderMismatchDescription)));
 
     public static readonly DiagnosticDescriptor DuplicateTypeParameterDocumentationRule = new(
         CommentSenseDiagnosticIds.DuplicateTypeParameterDocumentationId,
-        "Duplicate type parameter documentation",
-        "The type parameter '{0}' is documented more than once",
+        CreateResourceString(nameof(Resources.DuplicateTypeParameterDocumentationTitle)),
+        CreateResourceString(nameof(Resources.DuplicateTypeParameterDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Each type parameter should only be documented once.");
+        description: CreateResourceString(nameof(Resources.DuplicateTypeParameterDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor MissingExceptionDocumentationRule = new(
         CommentSenseDiagnosticIds.MissingExceptionDocumentationId,
-        "Missing exception documentation",
-        "The exception type '{0}' is thrown but not documented",
+        CreateResourceString(nameof(Resources.MissingExceptionDocumentationTitle)),
+        CreateResourceString(nameof(Resources.MissingExceptionDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "All exceptions explicitly thrown by a publicly accessible member should be documented with an <exception> tag.");
+        description: CreateResourceString(nameof(Resources.MissingExceptionDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor StrayReturnValueDocumentationRule = new(
         CommentSenseDiagnosticIds.StrayReturnValueDocumentationId,
-        "Stray return value documentation",
-        "The symbol '{0}' should not have return value documentation",
+        CreateResourceString(nameof(Resources.StrayReturnValueDocumentationTitle)),
+        CreateResourceString(nameof(Resources.StrayReturnValueDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Documentation should not contain <returns> tags for members that do not return a value or for properties/indexers.");
+        description: CreateResourceString(nameof(Resources.StrayReturnValueDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor MissingValueDocumentationRule = new(
         CommentSenseDiagnosticIds.MissingValueDocumentationId,
-        "Missing value documentation",
-        "The symbol '{0}' is missing value documentation",
+        CreateResourceString(nameof(Resources.MissingValueDocumentationTitle)),
+        CreateResourceString(nameof(Resources.MissingValueDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: false,
-        description: "Publicly accessible properties and indexers should have a <value> tag to document the value they represent.");
+        description: CreateResourceString(nameof(Resources.MissingValueDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor StrayValueDocumentationRule = new(
         CommentSenseDiagnosticIds.StrayValueDocumentationId,
-        "Stray value documentation",
-        "The symbol '{0}' should not have value documentation",
+        CreateResourceString(nameof(Resources.StrayValueDocumentationTitle)),
+        CreateResourceString(nameof(Resources.StrayValueDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Documentation should not contain <value> tags for methods.");
+        description: CreateResourceString(nameof(Resources.StrayValueDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor LowQualityDocumentationRule = new(
         CommentSenseDiagnosticIds.LowQualityDocumentationId,
-        "Low-quality documentation",
-        "The {0} documentation for '{1}' is low-quality",
+        CreateResourceString(nameof(Resources.LowQualityDocumentationTitle)),
+        CreateResourceString(nameof(Resources.LowQualityDocumentationMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Documentation should provide value and not just repeat the member name or be empty.");
+        description: CreateResourceString(nameof(Resources.LowQualityDocumentationDescription)));
 
     public static readonly DiagnosticDescriptor InvalidExceptionTypeRule = new(
         CommentSenseDiagnosticIds.InvalidExceptionTypeId,
-        "Invalid exception type",
-        "The documented exception type '{0}' is not an Exception",
+        CreateResourceString(nameof(Resources.InvalidExceptionTypeTitle)),
+        CreateResourceString(nameof(Resources.InvalidExceptionTypeMessage)),
         Category,
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "The type referenced in the <exception> tag must derive from System.Exception.");
+        description: CreateResourceString(nameof(Resources.InvalidExceptionTypeDescription)));
 
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics = [
         MissingDocumentationRule,
