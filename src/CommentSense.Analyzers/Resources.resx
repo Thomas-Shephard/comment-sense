@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="MissingDocumentationTitle" xml:space="preserve">
+    <value>Public API is missing documentation</value>
+  </data>
+  <data name="MissingDocumentationMessage" xml:space="preserve">
+    <value>The symbol '{0}' is missing valid documentation</value>
+  </data>
+  <data name="MissingDocumentationDescription" xml:space="preserve">
+    <value>Publicly accessible APIs should be documented to ensure maintainability and clarity.</value>
+  </data>
+  <data name="MissingParameterDocumentationTitle" xml:space="preserve">
+    <value>Missing parameter documentation</value>
+  </data>
+  <data name="MissingParameterDocumentationMessage" xml:space="preserve">
+    <value>The parameter '{0}' is missing documentation</value>
+  </data>
+  <data name="MissingParameterDocumentationDescription" xml:space="preserve">
+    <value>All parameters of a publicly accessible member should be documented.</value>
+  </data>
+  <data name="StrayParameterDocumentationTitle" xml:space="preserve">
+    <value>Stray parameter documentation</value>
+  </data>
+  <data name="StrayParameterDocumentationMessage" xml:space="preserve">
+    <value>The parameter '{0}' in the documentation does not exist in the signature</value>
+  </data>
+  <data name="StrayParameterDocumentationDescription" xml:space="preserve">
+    <value>Documentation should not contain &lt;param&gt; tags for parameters that do not exist.</value>
+  </data>
+  <data name="MissingTypeParameterDocumentationTitle" xml:space="preserve">
+    <value>Missing type parameter documentation</value>
+  </data>
+  <data name="MissingTypeParameterDocumentationMessage" xml:space="preserve">
+    <value>The type parameter '{0}' is missing documentation</value>
+  </data>
+  <data name="MissingTypeParameterDocumentationDescription" xml:space="preserve">
+    <value>All type parameters of a publicly accessible member should be documented.</value>
+  </data>
+  <data name="StrayTypeParameterDocumentationTitle" xml:space="preserve">
+    <value>Stray type parameter documentation</value>
+  </data>
+  <data name="StrayTypeParameterDocumentationMessage" xml:space="preserve">
+    <value>The type parameter '{0}' in the documentation does not exist in the signature</value>
+  </data>
+  <data name="StrayTypeParameterDocumentationDescription" xml:space="preserve">
+    <value>Documentation should not contain &lt;typeparam&gt; tags for type parameters that do not exist.</value>
+  </data>
+  <data name="MissingReturnValueDocumentationTitle" xml:space="preserve">
+    <value>Missing return value documentation</value>
+  </data>
+  <data name="MissingReturnValueDocumentationMessage" xml:space="preserve">
+    <value>The symbol '{0}' is missing return value documentation</value>
+  </data>
+  <data name="MissingReturnValueDocumentationDescription" xml:space="preserve">
+    <value>Publicly accessible non-void members should have a &lt;returns&gt; tag to document the return value.</value>
+  </data>
+  <data name="UnresolvedCrefTitle" xml:space="preserve">
+    <value>Invalid XML documentation reference</value>
+  </data>
+  <data name="UnresolvedCrefMessage" xml:space="preserve">
+    <value>The cref reference '{0}' could not be resolved</value>
+  </data>
+  <data name="UnresolvedCrefDescription" xml:space="preserve">
+    <value>The 'cref' attribute in XML documentation must refer to a valid symbol.</value>
+  </data>
+  <data name="ParameterOrderMismatchTitle" xml:space="preserve">
+    <value>Parameter documentation order mismatch</value>
+  </data>
+  <data name="ParameterOrderMismatchMessage" xml:space="preserve">
+    <value>The parameter '{0}' is documented out of order</value>
+  </data>
+  <data name="ParameterOrderMismatchDescription" xml:space="preserve">
+    <value>The order of &lt;param&gt; tags should match the order of parameters in the member signature.</value>
+  </data>
+  <data name="DuplicateParameterDocumentationTitle" xml:space="preserve">
+    <value>Duplicate parameter documentation</value>
+  </data>
+  <data name="DuplicateParameterDocumentationMessage" xml:space="preserve">
+    <value>The parameter '{0}' is documented more than once</value>
+  </data>
+  <data name="DuplicateParameterDocumentationDescription" xml:space="preserve">
+    <value>Each parameter should only be documented once.</value>
+  </data>
+  <data name="TypeParameterOrderMismatchTitle" xml:space="preserve">
+    <value>Type parameter documentation order mismatch</value>
+  </data>
+  <data name="TypeParameterOrderMismatchMessage" xml:space="preserve">
+    <value>The type parameter '{0}' is documented out of order</value>
+  </data>
+  <data name="TypeParameterOrderMismatchDescription" xml:space="preserve">
+    <value>The order of &lt;typeparam&gt; tags should match the order of type parameters in the member signature.</value>
+  </data>
+  <data name="DuplicateTypeParameterDocumentationTitle" xml:space="preserve">
+    <value>Duplicate type parameter documentation</value>
+  </data>
+  <data name="DuplicateTypeParameterDocumentationMessage" xml:space="preserve">
+    <value>The type parameter '{0}' is documented more than once</value>
+  </data>
+  <data name="DuplicateTypeParameterDocumentationDescription" xml:space="preserve">
+    <value>Each type parameter should only be documented once.</value>
+  </data>
+  <data name="MissingExceptionDocumentationTitle" xml:space="preserve">
+    <value>Missing exception documentation</value>
+  </data>
+  <data name="MissingExceptionDocumentationMessage" xml:space="preserve">
+    <value>The exception type '{0}' is thrown but not documented</value>
+  </data>
+  <data name="MissingExceptionDocumentationDescription" xml:space="preserve">
+    <value>All exceptions explicitly thrown by a publicly accessible member should be documented with an &lt;exception&gt; tag.</value>
+  </data>
+  <data name="StrayReturnValueDocumentationTitle" xml:space="preserve">
+    <value>Stray return value documentation</value>
+  </data>
+  <data name="StrayReturnValueDocumentationMessage" xml:space="preserve">
+    <value>The symbol '{0}' should not have return value documentation</value>
+  </data>
+  <data name="StrayReturnValueDocumentationDescription" xml:space="preserve">
+    <value>Documentation should not contain &lt;returns&gt; tags for members that do not return a value or for properties/indexers.</value>
+  </data>
+  <data name="MissingValueDocumentationTitle" xml:space="preserve">
+    <value>Missing value documentation</value>
+  </data>
+  <data name="MissingValueDocumentationMessage" xml:space="preserve">
+    <value>The symbol '{0}' is missing value documentation</value>
+  </data>
+  <data name="MissingValueDocumentationDescription" xml:space="preserve">
+    <value>Publicly accessible properties and indexers should have a &lt;value&gt; tag to document the value they represent.</value>
+  </data>
+  <data name="StrayValueDocumentationTitle" xml:space="preserve">
+    <value>Stray value documentation</value>
+  </data>
+  <data name="StrayValueDocumentationMessage" xml:space="preserve">
+    <value>The symbol '{0}' should not have value documentation</value>
+  </data>
+  <data name="StrayValueDocumentationDescription" xml:space="preserve">
+    <value>Documentation should not contain &lt;value&gt; tags for methods.</value>
+  </data>
+  <data name="LowQualityDocumentationTitle" xml:space="preserve">
+    <value>Low-quality documentation</value>
+  </data>
+  <data name="LowQualityDocumentationMessage" xml:space="preserve">
+    <value>The {0} documentation for '{1}' is low-quality</value>
+  </data>
+  <data name="LowQualityDocumentationDescription" xml:space="preserve">
+    <value>Documentation should provide value and not just repeat the member name or be empty.</value>
+  </data>
+  <data name="InvalidExceptionTypeTitle" xml:space="preserve">
+    <value>Invalid exception type</value>
+  </data>
+  <data name="InvalidExceptionTypeMessage" xml:space="preserve">
+    <value>The documented exception type '{0}' is not an Exception</value>
+  </data>
+  <data name="InvalidExceptionTypeDescription" xml:space="preserve">
+    <value>The type referenced in the &lt;exception&gt; tag must derive from System.Exception.</value>
+  </data>
+</root>
