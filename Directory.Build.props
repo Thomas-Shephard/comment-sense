@@ -18,6 +18,8 @@
     <Copyright>Copyright (c) $([System.DateTime]::Now.ToString("yyyy")) $(Authors)</Copyright>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>A Roslyn-based analyzer to enforce meaningful XML documentation comments for C#.</Description>
+    <PackageTags>roslyn;analyzer;documentation;csharp;xml-docs;comments</PackageTags>
     <RepositoryUrl>https://github.com/Thomas-Shephard/comment-sense</RepositoryUrl>
     <IsPackable>false</IsPackable>
     <MinVerTagPrefix>v</MinVerTagPrefix>
