@@ -518,5 +518,32 @@ namespace CommentSense.Analyzers {
                 return ResourceManager.GetString("InvalidExceptionTypeDescription", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to DisabledDocumentationParsingTitle.
+        /// </summary>
+        internal static string DisabledDocumentationParsingTitle {
+            get {
+                return ResourceManager.GetString("DisabledDocumentationParsingTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to DisabledDocumentationParsingMessage.
+        /// </summary>
+        internal static string DisabledDocumentationParsingMessage {
+            get {
+                return ResourceManager.GetString("DisabledDocumentationParsingMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to DisabledDocumentationParsingDescription.
+        /// </summary>
+        internal static string DisabledDocumentationParsingDescription {
+            get {
+                return ResourceManager.GetString("DisabledDocumentationParsingDescription", resourceCulture);
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@ namespace CommentSense.Core;
 
 internal static class CommentSenseDiagnosticIds
 {
+    public const string DisabledDocumentationParsingId = "CSENSE000";
     public const string MissingDocumentationId = "CSENSE001";
     public const string MissingParameterDocumentationId = "CSENSE002";
     public const string StrayParameterDocumentationId = "CSENSE003";

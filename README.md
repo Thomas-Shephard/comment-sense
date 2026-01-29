@@ -1,7 +1,20 @@
 # CommentSense
 CommentSense is a Roslyn-based diagnostic analyzer for C# designed to ensure that public-facing APIs are consistently and meaningfully documented.
 
+## Requirements
+
+For CommentSense to analyze your documentation, your project must have XML documentation generation enabled. Add the following property to your `.csproj` file:
+
+```xml
+<PropertyGroup>
+  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+</PropertyGroup>
+```
+
 ## Rules
+
+### Project Configuration
+*   **CSENSE000**: Warns when XML documentation parsing is disabled for the project. CommentSense relies on the compiler's documentation parsing to analyze your code. Enable it by following the [Requirements](#requirements) section above.
 
 ### General Documentation
 *   **CSENSE001**: Ensures public members have XML documentation (e.g., `<summary>`, `<inheritdoc />`, or other content tags).

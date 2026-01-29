@@ -17,31 +17,56 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
 
-        context.RegisterSymbolAction(AnalyzeSymbol,
-            SymbolKind.NamedType,
-            SymbolKind.Method,
-            SymbolKind.Property,
-            SymbolKind.Field,
-            SymbolKind.Event);
+        context.RegisterCompilationStartAction(compilationContext =>
+        {
+            var hasEnabled = false;
+            var hasDisabled = false;
 
-        context.RegisterSyntaxNodeAction(CrefAnalyzer.Analyze, SyntaxKind.XmlCrefAttribute);
+            foreach (var tree in compilationContext.Compilation.SyntaxTrees)
+            {
+                var isNone = tree.IsDocumentationModeNone();
+                hasEnabled |= !isNone;
+                hasDisabled |= isNone;
+
+                if (hasEnabled && hasDisabled) break;
+            }
+
+            if (hasDisabled)
+            {
+                compilationContext.RegisterCompilationEndAction(ctx =>
+                    ctx.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.DisabledDocumentationParsingRule, Location.None)));
+            }
+
+            if (!hasEnabled)
+                return;
+
+            compilationContext.RegisterSymbolAction(AnalyzeSymbol,
+                SymbolKind.NamedType,
+                SymbolKind.Method,
+                SymbolKind.Property,
+                SymbolKind.Field,
+                SymbolKind.Event);
+
+            compilationContext.RegisterSyntaxNodeAction(CrefAnalyzer.Analyze, SyntaxKind.XmlCrefAttribute);
+        });
     }
 
     private static void AnalyzeSymbol(SymbolAnalysisContext context)
     {
         var symbol = context.Symbol;
-        var tree = symbol.Locations.GetPrimaryLocation().SourceTree;
+        SyntaxTree? tree = (from location in symbol.Locations where !location.SourceTree.IsDocumentationModeNone() select location.SourceTree).FirstOrDefault();
 
-        var analyzeInternal = false;
-        ImmutableHashSet<string> lowQualityTerms = [];
-        ImmutableHashSet<string> ignoredExceptions = [];
+        if (tree is null)
+            return;
 
-        if (tree is not null)
-        {
-            analyzeInternal = AnalyzerOptions.GetBoolOption(context.Options.AnalyzerConfigOptionsProvider, tree, "analyze_internal", defaultValue: false);
-            lowQualityTerms = AnalyzerOptions.GetStringListOption(context.Options.AnalyzerConfigOptionsProvider, tree, "low_quality_terms");
-            ignoredExceptions = AnalyzerOptions.GetStringListOption(context.Options.AnalyzerConfigOptionsProvider, tree, "ignored_exceptions");
-        }
+        AnalyzeSymbolCore(context, symbol, tree);
+    }
+
+    private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, SyntaxTree tree)
+    {
+        var analyzeInternal = AnalyzerOptions.GetBoolOption(context.Options.AnalyzerConfigOptionsProvider, tree, "analyze_internal", defaultValue: false);
+        var lowQualityTerms = AnalyzerOptions.GetStringListOption(context.Options.AnalyzerConfigOptionsProvider, tree, "low_quality_terms");
+        var ignoredExceptions = AnalyzerOptions.GetStringListOption(context.Options.AnalyzerConfigOptionsProvider, tree, "ignored_exceptions");
 
         if (!symbol.IsEligibleForAnalysis(analyzeInternal))
             return;

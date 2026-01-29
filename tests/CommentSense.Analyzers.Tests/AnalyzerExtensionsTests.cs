@@ -303,4 +303,27 @@ public class AnalyzerExtensionsTests
             Assert.That(cref.IsInExceptionTag(), Is.False);
         }
     }
+
+    [Test]
+    public void IsDocumentationModeNoneReturnsTrueForNullTree()
+    {
+        SyntaxTree? tree = null;
+        Assert.That(tree.IsDocumentationModeNone(), Is.True);
+    }
+
+    [Test]
+    public void IsDocumentationModeNoneReturnsTrueForNoneMode()
+    {
+        var options = new CSharpParseOptions(documentationMode: DocumentationMode.None);
+        var tree = CSharpSyntaxTree.ParseText("", options);
+        Assert.That(tree.IsDocumentationModeNone(), Is.True);
+    }
+
+    [Test]
+    public void IsDocumentationModeNoneReturnsFalseForParseMode()
+    {
+        var options = new CSharpParseOptions(documentationMode: DocumentationMode.Parse);
+        var tree = CSharpSyntaxTree.ParseText("", options);
+        Assert.That(tree.IsDocumentationModeNone(), Is.False);
+    }
 }
