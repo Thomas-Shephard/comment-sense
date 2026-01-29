@@ -244,4 +244,72 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
 
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task SummaryWithChildElementsIsNotLowQuality()
+    {
+        const string testCode = """
+            using System;
+            /// <summary><see cref="String"/></summary>
+            public class MyClass
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task FieldSummaryIsAnalyzed()
+    {
+        // Field "F" with summary "F" should be low quality
+        const string testCode = """
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>F</summary>
+                public int {|CSENSE016:F|};
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task EventSummaryIsAnalyzed()
+    {
+        // Event "E" with summary "E" should be low quality
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>E</summary>
+                public event EventHandler {|CSENSE016:E|};
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task EventWithAccessorsSummaryIsAnalyzed()
+    {
+        // Event with accessors
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>E</summary>
+                public event EventHandler {|CSENSE016:E|}
+                {
+                    add { }
+                    remove { }
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }
