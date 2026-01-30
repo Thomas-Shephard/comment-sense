@@ -9,7 +9,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     public async Task PublicClassWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
-            public class [|MyClass|]
+            public class {|CSENSE001:MyClass|}
             {
             }
             """;
@@ -24,7 +24,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                public void [|MyMethod|]() { }
+                public void {|CSENSE001:MyMethod|}() { }
             }
             """;
 
@@ -64,7 +64,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                public int [|MyField|];
+                public int {|CSENSE001:MyField|};
             }
             """;
 
@@ -78,7 +78,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                public int [|MyProperty|] { get; set; }
+                public int {|CSENSE001:MyProperty|} { get; set; }
             }
             """;
 
@@ -93,7 +93,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                public event EventHandler [|MyEvent|];
+                public event EventHandler {|CSENSE001:MyEvent|};
             }
             """;
 
@@ -144,7 +144,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     {
         const string testCode = """
             /// <para>This tag alone is not considered valid documentation by our rules</para>
-            public class [|MyClass|]
+            public class {|CSENSE001:MyClass|}
             {
             }
             """;

@@ -13,6 +13,16 @@ internal static class CommentSenseRules
         return new LocalizableResourceString(name, Resources.ResourceManager, typeof(Resources));
     }
 
+    public static readonly DiagnosticDescriptor DisabledDocumentationParsingRule = new(
+        CommentSenseDiagnosticIds.DisabledDocumentationParsingId,
+        CreateResourceString(nameof(Resources.DisabledDocumentationParsingTitle)),
+        CreateResourceString(nameof(Resources.DisabledDocumentationParsingMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.DisabledDocumentationParsingDescription)),
+        customTags: WellKnownDiagnosticTags.CompilationEnd);
+
     public static readonly DiagnosticDescriptor MissingDocumentationRule = new(
         CommentSenseDiagnosticIds.MissingDocumentationId,
         CreateResourceString(nameof(Resources.MissingDocumentationTitle)),
@@ -166,7 +176,9 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: CreateResourceString(nameof(Resources.InvalidExceptionTypeDescription)));
 
-    public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics = [
+    public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =
+    [
+        DisabledDocumentationParsingRule,
         MissingDocumentationRule,
         MissingParameterDocumentationRule,
         StrayParameterDocumentationRule,

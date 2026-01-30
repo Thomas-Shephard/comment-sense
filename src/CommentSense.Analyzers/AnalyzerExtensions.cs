@@ -85,4 +85,7 @@ internal static class AnalyzerExtensions
 
         return localName == "exception";
     }
+
+    public static bool IsDocumentationModeNone([System.Diagnostics.CodeAnalysis.NotNullWhen(false)] this SyntaxTree? tree)
+        => tree?.Options.DocumentationMode is null or DocumentationMode.None;
 }

@@ -9,7 +9,7 @@ namespace CommentSense.TestHelpers;
 public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()
 {
-    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true, CompilerDiagnostics compilerDiagnostics = CompilerDiagnostics.Errors, IEnumerable<(string Id, ReportDiagnostic Severity)>? diagnosticOptions = null, IDictionary<string, string>? configOptions = null)
+    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true, CompilerDiagnostics compilerDiagnostics = CompilerDiagnostics.Errors, IEnumerable<(string Id, ReportDiagnostic Severity)>? diagnosticOptions = null, IDictionary<string, string>? configOptions = null, DocumentationMode documentationMode = DocumentationMode.Parse, IEnumerable<DiagnosticResult>? expectedDiagnostics = null)
     {
         var tester = new CSharpAnalyzerTest<TAnalyzer, NUnitVerifier>
         {
@@ -17,6 +17,19 @@ public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
             MarkupOptions = MarkupOptions.UseFirstDescriptor,
             CompilerDiagnostics = compilerDiagnostics
         };
+
+        tester.SolutionTransforms.Add((solution, projectId) =>
+        {
+            var project = solution.GetProject(projectId);
+            if (project == null) return solution;
+
+            if (project.ParseOptions is Microsoft.CodeAnalysis.CSharp.CSharpParseOptions parseOptions)
+            {
+                return solution.WithProjectParseOptions(projectId, parseOptions.WithDocumentationMode(documentationMode));
+            }
+
+            return solution;
+        });
 
         if (configOptions != null)
         {
@@ -43,11 +56,16 @@ public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
             }
         }
 
-        if (expectDiagnostic && !source.Contains("{|") && !source.Contains("[|"))
-            Assert.Fail("expectDiagnostic is true but test code contains no diagnostic markers {| |} or [| |].");
+        if (expectedDiagnostics != null)
+        {
+            tester.ExpectedDiagnostics.AddRange(expectedDiagnostics);
+        }
 
-        if (!expectDiagnostic && (source.Contains("{|") || source.Contains("[|")))
-            Assert.Fail("Test code contains diagnostic markers {| |} or [| |] but expectDiagnostic is false.");
+        if (expectDiagnostic && !source.Contains("{|") && expectedDiagnostics == null)
+            Assert.Fail("expectDiagnostic is true but test code contains no diagnostic markers {| |} and no expectedDiagnostics were provided.");
+
+        if (!expectDiagnostic && source.Contains("{|"))
+            Assert.Fail("Test code contains diagnostic markers {| |} but expectDiagnostic is false.");
 
         await tester.RunAsync();
     }

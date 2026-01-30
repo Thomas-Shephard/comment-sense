@@ -211,4 +211,13 @@
   <data name="InvalidExceptionTypeDescription" xml:space="preserve">
     <value>The type referenced in the &lt;exception&gt; tag must derive from System.Exception.</value>
   </data>
+  <data name="DisabledDocumentationParsingTitle" xml:space="preserve">
+    <value>XML documentation parsing is disabled</value>
+  </data>
+  <data name="DisabledDocumentationParsingMessage" xml:space="preserve">
+    <value>XML documentation parsing is disabled for one or more files in this project. CommentSense requires it to be enabled.</value>
+  </data>
+  <data name="DisabledDocumentationParsingDescription" xml:space="preserve">
+    <value>CommentSense relies on the compiler's documentation parsing. Please enable it by adding &lt;GenerateDocumentationFile&gt;true&lt;/GenerateDocumentationFile&gt; to your project file.</value>
+  </data>
 </root>

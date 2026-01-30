@@ -4,6 +4,7 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|--------------------
+CSENSE000 | Documentation | Warning | XML documentation parsing is disabled
 CSENSE001 | Documentation | Warning | Public API is missing documentation
 CSENSE002 | Documentation | Warning | Missing parameter documentation
 CSENSE003 | Documentation | Warning | Stray parameter documentation
