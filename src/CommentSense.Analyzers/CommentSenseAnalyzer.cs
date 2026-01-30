@@ -7,11 +7,16 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace CommentSense.Analyzers;
 
+/// <summary>
+/// The main analyzer for CommentSense that enforces documentation quality rules.
+/// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class CommentSenseAnalyzer : DiagnosticAnalyzer
 {
+    /// <inheritdoc />
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => CommentSenseRules.SupportedDiagnostics;
 
+    /// <inheritdoc />
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
