@@ -20,10 +20,10 @@ internal static class QualityAnalyzer
         // For delegates, symbol is the DelegateInvokeMethod (IMethodSymbol).
         var tagName = symbol is IPropertySymbol ? ValueTag : ReturnsTag;
 
-        if (IsLowQuality(element, symbol.Name, options, tagName: tagName))
+        if (IsLowQualityForAnyFormat(element, symbol, options, tagName))
             return true;
 
-        if (!ReferenceEquals(symbol, targetSymbol) && IsLowQuality(element, targetSymbol.Name, options, tagName: tagName))
+        if (!ReferenceEquals(symbol, targetSymbol) && IsLowQualityForAnyFormat(element, targetSymbol, options, tagName))
             return true;
 
         if (type is null)
@@ -69,6 +69,16 @@ internal static class QualityAnalyzer
             return true;
 
         return options.SimilarityThreshold > 0.0 && CalculateSimilarity(normalized, symbolName) >= options.SimilarityThreshold;
+    }
+
+    public static bool IsLowQualityForAnyFormat(XElement element, ISymbol symbol, CommentSenseOptions options, string? tagName = null)
+    {
+        var displayName = symbol.GetDisplayName();
+        if (IsLowQuality(element, displayName, options, tagName: tagName))
+            return true;
+
+        var minimallyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+        return minimallyQualifiedName != displayName && IsLowQuality(element, minimallyQualifiedName, options, tagName: tagName);
     }
 
     private static bool HasEndingPunctuation(string content)

@@ -145,12 +145,12 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
     private static void ReportMissingDocs(SymbolAnalysisContext context, ISymbol symbol)
     {
         var location = symbol.Locations.GetPrimaryLocation();
-        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingDocumentationRule, location, symbol.Name));
+        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingDocumentationRule, location, symbol.GetDisplayName()));
     }
 
     private static void ReportMissingInheritDoc(SymbolAnalysisContext context, ISymbol symbol)
     {
         var location = symbol.Locations.GetPrimaryLocation();
-        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingInheritDocRule, location, symbol.Name));
+        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingInheritDocRule, location, symbol.GetDisplayName()));
     }
 }

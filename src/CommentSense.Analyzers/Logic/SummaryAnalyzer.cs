@@ -15,13 +15,11 @@ internal static class SummaryAnalyzer
         if (summaryElements.Count == 0)
             return;
 
-        foreach (var _ in summaryElements.Where(summaryElement => QualityAnalyzer.IsLowQuality(
-                     summaryElement,
-                     symbol.Name,
-                     options,
-                     tagName: SummaryTag)))
+        // Check for low-quality documentation against multiple symbol formats (e.g., friendly name and qualified name)
+        foreach (var _ in summaryElements.Where(summaryElement =>
+                     QualityAnalyzer.IsLowQualityForAnyFormat(summaryElement, symbol, options, SummaryTag)))
         {
-            QualityAnalyzer.Report(context, symbol, SummaryTag, symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+            QualityAnalyzer.Report(context, symbol, SummaryTag, symbol.GetDisplayName());
         }
     }
 }
