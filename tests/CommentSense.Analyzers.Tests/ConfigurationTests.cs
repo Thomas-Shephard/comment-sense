@@ -1,4 +1,5 @@
 using CommentSense.TestHelpers;
+using CommentSense.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using NUnit.Framework;
@@ -20,7 +21,7 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
             ["comment_sense.ignored_exceptions"] = "Ex1, Ex2",
             ["comment_sense.ignore_system_exceptions"] = "true",
             ["comment_sense.ignored_exception_namespaces"] = "System.Text",
-            ["comment_sense.analyze_internal"] = "true",
+            ["comment_sense.visibility_level"] = "Internal",
             ["comment_sense.allow_implicit_inheritdoc"] = "false",
             ["comment_sense.exclude_constants"] = "true"
         });
@@ -38,10 +39,26 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
             Assert.That(options.IgnoredExceptions, Contains.Item("Ex1"));
             Assert.That(options.IgnoreSystemExceptions, Is.True);
             Assert.That(options.IgnoredExceptionNamespaces, Contains.Item("System.Text"));
-            Assert.That(options.AnalyzeInternal, Is.True);
+            Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Internal));
             Assert.That(options.AllowImplicitInheritDoc, Is.False);
             Assert.That(options.ExcludeConstants, Is.True);
         }
+    }
+
+    [Test]
+    public void VisibilityLevelBackwardCompatibility()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.analyze_internal"] = "true"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>());
+
+        var provider = new CustomProvider(localOptions, globalOptions);
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var options = AnalyzerOptions.GetOptions(provider, null!);
+
+        Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Internal));
     }
 
     [Test]
@@ -172,6 +189,90 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
         };
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false, configOptions: config);
+    }
+
+    [Test]
+    public async Task PublicVisibilityLevelOnlyAnalyzesPublic()
+    {
+        const string testCode = """
+            public class {|CSENSE001:MyClass|}
+            {
+                public void {|CSENSE001:PublicMethod|}() { }
+                protected void ProtectedMethod() { }
+                internal void InternalMethod() { }
+                private void PrivateMethod() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.visibility_level"] = "Public"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
+
+    [Test]
+    public async Task ProtectedVisibilityLevelAnalyzesPublicAndProtected()
+    {
+        const string testCode = """
+            public class {|CSENSE001:MyClass|}
+            {
+                public void {|CSENSE001:PublicMethod|}() { }
+                protected void {|CSENSE001:ProtectedMethod|}() { }
+                internal void InternalMethod() { }
+                private void PrivateMethod() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.visibility_level"] = "Protected"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
+
+    [Test]
+    public async Task InternalVisibilityLevelAnalyzesPublicProtectedAndInternal()
+    {
+        const string testCode = """
+            public class {|CSENSE001:MyClass|}
+            {
+                public void {|CSENSE001:PublicMethod|}() { }
+                protected void {|CSENSE001:ProtectedMethod|}() { }
+                internal void {|CSENSE001:InternalMethod|}() { }
+                private void PrivateMethod() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.visibility_level"] = "Internal"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
+
+    [Test]
+    public async Task PrivateVisibilityLevelAnalyzesEverything()
+    {
+        const string testCode = """
+            public class {|CSENSE001:MyClass|}
+            {
+                public void {|CSENSE001:PublicMethod|}() { }
+                protected void {|CSENSE001:ProtectedMethod|}() { }
+                internal void {|CSENSE001:InternalMethod|}() { }
+                private void {|CSENSE001:PrivateMethod|}() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.visibility_level"] = "Private"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
     }
 
     [Test]

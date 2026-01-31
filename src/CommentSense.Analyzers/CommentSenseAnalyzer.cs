@@ -70,7 +70,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options)
     {
-        if (!symbol.IsEligibleForAnalysis(options.AnalyzeInternal))
+        if (!symbol.IsEligibleForAnalysis(options.VisibilityLevel))
             return;
 
         if (options.ExcludeConstants && symbol is IFieldSymbol { IsConst: true })

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using CommentSense.Core;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -238,7 +239,18 @@ public class AnalyzerExtensionsTests
         var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
         var method = symbol.GetMembers().First(m => m.Name == "M");
 
-        Assert.That(method.IsEligibleForAnalysis(includeInternal: true), Is.True);
+        Assert.That(method.IsEligibleForAnalysis(VisibilityLevel.Internal), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsFalseForUndefinedVisibilityLevel()
+    {
+        const string source = "public class C { public void M() {} }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var method = symbol.GetMembers().First(m => m.Name == "M");
+
+        // Cast an undefined value to VisibilityLevel to trigger the fallback case
+        Assert.That(method.IsEligibleForAnalysis((VisibilityLevel)999), Is.False);
     }
 
     [Test]

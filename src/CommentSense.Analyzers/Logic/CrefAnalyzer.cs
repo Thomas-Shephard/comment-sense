@@ -21,7 +21,7 @@ internal static class CrefAnalyzer
         var tree = context.Node.SyntaxTree;
         var options = AnalyzerOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
 
-        if (symbol is null || !symbol.IsEligibleForAnalysis(options.AnalyzeInternal))
+        if (symbol is null || !symbol.IsEligibleForAnalysis(options.VisibilityLevel))
             return;
 
         var cref = crefAttribute.Cref;

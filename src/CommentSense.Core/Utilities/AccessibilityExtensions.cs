@@ -4,7 +4,7 @@ namespace CommentSense.Core.Utilities;
 
 internal static class AccessibilityExtensions
 {
-    public static bool IsEffectivelyAccessible(this ISymbol? symbol, bool includeInternal = false)
+    public static bool IsEffectivelyAccessible(this ISymbol? symbol, VisibilityLevel visibilityLevel = VisibilityLevel.Protected)
     {
         if (symbol is null)
         {
@@ -19,23 +19,14 @@ internal static class AccessibilityExtensions
         var current = symbol;
         while (current is not null && current.Kind is not SymbolKind.Namespace)
         {
-            bool isAccessible;
-            if (includeInternal)
+            bool isAccessible = current.DeclaredAccessibility == Accessibility.NotApplicable || visibilityLevel switch
             {
-                // When including internal, only Private is hidden.
-                // Internal and ProtectedAndInternal (private protected) are now included.
-                isAccessible = current.DeclaredAccessibility != Accessibility.Private;
-            }
-            else
-            {
-                isAccessible = current.DeclaredAccessibility switch
-                {
-                    Accessibility.Private => false,
-                    Accessibility.ProtectedAndInternal => false,
-                    Accessibility.Internal => false,
-                    _ => true
-                };
-            }
+                VisibilityLevel.Public => current.DeclaredAccessibility == Accessibility.Public,
+                VisibilityLevel.Protected => current.DeclaredAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal,
+                VisibilityLevel.Internal => current.DeclaredAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal or Accessibility.Internal or Accessibility.ProtectedAndInternal,
+                VisibilityLevel.Private => true,
+                _ => false
+            };
 
             if (!isAccessible)
             {
