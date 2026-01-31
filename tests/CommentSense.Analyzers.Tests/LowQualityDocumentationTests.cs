@@ -268,4 +268,38 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
 
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task GenericListReturnDocumentationWithOnlyTypeNameIsFlagged()
+    {
+        const string testCode = """
+            using System.Collections.Generic;
+            /// <summary>Class summary</summary>
+            public class MyClass
+            {
+                /// <summary>Method summary that is long enough.</summary>
+                /// <returns>List</returns>
+                public List<int> {|CSENSE016:GetItems|}() => null;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task GenericListReturnDocumentationWithFullTypeNameIsFlagged()
+    {
+        const string testCode = """
+            using System.Collections.Generic;
+            /// <summary>Class summary</summary>
+            public class MyClass
+            {
+                /// <summary>Method summary that is long enough.</summary>
+                /// <returns>List&lt;int&gt;</returns>
+                public List<int> {|CSENSE016:GetItems|}() => null;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }

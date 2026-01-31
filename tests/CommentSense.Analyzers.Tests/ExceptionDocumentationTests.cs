@@ -846,4 +846,23 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
+
+    [Test]
+    public async Task ExceptionInPropertyAccessorDoesNotReportOnPrimaryConstructor()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a summary for the class.</summary>
+            /// <param name="id">The identifier.</param>
+            public class MyClass(int id)
+            {
+                internal int Id { 
+                    get => id;
+                    set => throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
 }

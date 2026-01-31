@@ -10,101 +10,86 @@ internal static class ReturnValueAnalyzer
 {
     private const string ReturnsTag = "returns";
     private const string ValueTag = "value";
-    private const string NameProperty = "Name";
 
-    private static readonly ImmutableHashSet<string> DefaultReturnsKeywords = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, ReturnsTag, "return");
-    private static readonly ImmutableHashSet<string> DefaultValueKeywords = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, ValueTag);
-
-    public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, XElement xml, ImmutableHashSet<string> customLowQualityTerms)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
     {
-        Analyze(context, method, method, xml, customLowQualityTerms);
+        Analyze(context, symbol, symbol, xml, options);
     }
 
-    public static void Analyze(SymbolAnalysisContext context, IMethodSymbol method, ISymbol reportSymbol, XElement xml, ImmutableHashSet<string> customLowQualityTerms)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, ISymbol targetSymbol, XElement xml, CommentSenseOptions options)
     {
-        var location = reportSymbol.Locations.GetPrimaryLocation();
-        var symbolName = reportSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+        var methodSymbol = symbol as IMethodSymbol;
+        var isTask = methodSymbol != null && methodSymbol.ReturnType.IsTaskType();
+        var isVoid = methodSymbol is { ReturnsVoid: true } || isTask;
 
-        // Methods should not have <value> tag
-        if (DocumentationExtensions.HasValueTag(xml))
-        {
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayValueDocumentationRule, location, symbolName));
-        }
-
-        bool effectivelyReturnsVoid = method.ReturnsVoid || IsTaskOrValueTask(method.ReturnType);
-        bool hasReturnsTag = DocumentationExtensions.HasReturnsTag(xml);
-
-        if (effectivelyReturnsVoid)
-        {
-            if (hasReturnsTag)
-            {
-                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, symbolName));
-            }
-        }
-        else if (!hasReturnsTag)
-        {
-            if (DocumentationExtensions.HasInheritDoc(xml) || DocumentationExtensions.HasAutoValidTag(xml))
-                return;
-
-            var properties = ImmutableDictionary<string, string?>.Empty.Add(NameProperty, ReturnsTag);
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
-        }
-        else
-        {
-            var returnsElements = DocumentationExtensions.GetTargetElements(xml, ReturnsTag);
-            foreach (var _ in returnsElements.Where(e => QualityAnalyzer.IsLowQuality(e, method.ReturnType.Name, customLowQualityTerms) ||
-                                                         QualityAnalyzer.IsLowQuality(e, method.ReturnType.Name, DefaultReturnsKeywords)))
-            {
-                QualityAnalyzer.Report(context, reportSymbol, ReturnsTag, symbolName);
-            }
-        }
+        if (targetSymbol is IPropertySymbol property)
+            AnalyzeProperty(context, property, targetSymbol, xml, options);
+        else if (methodSymbol != null)
+            AnalyzeMethod(context, methodSymbol, targetSymbol, xml, options, isVoid);
     }
 
-    public static void Analyze(SymbolAnalysisContext context, IPropertySymbol property, XElement xml, ImmutableHashSet<string> customLowQualityTerms)
+    private static void AnalyzeProperty(SymbolAnalysisContext context, IPropertySymbol property, ISymbol targetSymbol, XElement xml, CommentSenseOptions options)
     {
-        var location = property.Locations.GetPrimaryLocation();
-        var symbolName = property.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+        var hasInheritDoc = DocumentationExtensions.HasInheritDoc(xml);
+        var hasAutoValidTag = DocumentationExtensions.HasAutoValidTag(xml);
 
-        // Properties and indexers should not have <returns> tag
-        if (DocumentationExtensions.HasReturnsTag(xml))
+        // CSENSE014: Missing <value> documentation
+        if (property.GetMethod is not null && !DocumentationExtensions.HasValueTag(xml) && !hasInheritDoc && !hasAutoValidTag)
         {
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, symbolName));
-        }
-
-        bool hasValueTag = DocumentationExtensions.HasValueTag(xml);
-
-        if (property.GetMethod == null)
-            return;
-
-        if (!hasValueTag)
-        {
-            if (DocumentationExtensions.HasInheritDoc(xml) || DocumentationExtensions.HasAutoValidTag(xml))
-                return;
-
-            var properties = ImmutableDictionary<string, string?>.Empty.Add(NameProperty, ValueTag);
+            var location = targetSymbol.Locations.GetPrimaryLocation();
+            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", ValueTag);
+            var symbolName = targetSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingValueDocumentationRule, location, properties, symbolName));
         }
-        else
+
+        // CSENSE013: Stray <returns> tag on property
+        if (DocumentationExtensions.HasReturnsTag(xml))
         {
-            var valueElements = DocumentationExtensions.GetTargetElements(xml, ValueTag);
-            foreach (var _ in valueElements.Where(e => QualityAnalyzer.IsLowQuality(e, property.Type.Name, customLowQualityTerms) ||
-                                                       QualityAnalyzer.IsLowQuality(e, property.Type.Name, DefaultValueKeywords) ||
-                                                       QualityAnalyzer.IsLowQuality(e, property.Name, customLowQualityTerms)))
-            {
-                QualityAnalyzer.Report(context, property, ValueTag, symbolName);
-            }
+            var location = targetSymbol.Locations.GetPrimaryLocation();
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, targetSymbol.Name));
+        }
+
+        // CSENSE016: Low quality <value> documentation
+        var valueElements = DocumentationExtensions.GetTargetElements(xml, ValueTag);
+        foreach (var _ in valueElements.Where(e => QualityAnalyzer.IsLowQuality(e, property, targetSymbol, options)))
+        {
+            QualityAnalyzer.Report(context, targetSymbol, ValueTag, targetSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
         }
     }
 
-    private static bool IsTaskOrValueTask(ITypeSymbol typeSymbol)
+    private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol, ISymbol targetSymbol, XElement xml, CommentSenseOptions options, bool isVoid)
     {
-        if (typeSymbol is not INamedTypeSymbol { Arity: 0 } namedType)
-            return false;
+        var hasInheritDoc = DocumentationExtensions.HasInheritDoc(xml);
+        var hasAutoValidTag = DocumentationExtensions.HasAutoValidTag(xml);
 
-        if (namedType.Name != "Task" && namedType.Name != "ValueTask")
-            return false;
+        // CSENSE006: Missing <returns> documentation
+        if (!isVoid && !DocumentationExtensions.HasReturnsTag(xml) && !hasInheritDoc && !hasAutoValidTag)
+        {
+            var location = targetSymbol.Locations.GetPrimaryLocation();
+            var properties = ImmutableDictionary<string, string?>.Empty.Add("Name", ReturnsTag);
+            var symbolName = targetSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
+        }
 
-        var ns = namedType.ContainingNamespace.ToDisplayString();
-        return ns == "System.Threading.Tasks";
+        // CSENSE013: Stray <returns> tag on void or Task method
+        if (isVoid && DocumentationExtensions.HasReturnsTag(xml))
+        {
+            var location = targetSymbol.Locations.GetPrimaryLocation();
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, targetSymbol.Name));
+        }
+
+        // CSENSE015: Stray <value> tag on method
+        if (DocumentationExtensions.HasValueTag(xml))
+        {
+            var location = targetSymbol.Locations.GetPrimaryLocation();
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayValueDocumentationRule, location, targetSymbol.Name));
+        }
+
+        // CSENSE016: Low quality <returns> documentation
+        var returnsElements = DocumentationExtensions.GetTargetElements(xml, ReturnsTag);
+        foreach (var _ in returnsElements.Where(e => QualityAnalyzer.IsLowQuality(e, methodSymbol, targetSymbol, options)))
+        {
+            QualityAnalyzer.Report(context, targetSymbol, ReturnsTag, targetSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+        }
     }
 }

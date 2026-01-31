@@ -11,7 +11,7 @@ internal static class TypeParameterAnalyzer
     private const string TypeParamTag = "typeparam";
     private const string NameProperty = "Name";
 
-    public static void Analyze(SymbolAnalysisContext context, ImmutableArray<ITypeParameterSymbol> typeParameters, ISymbol symbol, XElement xml, ImmutableHashSet<string> customLowQualityTerms)
+    public static void Analyze(SymbolAnalysisContext context, ImmutableArray<ITypeParameterSymbol> typeParameters, ISymbol symbol, XElement xml, CommentSenseOptions options)
     {
         if (typeParameters.IsEmpty && !xml.Descendants(TypeParamTag).Any())
             return;
@@ -31,7 +31,7 @@ internal static class TypeParameterAnalyzer
             actualTypeParamsByName[p.Name] = p;
         }
 
-        ValidateDocumentedTypeParameters(context, symbol, xml, actualTypeParamIndexMap, actualTypeParamsByName, customLowQualityTerms);
+        ValidateDocumentedTypeParameters(context, symbol, xml, actualTypeParamIndexMap, actualTypeParamsByName, options);
     }
 
     private static void ReportMissingTypeParameters(SymbolAnalysisContext context, ImmutableArray<ITypeParameterSymbol> typeParameters, HashSet<string> documentedTypeParamsSet)
@@ -47,7 +47,7 @@ internal static class TypeParameterAnalyzer
         }
     }
 
-    private static void ValidateDocumentedTypeParameters(SymbolAnalysisContext context, ISymbol symbol, XElement xml, Dictionary<string, int> actualTypeParamIndexMap, Dictionary<string, ITypeParameterSymbol> actualTypeParamsByName, ImmutableHashSet<string> customLowQualityTerms)
+    private static void ValidateDocumentedTypeParameters(SymbolAnalysisContext context, ISymbol symbol, XElement xml, Dictionary<string, int> actualTypeParamIndexMap, Dictionary<string, ITypeParameterSymbol> actualTypeParamsByName, CommentSenseOptions options)
     {
         var seenTypeParams = new HashSet<string>(StringComparer.Ordinal);
         var lastActualIndex = -1;
@@ -73,7 +73,7 @@ internal static class TypeParameterAnalyzer
             }
 
             // CSENSE016: Low Quality Type Parameter Documentation
-            if (QualityAnalyzer.IsLowQuality(typeParamElement, name, customLowQualityTerms))
+            if (QualityAnalyzer.IsLowQuality(typeParamElement, name, options, tagName: TypeParamTag))
             {
                 var location = actualTypeParamsByName[name].Locations.GetPrimaryLocation();
                 QualityAnalyzer.Report(context, location, TypeParamTag, name);

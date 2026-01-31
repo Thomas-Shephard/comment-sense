@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using System.Xml.Linq;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -12,7 +11,7 @@ internal static class ExceptionAnalyzer
 {
     private const string ExceptionTag = "exception";
 
-    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, ImmutableHashSet<string> ignoredExceptions, ImmutableHashSet<string> customLowQualityTerms, bool isPrimaryCtor = false)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
         var documentedExceptionElements = DocumentationExtensions.GetTargetElements(xml, ExceptionTag).ToList();
         var documentedTypes = GetDocumentedExceptionTypes(context, documentedExceptionElements);
@@ -22,8 +21,8 @@ internal static class ExceptionAnalyzer
         if (!DocumentationExtensions.HasInheritDoc(xml) && !DocumentationExtensions.HasAutoValidTag(xml))
         {
             foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) &&
-                                                             !ignoredExceptions.Contains(t.Name) &&
-                                                             !ignoredExceptions.Contains(t.ToDisplayString())))
+                                                             !options.IgnoredExceptions.Contains(t.Name) &&
+                                                             !options.IgnoredExceptions.Contains(t.ToDisplayString())))
             {
                 var location = symbol.Locations.GetPrimaryLocation();
                 context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
@@ -38,7 +37,7 @@ internal static class ExceptionAnalyzer
                 continue;
 
             var resolved = ResolveExceptionType(cref, context.Compilation);
-            if (resolved != null && QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, customLowQualityTerms))
+            if (resolved != null && QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: ExceptionTag))
             {
                 QualityAnalyzer.Report(context, symbol, ExceptionTag, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
             }
@@ -135,6 +134,7 @@ internal static class ExceptionAnalyzer
                or PropertyDeclarationSyntax
                or IndexerDeclarationSyntax
                or AccessorListSyntax
+               or AccessorDeclarationSyntax
                or EventDeclarationSyntax
                or ArrowExpressionClauseSyntax;
     }

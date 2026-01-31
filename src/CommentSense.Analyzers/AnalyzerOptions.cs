@@ -7,41 +7,93 @@ namespace CommentSense.Analyzers;
 
 internal static class AnalyzerOptions
 {
-    private const string Prefix = "comment_sense";
+    private const string Prefix = "comment_sense.";
 
     private static readonly ConditionalWeakTable<AnalyzerConfigOptions, CommentSenseOptions> OptionsCache = new();
 
-    private static ImmutableHashSet<string> GetStringListOption(AnalyzerConfigOptions options, string optionName)
+    public static CommentSenseOptions GetOptions(AnalyzerConfigOptionsProvider provider, SyntaxTree tree)
     {
-        return options.TryGetValue($"{Prefix}.{optionName}", out var value) && !string.IsNullOrWhiteSpace(value)
-            ? value.Split([','], StringSplitOptions.RemoveEmptyEntries)
-                   .Select(s => s.Trim())
-                   .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase)
-            : [];
+        var options = provider.GetOptions(tree);
+        return OptionsCache.GetValue(options, o =>
+        {
+            var globalOptions = provider.GlobalOptions;
+            return new CommentSenseOptions(
+                AnalyzeInternal: GetBoolOption(o, globalOptions, "analyze_internal"),
+                AllowImplicitInheritDoc: GetBoolOption(o, globalOptions, "allow_implicit_inheritdoc", true),
+                LowQualityTerms: GetSetOption(o, globalOptions, "low_quality_terms", []),
+                IgnoredExceptions: GetSetOption(o, globalOptions, "ignored_exceptions", []),
+                MinSummaryLength: GetIntOption(o, globalOptions, "min_summary_length", 0),
+                RequireEndingPunctuation: GetBoolOption(o, globalOptions, "require_ending_punctuation"),
+                SimilarityThreshold: Math.Max(0.0, Math.Min(1.0, GetDoubleOption(o, globalOptions, "similarity_threshold", 0.0)))
+            );
+        });
     }
 
-    private static bool GetBoolOption(AnalyzerConfigOptions options, string optionName, bool defaultValue)
+    private static bool GetBoolOption(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name, bool defaultValue = false)
     {
-        return options.TryGetValue($"{Prefix}.{optionName}", out var value) && bool.TryParse(value, out var resultValue)
-            ? resultValue
-            : defaultValue;
+        var key = Prefix + name;
+        if (options.TryGetValue(key, out var value) && bool.TryParse(value, out var result))
+            return result;
+
+        if (globalOptions.TryGetValue(key, out value) && bool.TryParse(value, out result))
+            return result;
+
+        return defaultValue;
     }
 
-    public static CommentSenseOptions GetOptions(AnalyzerConfigOptionsProvider optionsProvider, SyntaxTree tree)
+    private static int GetIntOption(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name, int defaultValue)
     {
-        var options = optionsProvider.GetOptions(tree);
-        return OptionsCache.GetValue(options, o => new CommentSenseOptions(
-            AnalyzeInternal: GetBoolOption(o, "analyze_internal", false),
-            AllowImplicitInheritDoc: GetBoolOption(o, "allow_implicit_inheritdoc", true),
-            LowQualityTerms: GetStringListOption(o, "low_quality_terms"),
-            IgnoredExceptions: GetStringListOption(o, "ignored_exceptions")
-        ));
+        var key = Prefix + name;
+        if (options.TryGetValue(key, out var value) && int.TryParse(value, out var result))
+            return result;
+
+        if (globalOptions.TryGetValue(key, out value) && int.TryParse(value, out result))
+            return result;
+
+        return defaultValue;
+    }
+
+    private static double GetDoubleOption(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name, double defaultValue)
+    {
+        var key = Prefix + name;
+        if (options.TryGetValue(key, out var value) && double.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var result))
+            return result;
+
+        if (globalOptions.TryGetValue(key, out value) && double.TryParse(value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out result))
+            return result;
+
+        return defaultValue;
+    }
+
+    private static IImmutableSet<string> GetSetOption(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name, IImmutableSet<string> defaultValue)
+    {
+        var key = Prefix + name;
+        if (options.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+            return ParseSet(value);
+
+        if (globalOptions.TryGetValue(key, out value) && !string.IsNullOrWhiteSpace(value))
+            return ParseSet(value);
+
+        return defaultValue;
+    }
+
+    private static ImmutableHashSet<string> ParseSet(string value)
+    {
+        var terms = value.Split(',')
+            .Select(t => t.Trim())
+            .Where(t => !string.IsNullOrEmpty(t))
+            .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return terms;
     }
 }
 
 internal record CommentSenseOptions(
     bool AnalyzeInternal,
     bool AllowImplicitInheritDoc,
-    ImmutableHashSet<string> LowQualityTerms,
-    ImmutableHashSet<string> IgnoredExceptions
+    IImmutableSet<string> LowQualityTerms,
+    IImmutableSet<string> IgnoredExceptions,
+    int MinSummaryLength,
+    bool RequireEndingPunctuation,
+    double SimilarityThreshold
 );

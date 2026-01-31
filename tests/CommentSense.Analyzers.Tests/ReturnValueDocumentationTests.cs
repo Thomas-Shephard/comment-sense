@@ -1,4 +1,7 @@
+using System.Xml.Linq;
+using CommentSense.Analyzers.Logic;
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -455,5 +458,158 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             """;
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task StrayReturnsOnPropertyReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid property summary.</summary>
+                /// <value>This is a valid value summary.</value>
+                /// <returns>Stray returns tag.</returns>
+                public int {|CSENSE013:Property|} { get; set; }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task StrayValueOnMethodReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid method summary.</summary>
+                /// <value>Stray value tag.</value>
+                public void {|CSENSE015:Method|}() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task DelegateLowQualityReturnsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid delegate summary.</summary>
+            /// <returns>DelegateName</returns>
+            public delegate int {|CSENSE016:DelegateName|}();
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task PropertyLowQualityValueDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid property summary.</summary>
+                /// <value>MyProperty</value>
+                public int {|CSENSE016:MyProperty|} { get; set; }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task PropertyLowQualityValueTypeNameDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid property summary.</summary>
+                /// <value>Int32</value>
+                public int {|CSENSE016:MyProperty|} { get; set; }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public void IsLowQualityCheckReferenceEquals()
+    {
+        var options = new CommentSenseOptions(false, true, [], [], 0, false, 0.0);
+
+        var syntaxTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText("class C {}");
+        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("Test")
+            .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
+            .AddSyntaxTrees(syntaxTree);
+        var symbol = compilation.GetTypeByMetadataName("C") ?? throw new InvalidOperationException();
+
+        var result = QualityAnalyzer.IsLowQuality(new XElement("summary", "Valid"), symbol, symbol, options);
+        Assert.That(result, Is.False);
+    }
+
+    [Test]
+    public void IsLowQualityCheckDifferentSymbols()
+    {
+        var options = new CommentSenseOptions(false, true, [], [], 0, false, 0.0);
+
+        var syntaxTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText("class C { void M() {} }");
+        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("Test")
+            .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
+            .AddSyntaxTrees(syntaxTree);
+        var type = compilation.GetTypeByMetadataName("C") ?? throw new InvalidOperationException();
+        var methodSymbol = type.GetMembers("M").First();
+
+        var result = QualityAnalyzer.IsLowQuality(new XElement("summary", "Valid"), methodSymbol, type, options);
+        Assert.That(result, Is.False);
+    }
+
+    [Test]
+    public async Task MethodReturningDynamicDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid method summary.</summary>
+                /// <returns>This is a valid returns summary.</returns>
+                public dynamic MyMethod() => null;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task MethodReturningPointerDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public unsafe class MyClass
+            {
+                /// <summary>This is a valid method summary.</summary>
+                /// <returns>This is a valid returns summary.</returns>
+                public int* MyMethod() => null;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, compilerDiagnostics: Microsoft.CodeAnalysis.Testing.CompilerDiagnostics.None);
+    }
+
+    [Test]
+    public void IsNonGenericTaskNullNamespace()
+    {
+        var syntaxTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText("public class Task {}");
+        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("Test")
+            .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
+            .AddSyntaxTrees(syntaxTree);
+        var symbol = compilation.GetTypeByMetadataName("Task") ?? throw new InvalidOperationException();
+
+        var result = symbol.IsTaskType();
+        Assert.That(result, Is.False);
     }
 }

@@ -26,7 +26,7 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Configurable:* Allow skipping documentation for these members entirely using `comment_sense.allow_implicit_inheritdoc`.
 *   **CSENSE016**: Flags "low quality" documentation.
     *   *Default:* Flags empty content or content that just repeats the symbol name.
-    *   *Configurable:* Add custom terms using `comment_sense.low_quality_terms` (e.g., "TODO, TBD").
+    *   *Configurable:* Add custom terms, minimum length, punctuation requirements, and similarity thresholds.
 *   **CSENSE007**: Validates that `cref` attributes in documentation point to valid symbols.
 
 ### Parameters & Type Parameters
@@ -52,11 +52,24 @@ Ensures the `<param>` and `<typeparam>` tags match the method signature exactly.
 ## Configuration
 You can configure the analyzer behavior using an `.editorconfig` file in your project root or solution directory.
 
-### Low Quality Terms
-Specify a comma-separated list of terms that are considered "low quality" in summaries, parameters, or return value descriptions.
+### Low Quality Analysis
+Specify criteria for what is considered "low quality" documentation.
 ```ini
 [*.cs]
-comment_sense.low_quality_terms = TODO, TBD, FixMe
+# Comma-separated list of terms (case-insensitive)
+comment_sense.low_quality_terms = TODO, TBD, FixMe, None, N/A
+
+# Minimum length for summary text (excluding trailing punctuation and whitespace)
+comment_sense.min_summary_length = 10
+
+# Whether to require summaries to end with punctuation (. ! ?)
+comment_sense.require_ending_punctuation = true
+
+# Threshold (0.0 to 1.0) for similarity between documentation and member name.
+# Setting this to 0.0 (default) disables similarity analysis.
+# A value of 1.0 only flags documentation identical to the symbol name.
+# Recommended: 0.7 to 0.8
+comment_sense.similarity_threshold = 0.8
 ```
 
 ### Ignored Exceptions
