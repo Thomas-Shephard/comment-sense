@@ -37,6 +37,14 @@ internal static class AnalyzerExtensions
         return symbol.IsEffectivelyAccessible(includeInternal);
     }
 
+    public static bool IsTaskType(this ITypeSymbol type, bool isGeneric = false)
+    {
+        return type is INamedTypeSymbol namedType &&
+               namedType.Arity == (isGeneric ? 1 : 0) &&
+               namedType.Name is "Task" or "ValueTask" &&
+               namedType.ContainingNamespace.ToDisplayString() == "System.Threading.Tasks";
+    }
+
     public static Location GetPrimaryLocation(this ImmutableArray<Location> locations)
     {
         if (locations.Length == 0)

@@ -312,4 +312,80 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
 
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task CustomLowQualityTermWithPunctuationReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>TODO.</summary>
+            public class {|CSENSE016:MyClass|}
+            {
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.low_quality_terms"] = "TODO"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
+
+    [Test]
+    public async Task SummaryRepeatingTagKeywordWithCustomTermsReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>summary</summary>
+            public class {|CSENSE016:MyClass|}
+            {
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.low_quality_terms"] = "TBD"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
+
+    [Test]
+    public async Task SimilarityThresholdWithPunctuationReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>Calculate Total.</summary>
+                public void {|CSENSE016:CalculateTotal|}() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.similarity_threshold"] = "0.8"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
+
+    [Test]
+    public async Task SimilarityThresholdCaseInsensitiveReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>CALCULATE TOTAL</summary>
+                public void {|CSENSE016:CalculateTotal|}() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.similarity_threshold"] = "0.8"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
 }

@@ -641,6 +641,78 @@ public class AnalyzerExtensionsTests
         Assert.That(symbol.IsInheriting(), Is.False);
     }
 
+    [Test]
+    public void IsTaskTypeReturnsTrueForTask()
+    {
+        var compilation = CSharpCompilation.Create("Test", references: CachedReferences);
+        var taskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task") ?? throw new InvalidOperationException();
+        Assert.That(taskType.IsTaskType(), Is.True);
+    }
+
+    [Test]
+    public void IsTaskTypeReturnsTrueForValueTask()
+    {
+        var compilation = CSharpCompilation.Create("Test", references: CachedReferences);
+        var taskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.ValueTask") ?? throw new InvalidOperationException();
+        Assert.That(taskType.IsTaskType(), Is.True);
+    }
+
+    [Test]
+    public void IsTaskTypeReturnsFalseForGenericTaskWhenIsGenericIsFalse()
+    {
+        var compilation = CSharpCompilation.Create("Test", references: CachedReferences);
+        var taskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1") ?? throw new InvalidOperationException();
+        Assert.That(taskType.IsTaskType(isGeneric: false), Is.False);
+    }
+
+    [Test]
+    public void IsTaskTypeReturnsTrueForGenericTaskWhenIsGenericIsTrue()
+    {
+        var compilation = CSharpCompilation.Create("Test", references: CachedReferences);
+        var taskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task`1") ?? throw new InvalidOperationException();
+        Assert.That(taskType.IsTaskType(isGeneric: true), Is.True);
+    }
+
+    [Test]
+    public void IsTaskTypeReturnsFalseForNonTaskType()
+    {
+        var compilation = CSharpCompilation.Create("Test", references: CachedReferences);
+        var stringType = compilation.GetSpecialType(SpecialType.System_String);
+        Assert.That(stringType.IsTaskType(), Is.False);
+    }
+
+    [Test]
+    public void IsTaskTypeReturnsFalseForCustomTaskType()
+    {
+        const string source = "namespace Custom { public class Task {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "Task");
+        Assert.That(((ITypeSymbol)symbol).IsTaskType(), Is.False);
+    }
+
+    [Test]
+    public void IsTaskTypeReturnsFalseForNullNamespace()
+    {
+        const string source = "public class Task {}";
+        var (symbol, _) = GetSymbolsFromSource(source, "Task");
+        Assert.That(((ITypeSymbol)symbol).IsTaskType(), Is.False);
+    }
+
+    [Test]
+    public void IsTaskTypeReturnsFalseForNonNamedType()
+    {
+        var compilation = CSharpCompilation.Create("Test", references: CachedReferences);
+        var arrayType = compilation.CreateArrayTypeSymbol(compilation.GetSpecialType(SpecialType.System_Int32));
+        Assert.That(arrayType.IsTaskType(), Is.False);
+    }
+
+    [Test]
+    public void IsTaskTypeReturnsFalseForDifferentArity()
+    {
+        var compilation = CSharpCompilation.Create("Test", references: CachedReferences);
+        var taskType = compilation.GetTypeByMetadataName("System.Threading.Tasks.Task") ?? throw new InvalidOperationException();
+        Assert.That(taskType.IsTaskType(isGeneric: true), Is.False);
+    }
+
     private static (ISymbol symbol, Compilation compilation) GetSymbolsFromSource(string source, string symbolName)
     {
         var tree = CSharpSyntaxTree.ParseText(source);
