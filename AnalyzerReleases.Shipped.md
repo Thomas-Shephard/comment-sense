@@ -1,3 +1,11 @@
+## Release 0.2.0
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|--------------------
+CSENSE018 | Documentation | Warning | Missing documentation for inheriting member
+
 ## Release 0.1.0
 
 ### New Rules
