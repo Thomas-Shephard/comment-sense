@@ -20,4 +20,5 @@ internal static class CommentSenseDiagnosticIds
     public const string StrayValueDocumentationId = "CSENSE015";
     public const string LowQualityDocumentationId = "CSENSE016";
     public const string InvalidExceptionTypeId = "CSENSE017";
+    public const string MissingInheritDocId = "CSENSE018";
 }

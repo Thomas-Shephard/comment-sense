@@ -19,7 +19,8 @@ internal static class TypeParameterAnalyzer
         var documentedTypeParamNames = DocumentationExtensions.GetTypeParamNames(xml).ToList();
         var documentedTypeParamsSet = new HashSet<string>(documentedTypeParamNames, StringComparer.Ordinal);
 
-        ReportMissingTypeParameters(context, typeParameters, documentedTypeParamsSet);
+        if (!DocumentationExtensions.HasInheritDoc(xml) && !DocumentationExtensions.HasAutoValidTag(xml))
+            ReportMissingTypeParameters(context, typeParameters, documentedTypeParamsSet);
 
         var actualTypeParamIndexMap = new Dictionary<string, int>(typeParameters.Length, StringComparer.Ordinal);
         var actualTypeParamsByName = new Dictionary<string, ITypeParameterSymbol>(typeParameters.Length, StringComparer.Ordinal);

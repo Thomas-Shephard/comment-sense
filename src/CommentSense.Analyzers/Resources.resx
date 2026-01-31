@@ -220,4 +220,13 @@
   <data name="DisabledDocumentationParsingDescription" xml:space="preserve">
     <value>CommentSense relies on the compiler's documentation parsing. Please enable it by adding &lt;GenerateDocumentationFile&gt;true&lt;/GenerateDocumentationFile&gt; to your project file.</value>
   </data>
+  <data name="MissingInheritDocTitle" xml:space="preserve">
+    <value>The symbol overrides or implements a base member but is missing documentation</value>
+  </data>
+  <data name="MissingInheritDocMessage" xml:space="preserve">
+    <value>The symbol '{0}' overrides or implements a base member but is missing documentation. Add &lt;inheritdoc /&gt; or custom documentation.</value>
+  </data>
+  <data name="MissingInheritDocDescription" xml:space="preserve">
+    <value>The symbol overrides or implements a base member but is missing documentation.</value>
+  </data>
 </root>

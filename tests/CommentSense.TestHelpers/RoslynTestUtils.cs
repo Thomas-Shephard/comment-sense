@@ -38,6 +38,8 @@ public static class RoslynTestUtils
                               .FirstOrDefault(n => n switch
                               {
                                   BaseTypeDeclarationSyntax baseType => baseType.Identifier.ValueText == symbolName,
+                                  DelegateDeclarationSyntax delegateDecl => delegateDecl.Identifier.ValueText == symbolName,
+                                  EnumMemberDeclarationSyntax enumMember => enumMember.Identifier.ValueText == symbolName,
                                   MethodDeclarationSyntax method => method.Identifier.ValueText == symbolName,
                                   ConstructorDeclarationSyntax constructor => constructor.Identifier.ValueText == symbolName,
                                   PropertyDeclarationSyntax property => property.Identifier.ValueText == symbolName,

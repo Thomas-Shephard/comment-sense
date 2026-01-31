@@ -18,8 +18,12 @@ For CommentSense to analyze your documentation, your project must have XML docum
 
 ### General Documentation
 *   **CSENSE001**: Ensures public members have XML documentation (e.g., `<summary>`, `<inheritdoc />`, or other content tags).
+    *   *Note:* Using `<inheritdoc />` (without a `cref`) on a member that does not override or implement a base member will trigger this warning.
     *   *Default:* Analyzes `public`, `protected`, and `protected internal` members.
     *   *Configurable:* Enable for `internal` members using `comment_sense.analyze_internal`.
+*   **CSENSE018**: Warns when a method, property, or event that overrides or implements a base member is missing documentation.
+    *   *Note:* This specific rule suggests adding `<inheritdoc />` or custom documentation.
+    *   *Configurable:* Allow skipping documentation for these members entirely using `comment_sense.allow_implicit_inheritdoc`.
 *   **CSENSE016**: Flags "low quality" documentation.
     *   *Default:* Flags empty content or content that just repeats the symbol name.
     *   *Configurable:* Add custom terms using `comment_sense.low_quality_terms` (e.g., "TODO, TBD").
@@ -67,6 +71,13 @@ Enable analysis for `internal` and `private protected` members (disabled by defa
 ```ini
 [*.cs]
 comment_sense.analyze_internal = true
+```
+
+### Implicit Documentation Inheritance
+Allow skipping documentation entirely for methods, properties, and events that override or implement base members (enabled by default). This does not apply to types (classes, interfaces, etc.), which always require explicit documentation.
+```ini
+[*.cs]
+comment_sense.allow_implicit_inheritdoc = false
 ```
 
 ## Contributions

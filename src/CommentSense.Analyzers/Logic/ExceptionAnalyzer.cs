@@ -19,12 +19,15 @@ internal static class ExceptionAnalyzer
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor);
 
         // CSENSE012: Missing Exception Documentation
-        foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) &&
-                                                         !ignoredExceptions.Contains(t.Name) &&
-                                                         !ignoredExceptions.Contains(t.ToDisplayString())))
+        if (!DocumentationExtensions.HasInheritDoc(xml) && !DocumentationExtensions.HasAutoValidTag(xml))
         {
-            var location = symbol.Locations.GetPrimaryLocation();
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+            foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) &&
+                                                             !ignoredExceptions.Contains(t.Name) &&
+                                                             !ignoredExceptions.Contains(t.ToDisplayString())))
+            {
+                var location = symbol.Locations.GetPrimaryLocation();
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+            }
         }
 
         // CSENSE016: Low Quality Exception Documentation

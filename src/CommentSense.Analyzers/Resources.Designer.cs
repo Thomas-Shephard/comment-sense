@@ -545,5 +545,32 @@ namespace CommentSense.Analyzers {
                 return ResourceManager.GetString("DisabledDocumentationParsingDescription", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MissingInheritDocTitle.
+        /// </summary>
+        internal static string MissingInheritDocTitle {
+            get {
+                return ResourceManager.GetString("MissingInheritDocTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MissingInheritDocMessage.
+        /// </summary>
+        internal static string MissingInheritDocMessage {
+            get {
+                return ResourceManager.GetString("MissingInheritDocMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MissingInheritDocDescription.
+        /// </summary>
+        internal static string MissingInheritDocDescription {
+            get {
+                return ResourceManager.GetString("MissingInheritDocDescription", resourceCulture);
+            }
+        }
     }
 }
