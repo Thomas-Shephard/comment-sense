@@ -41,7 +41,7 @@ Ensures the `<param>` and `<typeparam>` tags match the method signature exactly.
 *   **CSENSE013**: Flags stray `<returns>` tags on members that do not produce a documented return value (including `void`, `Task`, and `ValueTask` members), as well as on properties and indexers.
 ### Exceptions
 *   **CSENSE012**: Scans the method body for explicitly thrown exceptions and ensures they are documented with `<exception>` tags.
-    *   *Configurable:* Ignore specific exception types using `comment_sense.ignored_exceptions`.
+    *   *Configurable:* Ignore exceptions using `comment_sense.ignored_exceptions`, `comment_sense.ignore_system_exceptions`, and `comment_sense.ignored_exception_namespaces`.
 *   **CSENSE017**: Validates that the `cref` attribute in an `<exception>` tag refers to a valid Exception type.
 
 ### Properties
@@ -73,10 +73,17 @@ comment_sense.similarity_threshold = 0.8
 ```
 
 ### Ignored Exceptions
-Specify a comma-separated list of exception types (by name or full name) that should be ignored by the missing exception documentation rule.
+Configure which exceptions should be ignored by the missing exception documentation rule (CSENSE012).
 ```ini
 [*.cs]
+# Comma-separated list of exception types (by name or full name)
 comment_sense.ignored_exceptions = System.ArgumentNullException, ArgumentOutOfRangeException
+
+# Whether to ignore all exceptions in the System namespace (default: false)
+comment_sense.ignore_system_exceptions = true
+
+# Comma-separated list of namespaces. Exceptions in these namespaces (or sub-namespaces) will be ignored.
+comment_sense.ignored_exception_namespaces = MyProject.Internal, System.Data
 ```
 
 ### Internal Member Analysis

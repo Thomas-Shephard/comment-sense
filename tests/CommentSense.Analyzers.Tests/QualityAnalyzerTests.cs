@@ -6,21 +6,11 @@ namespace CommentSense.Analyzers.Tests;
 
 public class QualityAnalyzerTests
 {
-    private static readonly CommentSenseOptions DefaultOptions = new(
-        AnalyzeInternal: false,
-        AllowImplicitInheritDoc: true,
-        LowQualityTerms: System.Collections.Immutable.ImmutableHashSet<string>.Empty,
-        IgnoredExceptions: System.Collections.Immutable.ImmutableHashSet<string>.Empty,
-        MinSummaryLength: 0,
-        RequireEndingPunctuation: false,
-        SimilarityThreshold: 0.0
-    );
-
     [Test]
-    public void IsLowQualityNullKeywordsReturnsFalse()
+    public void IsLowQualityDifferentTextReturnsFalse()
     {
         var element = new XElement("summary", "Some text that is not the symbol name");
-        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", DefaultOptions);
+        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.False);
     }
 
@@ -28,7 +18,7 @@ public class QualityAnalyzerTests
     public void IsLowQualityEmptyElementReturnsTrue()
     {
         var element = new XElement("summary");
-        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", DefaultOptions);
+        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
 
@@ -36,7 +26,7 @@ public class QualityAnalyzerTests
     public void IsLowQualityWhitespaceElementReturnsTrue()
     {
         var element = new XElement("summary", "   ");
-        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", DefaultOptions);
+        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
 
@@ -44,7 +34,7 @@ public class QualityAnalyzerTests
     public void IsLowQualitySymbolNameReturnsTrue()
     {
         var element = new XElement("summary", "MySymbol");
-        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", DefaultOptions);
+        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
 
@@ -52,7 +42,7 @@ public class QualityAnalyzerTests
     public void IsLowQualitySymbolNameCaseInsensitiveReturnsTrue()
     {
         var element = new XElement("summary", "mysymbol");
-        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", DefaultOptions);
+        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
 
@@ -60,23 +50,21 @@ public class QualityAnalyzerTests
     public void IsLowQualityWithNestedElementsReturnsFalse()
     {
         var element = new XElement("summary", new XElement("see", new XAttribute("cref", "T:System.Object")));
-        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", DefaultOptions);
+        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.False);
     }
 
     [Test]
     public void IsLowQualityInternalNullContentReturnsTrue()
     {
-        var options = new CommentSenseOptions(false, true, [], [], 0, false, 0.0);
-        var result = QualityAnalyzer.IsLowQuality((string?)null, "Symbol", options);
+        var result = QualityAnalyzer.IsLowQuality((string?)null, "Symbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
 
     [Test]
     public void IsLowQualityInternalWhitespaceContentReturnsTrue()
     {
-        var options = new CommentSenseOptions(false, true, [], [], 0, false, 0.0);
-        var result = QualityAnalyzer.IsLowQuality("   ", "Symbol", options);
+        var result = QualityAnalyzer.IsLowQuality("   ", "Symbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
 
@@ -98,7 +86,7 @@ public class QualityAnalyzerTests
     public void IsLowQualityReturnsBranch()
     {
         var element = new XElement("returns", "return");
-        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", DefaultOptions, tagName: "returns");
+        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default, tagName: "returns");
         Assert.That(result, Is.True);
     }
 
@@ -106,7 +94,7 @@ public class QualityAnalyzerTests
     public void IsLowQualityReturnsKeywordBranch()
     {
         var element = new XElement("returns", "returns");
-        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", DefaultOptions, tagName: "returns");
+        var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default, tagName: "returns");
         Assert.That(result, Is.True);
     }
 
@@ -116,7 +104,7 @@ public class QualityAnalyzerTests
         var longSymbolName = new string('A', 300);
         var longSummary = new string('A', 290) + "BBBBBBBBBB";
 
-        var options = new CommentSenseOptions(false, true, [], [], 0, false, 0.9);
+        var options = CommentSenseOptions.Default with { SimilarityThreshold = 0.9 };
         var element = new XElement("summary", longSummary);
 
         var result = QualityAnalyzer.IsLowQuality(element, longSymbolName, options);
@@ -126,7 +114,7 @@ public class QualityAnalyzerTests
     [Test]
     public void QualityAnalyzerNormalizationToEmptyReturnsTrue()
     {
-        var options = new CommentSenseOptions(false, true, [], [], 0, true, 0.0);
+        var options = CommentSenseOptions.Default with { RequireEndingPunctuation = true };
         var element = new XElement("summary", "...");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", options);
         Assert.That(result, Is.True);
@@ -142,7 +130,7 @@ public class QualityAnalyzerTests
     [Test]
     public void CalculateSimilarityBelowThreshold()
     {
-        var options = new CommentSenseOptions(false, true, [], [], 0, false, 0.9);
+        var options = CommentSenseOptions.Default with { SimilarityThreshold = 0.9 };
         var result = QualityAnalyzer.IsLowQuality(new XElement("summary", "Different"), "Symbol", options);
         Assert.That(result, Is.False);
     }
