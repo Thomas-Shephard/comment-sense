@@ -1,10 +1,220 @@
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
 
 public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
+    [Test]
+    public async Task GuardClauseReportsDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a summary for the method.</summary>
+                /// <param name="arg">The argument.</param>
+                public void {|CSENSE012:MyMethod|}(string arg)
+                {
+                    ArgumentNullException.ThrowIfNull(arg);
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task ArgumentExceptionGuardClauseReportsDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a summary for the method.</summary>
+                /// <param name="arg">The argument.</param>
+                public void {|CSENSE012:MyMethod|}(string arg)
+                {
+                    ArgumentException.ThrowIfNullOrEmpty(arg);
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task ObjectDisposedExceptionGuardClauseReportsDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass : IDisposable
+            {
+                private bool _disposed;
+                /// <summary>This is a summary for the method.</summary>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    ObjectDisposedException.ThrowIf(_disposed, this);
+                }
+
+                public void Dispose() => _disposed = true;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task NonStaticMethodStartingWithThrowIsIgnored()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a summary for the exception class.</summary>
+            public class MyException : Exception
+            {
+            }
+
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                private void ThrowIfInstance(bool condition)
+                {
+                    if (condition) throw new MyException();
+                }
+
+                /// <summary>This is a summary for the method.</summary>
+                /// <param name="condition">The condition.</param>
+                public void MyMethod(bool condition)
+                {
+                    ThrowIfInstance(condition);
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task StaticMethodNotStartingWithThrowIsIgnored()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a summary for the exception class.</summary>
+            public class MyException : Exception
+            {
+            }
+
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                private static void Guard(bool condition)
+                {
+                    if (condition) throw new MyException();
+                }
+
+                /// <summary>This is a summary for the method.</summary>
+                /// <param name="condition">The condition.</param>
+                public void MyMethod(bool condition)
+                {
+                    Guard(condition);
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task StaticThrowMethodOnNonExceptionTypeIsIgnored()
+    {
+        const string testCode = """
+            using System;
+
+            internal static class Helper
+            {
+                public static void ThrowIf(bool condition)
+                {
+                    if (condition) throw new Exception();
+                }
+            }
+
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a summary for the method.</summary>
+                /// <param name="condition">The condition.</param>
+                public void MyMethod(bool condition)
+                {
+                    Helper.ThrowIf(condition);
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task CustomExceptionGuardClauseReportsDiagnostic()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a summary for the exception class.</summary>
+            public class MyException : Exception
+            {
+                /// <summary>Throws if condition is true.</summary>
+                /// <param name="condition">The condition.</param>
+                /// <exception cref="MyException">Thrown when condition is true.</exception>
+                public static void ThrowIf(bool condition)
+                {
+                    if (condition) throw new MyException();
+                }
+            }
+
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a summary for the method.</summary>
+                /// <param name="condition">The condition.</param>
+                public void {|CSENSE012:MyMethod|}(bool condition)
+                {
+                    MyException.ThrowIf(condition);
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task StaticMethodReturningExceptionIsIgnoredWithoutThrowKeyword()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                private static Exception ThrowFactory() => new Exception();
+
+                /// <summary>Method that calls the factory but doesn't throw.</summary>
+                public void MyMethod()
+                {
+                    // This does NOT throw, so it should NOT be flagged.
+                    ThrowFactory();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
     [Test]
     public async Task MissingExceptionDocumentationReportsDiagnostic()
     {
@@ -766,7 +976,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             }
             """;
 
-        await VerifyCSenseAsync(testCode, compilerDiagnostics: Microsoft.CodeAnalysis.Testing.CompilerDiagnostics.None);
+        await VerifyCSenseAsync(testCode, compilerDiagnostics: CompilerDiagnostics.None);
     }
 
     [Test]
@@ -856,7 +1066,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             /// <param name="id">The identifier.</param>
             public class MyClass(int id)
             {
-                internal int Id { 
+                internal int Id {
                     get => id;
                     set => throw new ArgumentException();
                 }
@@ -864,5 +1074,80 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             """;
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task DocumentedGuardClauseDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>Method.</summary>
+                /// <param name="arg">The argument.</param>
+                /// <exception cref="ArgumentNullException">Thrown when arg is null.</exception>
+                public void MyMethod(string arg)
+                {
+                    ArgumentNullException.ThrowIfNull(arg);
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task WrongExceptionDocumentedForGuardClauseReportsDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>Method.</summary>
+                /// <param name="arg">The argument.</param>
+                /// <exception cref="InvalidOperationException">Wrong exception type.</exception>
+                public void {|CSENSE012:MyMethod|}(string arg)
+                {
+                    ArgumentNullException.ThrowIfNull(arg);
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task ElementAccessInvocationDoesNotCrashAndIsIgnored()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>Method.</summary>
+                /// <param name="actions">The actions.</param>
+                public void MyMethod(Action[] actions)
+                {
+                    actions[0]();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task AnalyzerHandlesMissingSystemExceptionGracefully()
+    {
+        const string testCode = "public class C { public void M() { } }";
+
+        await VerifyCSenseAsync(testCode,
+            expectDiagnostic: false,
+            compilerDiagnostics: CompilerDiagnostics.None,
+            diagnosticOptions: [("CSENSE001", Microsoft.CodeAnalysis.ReportDiagnostic.Suppress)],
+            referenceAssemblies: ReferenceAssemblies.Net.Net100,
+            solutionTransform: (solution, projectId) => solution.WithProjectMetadataReferences(projectId, Array.Empty<Microsoft.CodeAnalysis.MetadataReference>()));
     }
 }

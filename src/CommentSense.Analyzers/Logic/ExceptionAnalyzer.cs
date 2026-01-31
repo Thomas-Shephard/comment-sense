@@ -163,6 +163,10 @@ internal static class ExceptionAnalyzer
 
     private static IEnumerable<ITypeSymbol> IdentifyThrownExceptions(IEnumerable<SyntaxNode> nodes, SemanticModel semanticModel, CancellationToken token)
     {
+        var exceptionType = semanticModel.Compilation.GetTypeByMetadataName("System.Exception");
+        if (exceptionType == null)
+            yield break;
+
         foreach (var node in nodes)
         {
             ITypeSymbol? type;
@@ -172,10 +176,13 @@ internal static class ExceptionAnalyzer
                 case ThrowStatementSyntax ts:
                     type = ts.Expression is not null
                         ? semanticModel.GetTypeInfo(ts.Expression, token).Type
-                        : GetCaughtExceptionType(ts, semanticModel, token);
+                        : GetCaughtExceptionType(ts, semanticModel, exceptionType, token);
                     break;
                 case ThrowExpressionSyntax te:
                     type = semanticModel.GetTypeInfo(te.Expression, token).Type;
+                    break;
+                case InvocationExpressionSyntax invocation:
+                    type = GetExceptionTypeFromGuardClause(invocation, semanticModel, exceptionType, token);
                     break;
                 default:
                     continue;
@@ -186,6 +193,27 @@ internal static class ExceptionAnalyzer
                 yield return type;
             }
         }
+    }
+
+    private static ITypeSymbol? GetExceptionTypeFromGuardClause(InvocationExpressionSyntax invocation, SemanticModel semanticModel, ITypeSymbol exceptionType, CancellationToken token)
+    {
+        var name = invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax ma => ma.Name.Identifier.ValueText,
+            IdentifierNameSyntax id => id.Identifier.ValueText,
+            _ => null
+        };
+
+        if (name == null || !name.StartsWith("Throw", StringComparison.Ordinal))
+            return null;
+
+        if (semanticModel.GetSymbolInfo(invocation, token).Symbol is not IMethodSymbol { IsStatic: true, ReturnsVoid: true } method)
+            return null;
+
+        if (method.ContainingType.InheritsFromOrEquals(exceptionType))
+            return method.ContainingType;
+
+        return null;
     }
 
     private static bool IsCaughtLocally(SyntaxNode throwNode, ITypeSymbol thrownType, SemanticModel semanticModel)
@@ -227,12 +255,12 @@ internal static class ExceptionAnalyzer
         return false;
     }
 
-    private static ITypeSymbol? GetCaughtExceptionType(ThrowStatementSyntax throwStatement, SemanticModel semanticModel, CancellationToken cancellationToken)
+    private static ITypeSymbol? GetCaughtExceptionType(ThrowStatementSyntax throwStatement, SemanticModel semanticModel, ITypeSymbol? exceptionType, CancellationToken cancellationToken)
     {
         var catchClause = throwStatement.Ancestors().OfType<CatchClauseSyntax>().FirstOrDefault();
         if (catchClause?.Declaration is null)
         {
-            return semanticModel.Compilation.GetTypeByMetadataName("System.Exception");
+            return exceptionType;
         }
 
         return semanticModel.GetTypeInfo(catchClause.Declaration.Type, cancellationToken).Type;

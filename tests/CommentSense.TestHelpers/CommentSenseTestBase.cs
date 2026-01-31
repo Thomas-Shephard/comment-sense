@@ -9,7 +9,7 @@ namespace CommentSense.TestHelpers;
 public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()
 {
-    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true, CompilerDiagnostics compilerDiagnostics = CompilerDiagnostics.Errors, IEnumerable<(string Id, ReportDiagnostic Severity)>? diagnosticOptions = null, IDictionary<string, string>? configOptions = null, DocumentationMode documentationMode = DocumentationMode.Parse, IEnumerable<DiagnosticResult>? expectedDiagnostics = null)
+    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true, CompilerDiagnostics compilerDiagnostics = CompilerDiagnostics.Errors, IEnumerable<(string Id, ReportDiagnostic Severity)>? diagnosticOptions = null, IDictionary<string, string>? configOptions = null, DocumentationMode documentationMode = DocumentationMode.Parse, IEnumerable<DiagnosticResult>? expectedDiagnostics = null, ReferenceAssemblies? referenceAssemblies = null, Func<Solution, ProjectId, Solution>? solutionTransform = null)
     {
         var tester = new CSharpAnalyzerTest<TAnalyzer, NUnitVerifier>
         {
@@ -17,6 +17,12 @@ public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
             MarkupOptions = MarkupOptions.UseFirstDescriptor,
             CompilerDiagnostics = compilerDiagnostics
         };
+
+        if (referenceAssemblies != null)
+            tester.TestState.ReferenceAssemblies = referenceAssemblies;
+
+        if (solutionTransform != null)
+            tester.SolutionTransforms.Add(solutionTransform);
 
         tester.SolutionTransforms.Add((solution, projectId) =>
         {

@@ -40,7 +40,7 @@ Ensures the `<param>` and `<typeparam>` tags match the method signature exactly.
 *   **CSENSE006**: Requires a `<returns>` tag for members that return a value (i.e., non-`void`, non-`Task`, non-`ValueTask`).
 *   **CSENSE013**: Flags stray `<returns>` tags on members that do not produce a documented return value (including `void`, `Task`, and `ValueTask` members), as well as on properties and indexers.
 ### Exceptions
-*   **CSENSE012**: Scans the method body for explicitly thrown exceptions and ensures they are documented with `<exception>` tags.
+*   **CSENSE012**: Scans the method body for explicitly thrown exceptions (including static guard clauses like `ArgumentNullException.ThrowIfNull`) and ensures they are documented with `<exception>` tags.
     *   *Configurable:* Ignore exceptions using `comment_sense.ignored_exceptions`, `comment_sense.ignore_system_exceptions`, and `comment_sense.ignored_exception_namespaces`.
 *   **CSENSE017**: Validates that the `cref` attribute in an `<exception>` tag refers to a valid Exception type.
 
