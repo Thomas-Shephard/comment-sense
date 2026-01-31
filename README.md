@@ -19,8 +19,8 @@ For CommentSense to analyze your documentation, your project must have XML docum
 ### General Documentation
 *   **CSENSE001**: Ensures public members have XML documentation (e.g., `<summary>`, `<inheritdoc />`, or other content tags).
     *   *Note:* Using `<inheritdoc />` (without a `cref`) on a member that does not override or implement a base member will trigger this warning.
-    *   *Default:* Analyzes `public`, `protected`, and `protected internal` members.
-    *   *Configurable:* Enable for `internal` members using `comment_sense.analyze_internal`.
+    *   *Default:* Analyzes members according to the `visibility_level` (default: `protected`).
+    *   *Configurable:* Set the visibility threshold using `comment_sense.visibility_level`.
 *   **CSENSE018**: Warns when a method, property, or event that overrides or implements a base member is missing documentation.
     *   *Note:* This specific rule suggests adding `<inheritdoc />` or custom documentation.
     *   *Configurable:* Allow skipping documentation for these members entirely using `comment_sense.allow_implicit_inheritdoc`.
@@ -86,11 +86,16 @@ comment_sense.ignore_system_exceptions = true
 comment_sense.ignored_exception_namespaces = MyProject.Internal, System.Data
 ```
 
-### Internal Member Analysis
-Enable analysis for `internal` and `private protected` members (disabled by default).
+### Visibility Level Analysis
+Set the visibility threshold for members that should be analyzed.
 ```ini
 [*.cs]
-comment_sense.analyze_internal = true
+# Options: public, protected, internal, private
+# public: only public members
+# protected: public, protected, and protected internal (default)
+# internal: public, protected, internal, and private protected
+# private: all members
+comment_sense.visibility_level = protected
 ```
 
 ### Constant Field Analysis

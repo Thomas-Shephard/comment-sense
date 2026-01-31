@@ -70,7 +70,8 @@ The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.ignored_exceptions`: Comma-separated list of exceptions to ignore.
 *   `comment_sense.ignore_system_exceptions`: Boolean to ignore all exceptions in the `System` namespace.
 *   `comment_sense.ignored_exception_namespaces`: Comma-separated list of namespaces to ignore.
-*   `comment_sense.analyze_internal`: Boolean to enable analysis of internal members.
+*   `comment_sense.visibility_level`: Enum to set the visibility threshold (`Public`, `Protected`, `Internal`, `Private`).
+*   `comment_sense.analyze_internal`: (DEPRECATED) Boolean to enable analysis of internal members. Use `visibility_level = Internal` instead.
 *   `comment_sense.min_summary_length`: Integer for minimum length of summary text.
 *   `comment_sense.require_ending_punctuation`: Boolean to require summaries to end with punctuation.
 *   `comment_sense.similarity_threshold`: Double (0.0 to 1.0) for similarity analysis threshold.

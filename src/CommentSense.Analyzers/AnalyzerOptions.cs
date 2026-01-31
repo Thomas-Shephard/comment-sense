@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using CommentSense.Core;
 
 namespace CommentSense.Analyzers;
 
@@ -17,8 +18,15 @@ internal static class AnalyzerOptions
         return OptionsCache.GetValue(options, o =>
         {
             var globalOptions = provider.GlobalOptions;
+            var visibilityLevel = GetEnumOption(o, globalOptions, "visibility_level", VisibilityLevel.Protected);
+
+            // Backward compatibility for analyze_internal:
+            // If the new visibility_level is not explicitly set, use analyze_internal as a fallback.
+            if (!HasOption(o, globalOptions, "visibility_level") && GetBoolOption(o, globalOptions, "analyze_internal"))
+                visibilityLevel = VisibilityLevel.Internal;
+
             return new CommentSenseOptions(
-                AnalyzeInternal: GetBoolOption(o, globalOptions, "analyze_internal"),
+                VisibilityLevel: visibilityLevel,
                 AllowImplicitInheritDoc: GetBoolOption(o, globalOptions, "allow_implicit_inheritdoc", true),
                 LowQualityTerms: GetSetOption(o, globalOptions, "low_quality_terms", []),
                 IgnoredExceptions: GetSetOption(o, globalOptions, "ignored_exceptions", []),
@@ -30,6 +38,24 @@ internal static class AnalyzerOptions
                 SimilarityThreshold: Math.Max(0.0, Math.Min(1.0, GetDoubleOption(o, globalOptions, "similarity_threshold", 0.0)))
             );
         });
+    }
+
+    private static bool HasOption(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name)
+    {
+        var key = Prefix + name;
+        return options.TryGetValue(key, out _) || globalOptions.TryGetValue(key, out _);
+    }
+
+    private static T GetEnumOption<T>(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name, T defaultValue) where T : struct, Enum
+    {
+        var key = Prefix + name;
+        if (options.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) && Enum.TryParse<T>(value, true, out var result))
+            return result;
+
+        if (globalOptions.TryGetValue(key, out value) && !string.IsNullOrWhiteSpace(value) && Enum.TryParse(value, true, out result))
+            return result;
+
+        return defaultValue;
     }
 
     private static bool GetBoolOption(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name, bool defaultValue = false)
@@ -92,7 +118,7 @@ internal static class AnalyzerOptions
 }
 
 internal record CommentSenseOptions(
-    bool AnalyzeInternal,
+    VisibilityLevel VisibilityLevel,
     bool AllowImplicitInheritDoc,
     IImmutableSet<string> LowQualityTerms,
     IImmutableSet<string> IgnoredExceptions,
@@ -105,7 +131,7 @@ internal record CommentSenseOptions(
 )
 {
     public static readonly CommentSenseOptions Default = new(
-        AnalyzeInternal: false,
+        VisibilityLevel: VisibilityLevel.Protected,
         AllowImplicitInheritDoc: true,
         LowQualityTerms: ImmutableHashSet<string>.Empty,
         IgnoredExceptions: ImmutableHashSet<string>.Empty,

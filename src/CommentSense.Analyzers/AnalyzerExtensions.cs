@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -7,7 +8,7 @@ namespace CommentSense.Analyzers;
 
 internal static class AnalyzerExtensions
 {
-    public static bool IsEligibleForAnalysis(this ISymbol symbol, bool includeInternal = false)
+    public static bool IsEligibleForAnalysis(this ISymbol symbol, VisibilityLevel visibilityLevel = VisibilityLevel.Protected)
     {
         if (symbol.IsImplicitlyDeclared)
             return false;
@@ -34,7 +35,7 @@ internal static class AnalyzerExtensions
             }
         }
 
-        return symbol.IsEffectivelyAccessible(includeInternal);
+        return symbol.IsEffectivelyAccessible(visibilityLevel);
     }
 
     public static bool IsTaskType(this ITypeSymbol type, bool isGeneric = false)
