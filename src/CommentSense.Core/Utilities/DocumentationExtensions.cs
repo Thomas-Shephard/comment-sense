@@ -67,6 +67,16 @@ internal static class DocumentationExtensions
         return GetTargetElements(root).Any(element => AutoValidTags.Contains(element.Name.LocalName));
     }
 
+    public static bool HasInheritDoc(XElement root)
+    {
+        return root.Descendants("inheritdoc").Any();
+    }
+
+    public static bool HasInheritDocWithCref(XElement root)
+    {
+        return root.Descendants("inheritdoc").Any(e => e.Attribute("cref") != null);
+    }
+
     public static IEnumerable<string> GetParamNames(XElement root)
     {
         return GetElementAttributeValues(root, "param", "name");

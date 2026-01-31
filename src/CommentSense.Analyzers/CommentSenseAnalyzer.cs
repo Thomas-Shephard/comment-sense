@@ -64,60 +64,76 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (tree is null)
             return;
 
-        AnalyzeSymbolCore(context, symbol, tree);
+        var options = AnalyzerOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
+        AnalyzeSymbolCore(context, symbol, options);
     }
 
-    private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, SyntaxTree tree)
+    private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options)
     {
-        var analyzeInternal = AnalyzerOptions.GetBoolOption(context.Options.AnalyzerConfigOptionsProvider, tree, "analyze_internal", defaultValue: false);
-        var lowQualityTerms = AnalyzerOptions.GetStringListOption(context.Options.AnalyzerConfigOptionsProvider, tree, "low_quality_terms");
-        var ignoredExceptions = AnalyzerOptions.GetStringListOption(context.Options.AnalyzerConfigOptionsProvider, tree, "ignored_exceptions");
-
-        if (!symbol.IsEligibleForAnalysis(analyzeInternal))
+        if (!symbol.IsEligibleForAnalysis(options.AnalyzeInternal))
             return;
 
+        var isInheriting = symbol.IsInheriting();
         var xml = symbol.GetDocumentationCommentXml();
 
         if (!DocumentationExtensions.TryParseDocumentation(xml, out var element) || !DocumentationExtensions.HasValidDocumentation(element))
+        {
+            if (options.AllowImplicitInheritDoc && isInheriting && symbol.Kind != SymbolKind.NamedType)
+                return;
+
+            if (isInheriting && symbol.Kind != SymbolKind.NamedType)
+            {
+                ReportMissingInheritDoc(context, symbol);
+                return;
+            }
+
+            ReportMissingDocs(context, symbol);
+            return;
+        }
+
+        if (DocumentationExtensions.HasInheritDoc(element) &&
+            !DocumentationExtensions.HasInheritDocWithCref(element) &&
+            !isInheriting)
         {
             ReportMissingDocs(context, symbol);
             return;
         }
 
-        if (DocumentationExtensions.HasAutoValidTag(element))
-            return;
+        SummaryAnalyzer.Analyze(context, symbol, element, options.LowQualityTerms);
+        AnalyzeSpecificSymbol(context, symbol, element, options);
+    }
 
-        SummaryAnalyzer.Analyze(context, symbol, element, lowQualityTerms);
-
+    private static void AnalyzeSpecificSymbol(SymbolAnalysisContext context, ISymbol symbol, System.Xml.Linq.XElement element, CommentSenseOptions options)
+    {
         switch (symbol)
         {
             case IMethodSymbol methodSymbol:
-                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element, lowQualityTerms);
-                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element, lowQualityTerms);
-                ReturnValueAnalyzer.Analyze(context, methodSymbol, element, lowQualityTerms);
-                ExceptionAnalyzer.Analyze(context, methodSymbol, element, ignoredExceptions, lowQualityTerms, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
+                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element, options.LowQualityTerms);
+                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element, options.LowQualityTerms);
+                ReturnValueAnalyzer.Analyze(context, methodSymbol, element, options.LowQualityTerms);
+                ExceptionAnalyzer.Analyze(context, methodSymbol, element, options.IgnoredExceptions, options.LowQualityTerms, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
                 break;
             case IPropertySymbol propertySymbol:
                 if (propertySymbol.IsIndexer)
                 {
-                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element, lowQualityTerms);
+                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element, options.LowQualityTerms);
                 }
-                ReturnValueAnalyzer.Analyze(context, propertySymbol, element, lowQualityTerms);
-                ExceptionAnalyzer.Analyze(context, propertySymbol, element, ignoredExceptions, lowQualityTerms);
+                ReturnValueAnalyzer.Analyze(context, propertySymbol, element, options.LowQualityTerms);
+                ExceptionAnalyzer.Analyze(context, propertySymbol, element, options.IgnoredExceptions, options.LowQualityTerms);
                 break;
             case INamedTypeSymbol namedTypeSymbol:
-                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element, lowQualityTerms);
+                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element, options.LowQualityTerms);
                 if (namedTypeSymbol is { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null })
                 {
-                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element, lowQualityTerms);
-                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element, lowQualityTerms);
+                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element, options.LowQualityTerms);
+                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element, options.LowQualityTerms);
                 }
 
                 if (namedTypeSymbol.GetPrimaryConstructor() is { } primaryCtor)
                 {
-                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element, lowQualityTerms);
-                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, lowQualityTerms);
-                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, ignoredExceptions, lowQualityTerms, isPrimaryCtor: true);
+                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element, options.LowQualityTerms);
+                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, options.LowQualityTerms);
+                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, options.IgnoredExceptions, options.LowQualityTerms, isPrimaryCtor: true);
                 }
                 break;
         }
@@ -127,5 +143,11 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
     {
         var location = symbol.Locations.GetPrimaryLocation();
         context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingDocumentationRule, location, symbol.Name));
+    }
+
+    private static void ReportMissingInheritDoc(SymbolAnalysisContext context, ISymbol symbol)
+    {
+        var location = symbol.Locations.GetPrimaryLocation();
+        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingInheritDocRule, location, symbol.Name));
     }
 }

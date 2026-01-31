@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
@@ -10,38 +9,39 @@ internal static class AnalyzerOptions
 {
     private const string Prefix = "comment_sense";
 
-    private static readonly ConditionalWeakTable<AnalyzerConfigOptions, ConcurrentDictionary<string, ImmutableHashSet<string>>> StringListCache = new();
-    private static readonly ConditionalWeakTable<AnalyzerConfigOptions, ConcurrentDictionary<string, bool>> BoolCache = new();
+    private static readonly ConditionalWeakTable<AnalyzerConfigOptions, CommentSenseOptions> OptionsCache = new();
 
-    public static ImmutableHashSet<string> GetStringListOption(AnalyzerConfigOptionsProvider optionsProvider, SyntaxTree tree, string optionName)
+    private static ImmutableHashSet<string> GetStringListOption(AnalyzerConfigOptions options, string optionName)
     {
-        var options = optionsProvider.GetOptions(tree);
-        var optionsCache = StringListCache.GetOrCreateValue(options);
-
-        if (optionsCache.TryGetValue(optionName, out var cached))
-            return cached;
-
-        var result = options.TryGetValue($"{Prefix}.{optionName}", out var value) && !string.IsNullOrWhiteSpace(value)
+        return options.TryGetValue($"{Prefix}.{optionName}", out var value) && !string.IsNullOrWhiteSpace(value)
             ? value.Split([','], StringSplitOptions.RemoveEmptyEntries)
                    .Select(s => s.Trim())
                    .ToImmutableHashSet(StringComparer.OrdinalIgnoreCase)
             : [];
-
-        return optionsCache.GetOrAdd(optionName, result);
     }
 
-    public static bool GetBoolOption(AnalyzerConfigOptionsProvider optionsProvider, SyntaxTree tree, string optionName, bool defaultValue)
+    private static bool GetBoolOption(AnalyzerConfigOptions options, string optionName, bool defaultValue)
     {
-        var options = optionsProvider.GetOptions(tree);
-        var optionsCache = BoolCache.GetOrCreateValue(options);
-
-        if (optionsCache.TryGetValue(optionName, out var cached))
-            return cached;
-
-        var result = options.TryGetValue($"{Prefix}.{optionName}", out var value) && bool.TryParse(value, out var resultValue)
+        return options.TryGetValue($"{Prefix}.{optionName}", out var value) && bool.TryParse(value, out var resultValue)
             ? resultValue
             : defaultValue;
+    }
 
-        return optionsCache.GetOrAdd(optionName, result);
+    public static CommentSenseOptions GetOptions(AnalyzerConfigOptionsProvider optionsProvider, SyntaxTree tree)
+    {
+        var options = optionsProvider.GetOptions(tree);
+        return OptionsCache.GetValue(options, o => new CommentSenseOptions(
+            AnalyzeInternal: GetBoolOption(o, "analyze_internal", false),
+            AllowImplicitInheritDoc: GetBoolOption(o, "allow_implicit_inheritdoc", true),
+            LowQualityTerms: GetStringListOption(o, "low_quality_terms"),
+            IgnoredExceptions: GetStringListOption(o, "ignored_exceptions")
+        ));
     }
 }
+
+internal record CommentSenseOptions(
+    bool AnalyzeInternal,
+    bool AllowImplicitInheritDoc,
+    ImmutableHashSet<string> LowQualityTerms,
+    ImmutableHashSet<string> IgnoredExceptions
+);

@@ -206,8 +206,11 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     public async Task ClassWithPrimaryConstructorAndInheritdocDoesNotReportDiagnostic()
     {
         const string testCode = """
+            /// <summary>Base class.</summary>
+            public class BaseClass { }
+
             /// <inheritdoc />
-            public class MyClass(int p1)
+            public class MyClass(int p1) : BaseClass
             {
             }
             """;

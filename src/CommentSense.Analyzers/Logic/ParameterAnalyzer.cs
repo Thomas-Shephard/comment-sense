@@ -19,7 +19,8 @@ internal static class ParameterAnalyzer
         var documentedParamNames = DocumentationExtensions.GetParamNames(xml).ToList();
         var documentedParamsSet = new HashSet<string>(documentedParamNames, StringComparer.Ordinal);
 
-        ReportMissingParameters(context, parameters, documentedParamsSet);
+        if (!DocumentationExtensions.HasInheritDoc(xml) && !DocumentationExtensions.HasAutoValidTag(xml))
+            ReportMissingParameters(context, parameters, documentedParamsSet);
 
         var actualParamIndexMap = new Dictionary<string, int>(parameters.Length, StringComparer.Ordinal);
         var actualParamsByName = new Dictionary<string, IParameterSymbol>(parameters.Length, StringComparer.Ordinal);

@@ -9,6 +9,11 @@ namespace CommentSense.Analyzers.Tests;
 
 public class AnalyzerExtensionsTests
 {
+    private static readonly List<MetadataReference> CachedReferences = AppDomain.CurrentDomain.GetAssemblies()
+        .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
+        .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))
+        .ToList();
+
     [Test]
     public void GetPrimaryLocationReturnsLocationNoneForEmptyArray()
     {
@@ -26,6 +31,16 @@ public class AnalyzerExtensionsTests
         var result = locations.GetPrimaryLocation();
 
         Assert.That(result, Is.EqualTo(location));
+    }
+
+    [Test]
+    public void GetPrimaryLocationReturnsFirstOfMultipleLocations()
+    {
+        var loc1 = Location.Create("f1.cs", default, default);
+        var loc2 = Location.Create("f2.cs", default, default);
+        var locations = ImmutableArray.Create(loc1, loc2);
+
+        Assert.That(locations.GetPrimaryLocation(), Is.EqualTo(loc1));
     }
 
     [Test]
@@ -88,16 +103,6 @@ public class AnalyzerExtensionsTests
         var method = symbol.GetMembers().First(m => m.Name == "M");
 
         Assert.That(method.IsEligibleForAnalysis(), Is.True);
-    }
-
-    [Test]
-    public void GetPrimaryLocationReturnsFirstOfMultipleLocations()
-    {
-        var loc1 = Location.Create("f1.cs", default, default);
-        var loc2 = Location.Create("f2.cs", default, default);
-        var locations = ImmutableArray.Create(loc1, loc2);
-
-        Assert.That(locations.GetPrimaryLocation(), Is.EqualTo(loc1));
     }
 
     [Test]
@@ -198,16 +203,6 @@ public class AnalyzerExtensionsTests
     }
 
     [Test]
-    public void GetPrimaryConstructorReturnsNullForStaticClass()
-    {
-        const string source = "public static class C {}";
-        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
-        var result = symbol.GetPrimaryConstructor();
-
-        Assert.That(result, Is.Null);
-    }
-
-    [Test]
     public void IsEligibleForAnalysisReturnsTrueForTypeParameter()
     {
         const string source = "public class C<T> {}";
@@ -215,6 +210,69 @@ public class AnalyzerExtensionsTests
         var typeParam = symbol.TypeParameters.First();
 
         Assert.That(typeParam.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForAssembly()
+    {
+        var compilation = CSharpCompilation.Create("TestAssembly");
+        var symbol = compilation.Assembly;
+
+        Assert.That(symbol.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForPublicMethod()
+    {
+        const string source = "public class C { public void M() {} }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var method = symbol.GetMembers().First(m => m.Name == "M");
+
+        Assert.That(method.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForInternalWhenIncluded()
+    {
+        const string source = "internal class C { public void M() {} }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var method = symbol.GetMembers().First(m => m.Name == "M");
+
+        Assert.That(method.IsEligibleForAnalysis(includeInternal: true), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForOperator()
+    {
+        const string source = "public class C { public static bool operator ==(C a, C b) => true; public static bool operator !=(C a, C b) => false; }";
+        var symbol = ((INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C")).GetMembers("op_Equality").First();
+        Assert.That(symbol.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsTrueForConversion()
+    {
+        const string source = "public class C { public static implicit operator int(C c) => 0; }";
+        var symbol = ((INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C")).GetMembers("op_Implicit").First();
+        Assert.That(symbol.IsEligibleForAnalysis(), Is.True);
+    }
+
+    [Test]
+    public void IsEligibleForAnalysisReturnsFalseForDestructor()
+    {
+        const string source = "public class C { ~C() {} }";
+        var symbol = ((INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C")).GetMembers().OfType<IMethodSymbol>().First(m => m.MethodKind == MethodKind.Destructor);
+        Assert.That(symbol.IsEligibleForAnalysis(), Is.False);
+    }
+
+    [Test]
+    public void GetPrimaryConstructorReturnsNullForStaticClass()
+    {
+        const string source = "public static class C {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var result = symbol.GetPrimaryConstructor();
+
+        Assert.That(result, Is.Null);
     }
 
     [Test]
@@ -238,25 +296,6 @@ public class AnalyzerExtensionsTests
 
         Assert.That(primaryCtor, Is.Not.Null);
         Assert.That(primaryCtor.IsPrimaryConstructor(), Is.True);
-    }
-
-    [Test]
-    public void IsEligibleForAnalysisReturnsTrueForAssembly()
-    {
-        var compilation = CSharpCompilation.Create("TestAssembly");
-        var symbol = compilation.Assembly;
-
-        Assert.That(symbol.IsEligibleForAnalysis(), Is.True);
-    }
-
-    [Test]
-    public void IsEligibleForAnalysisReturnsTrueForPublicMethod()
-    {
-        const string source = "public class C { public void M() {} }";
-        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
-        var method = symbol.GetMembers().First(m => m.Name == "M");
-
-        Assert.That(method.IsEligibleForAnalysis(), Is.True);
     }
 
     [Test]
@@ -325,5 +364,295 @@ public class AnalyzerExtensionsTests
         var options = new CSharpParseOptions(documentationMode: DocumentationMode.Parse);
         var tree = CSharpSyntaxTree.ParseText("", options);
         Assert.That(tree.IsDocumentationModeNone(), Is.False);
+    }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsTrueForSelf()
+    {
+        const string source = "public class C {}";
+        var symbol = (ITypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        Assert.That(symbol.InheritsFromOrEquals(symbol), Is.True);
+    }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsTrueForBaseClass()
+    {
+        const string source = "public class B {} public class C : B {}";
+        var symbol = (ITypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var baseSymbol = ((INamedTypeSymbol)symbol).BaseType ?? throw new InvalidOperationException();
+        Assert.That(symbol.InheritsFromOrEquals(baseSymbol), Is.True);
+    }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsTrueForGrandParentClass()
+    {
+        const string source = "public class A {} public class B : A {} public class C : B {}";
+        var symbol = (ITypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var baseSymbol = ((INamedTypeSymbol)symbol).BaseType?.BaseType ?? throw new InvalidOperationException();
+        Assert.That(symbol.InheritsFromOrEquals(baseSymbol), Is.True);
+    }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsTrueForInterface()
+    {
+        const string source = "public interface I {} public class C : I {}";
+        var symbol = (ITypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var interfaceSymbol = ((INamedTypeSymbol)symbol).Interfaces.First();
+        Assert.That(symbol.InheritsFromOrEquals(interfaceSymbol), Is.True);
+    }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsTrueForInterfaceInheritingInterface()
+    {
+        const string source = "public interface I_BaseI {} public interface I_DerI : I_BaseI {}";
+        var (symbol, compilation) = GetSymbolsFromSource(source, "I_DerI");
+        var i1 = compilation.SyntaxTrees.First().GetRoot().DescendantNodes().OfType<InterfaceDeclarationSyntax>().First(i => i.Identifier.ValueText == "I_BaseI");
+        var symbol1 = compilation.GetSemanticModel(compilation.SyntaxTrees.First()).GetDeclaredSymbol(i1) ?? throw new InvalidOperationException();
+        Assert.That(((ITypeSymbol)symbol).InheritsFromOrEquals(symbol1), Is.True);
+    }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsFalseForUnrelated()
+    {
+        const string source = "public class A {} public class B {}";
+        var symbolA = (ITypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "A");
+        var symbolB = (ITypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "B");
+        Assert.That(symbolA.InheritsFromOrEquals(symbolB), Is.False);
+    }
+
+    [Test]
+    public void IsInheritingReturnsFalseForObjectInheritanceOnly()
+    {
+        const string source = "public class C {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void IsInheritingReturnsFalseForStructValueTypeInheritance()
+    {
+        const string source = "public struct S {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "S");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void IsInheritingReturnsFalseForEnumInheritance()
+    {
+        const string source = "public enum E { A }";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "E");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void IsInheritingReturnsFalseForDelegateInheritance()
+    {
+        const string source = "public delegate void D();";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "D");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForClassInheritance()
+    {
+        const string source = "public class B {} public class C : B {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForInterfaceImplementation()
+    {
+        const string source = "public interface I {} public class C : I {}";
+        var symbol = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForExplicitMethodImplementation()
+    {
+        const string source = "public interface I_Exp { void M(); } public class C_Exp : I_Exp { void I_Exp.M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForExplicitPropertyImplementation()
+    {
+        const string source = "public interface I_PropExp { int P { get; } } public class C_PropExp : I_PropExp { int I_PropExp.P => 0; }";
+        var (symbol, _) = GetSymbolsFromSource(source, "P");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForExplicitEventImplementation()
+    {
+        const string source = "using System; public interface I { event EventHandler E; } public class C : I { event EventHandler I.E { add {} remove {} } }";
+        var (symbol, _) = GetSymbolsFromSource(source, "E");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(symbol, Is.InstanceOf<IEventSymbol>());
+            Assert.That(((IEventSymbol)symbol).ExplicitInterfaceImplementations, Is.Not.Empty);
+        }
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForOverride()
+    {
+        const string source = "public class B_Ovr { public virtual void M() {} } public class C_Ovr : B_Ovr { public override void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForImplicitInterfaceMethodImplementation()
+    {
+        const string source = "public interface I_Imp { void M(); } public class C_Imp : I_Imp { public void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForImplicitInterfacePropertyImplementation()
+    {
+        const string source = "public interface I_Prop { int P { get; } } public class C_Prop : I_Prop { public int P { get; } }";
+        var (symbol, _) = GetSymbolsFromSource(source, "P");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForGenericMethodImplementation()
+    {
+        const string source = "public interface I_Gen { void M<T>(T t); } public class C_Gen : I_Gen { public void M<T>(T t) {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForCovariantReturnType()
+    {
+        const string source = "public class B_Cov { public virtual object M() => null; } public class C_Cov : B_Cov { public override string M() => \"\"; }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForInterfaceMemberInheritingBaseInterfaceMember()
+    {
+        const string source = "public interface I_Base { void M(); } public interface I_Der : I_Base { void M(); }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsTrueForCovariantPropertyReturnType()
+    {
+        const string source = "public class B_PropCov { public virtual object P => null; } public class C_PropCov : B_PropCov { public override string P => \"\"; }";
+        var (symbol, _) = GetSymbolsFromSource(source, "P");
+        Assert.That(symbol.IsInheriting(), Is.True);
+    }
+
+    [Test]
+    public void IsInheritingReturnsFalseForNonPublicImplicitImplementation()
+    {
+        const string source = "public interface I_NonPub { void M(); } public class C_NonPub : I_NonPub { void I_NonPub.M() {} internal void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void IsInheritingReturnsFalseForUnrelatedMemberWithSameName()
+    {
+        const string source = "public interface I_Unrelated { void M(); } public class C_Unrelated { public void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void IsInheritingReturnsFalseForNullContainingType()
+    {
+        var compilation = CSharpCompilation.Create("TestAssembly");
+        var symbol = compilation.GlobalNamespace;
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void MatchesInterfaceMemberReturnsFalseForDifferentKind()
+    {
+        const string source = "public interface I1 { void M(); } public interface I2 : I1 { int M { get; } }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void MatchesMethodReturnsFalseForStaticMismatch()
+    {
+        const string source = "public interface I1 { void M(); } public interface I2 : I1 { static void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void MatchesMethodReturnsFalseForRefReturnMismatch()
+    {
+        const string source = "public interface I1 { int M(); } public interface I2 : I1 { ref int M(); }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void MatchesMethodReturnsFalseForTypeParameterCountMismatch()
+    {
+        const string source = "public interface I1 { void M(); } public interface I2 : I1 { void M<T>(); }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void MatchesPropertyReturnsFalseForStaticMismatch()
+    {
+        const string source = "public interface I1 { int P { get; } } public interface I2 : I1 { static int P => 0; }";
+        var (symbol, _) = GetSymbolsFromSource(source, "P");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void MatchesPropertyReturnsFalseForRefReturnMismatch()
+    {
+        const string source = "public interface I1 { int P { get; } } public interface I2 : I1 { ref int P { get; } }";
+        var (symbol, _) = GetSymbolsFromSource(source, "P");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void MatchesPropertyReturnsFalseForTypeMismatch()
+    {
+        const string source = "public interface I1 { int P { get; } } public interface I2 : I1 { string P { get; } }";
+        var (symbol, _) = GetSymbolsFromSource(source, "P");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    [Test]
+    public void MatchesPropertyReturnsFalseForParameterCountMismatch()
+    {
+        const string source = "public interface I1 { int this[int i] { get; } } public interface I2 : I1 { int this[int i, int j] { get; } }";
+        var (symbol, _) = GetSymbolsFromSource(source, "this[]");
+        Assert.That(symbol.IsInheriting(), Is.False);
+    }
+
+    private static (ISymbol symbol, Compilation compilation) GetSymbolsFromSource(string source, string symbolName)
+    {
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var compilation = CSharpCompilation.Create("TestAssembly", [tree], CachedReferences);
+        var semanticModel = compilation.GetSemanticModel(tree);
+        var declaration = tree.GetRoot().DescendantNodes()
+            .Last(n => n is MemberDeclarationSyntax m && (m is MethodDeclarationSyntax md && md.Identifier.ValueText == symbolName ||
+                                                         m is PropertyDeclarationSyntax pd && pd.Identifier.ValueText == symbolName ||
+                                                         m is IndexerDeclarationSyntax id && (symbolName == "this[]" || id.ThisKeyword.ValueText == "this") ||
+                                                         m is EventDeclarationSyntax ed && ed.Identifier.ValueText == symbolName ||
+                                                         m is BaseTypeDeclarationSyntax td && td.Identifier.ValueText == symbolName));
+        var declaredSymbol = semanticModel.GetDeclaredSymbol(declaration) ?? throw new InvalidOperationException();
+        return (declaredSymbol, compilation);
     }
 }

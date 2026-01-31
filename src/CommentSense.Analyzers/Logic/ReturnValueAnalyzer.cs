@@ -43,6 +43,9 @@ internal static class ReturnValueAnalyzer
         }
         else if (!hasReturnsTag)
         {
+            if (DocumentationExtensions.HasInheritDoc(xml) || DocumentationExtensions.HasAutoValidTag(xml))
+                return;
+
             var properties = ImmutableDictionary<string, string?>.Empty.Add(NameProperty, ReturnsTag);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
         }
@@ -75,6 +78,9 @@ internal static class ReturnValueAnalyzer
 
         if (!hasValueTag)
         {
+            if (DocumentationExtensions.HasInheritDoc(xml) || DocumentationExtensions.HasAutoValidTag(xml))
+                return;
+
             var properties = ImmutableDictionary<string, string?>.Empty.Add(NameProperty, ValueTag);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingValueDocumentationRule, location, properties, symbolName));
         }

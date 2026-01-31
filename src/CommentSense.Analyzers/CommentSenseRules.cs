@@ -176,6 +176,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: CreateResourceString(nameof(Resources.InvalidExceptionTypeDescription)));
 
+    public static readonly DiagnosticDescriptor MissingInheritDocRule = new(
+        CommentSenseDiagnosticIds.MissingInheritDocId,
+        CreateResourceString(nameof(Resources.MissingInheritDocTitle)),
+        CreateResourceString(nameof(Resources.MissingInheritDocMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.MissingInheritDocDescription)));
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =
     [
         DisabledDocumentationParsingRule,
@@ -195,6 +204,7 @@ internal static class CommentSenseRules
         MissingValueDocumentationRule,
         StrayValueDocumentationRule,
         LowQualityDocumentationRule,
-        InvalidExceptionTypeRule
+        InvalidExceptionTypeRule,
+        MissingInheritDocRule
     ];
 }
