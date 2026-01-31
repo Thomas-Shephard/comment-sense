@@ -21,9 +21,9 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Note:* Using `<inheritdoc />` (without a `cref`) on a member that does not override or implement a base member will trigger this warning.
     *   *Default:* Analyzes members according to the `visibility_level` (default: `protected`).
     *   *Configurable:* Set the visibility threshold using `comment_sense.visibility_level`.
-*   **CSENSE018**: Warns when a method, property, or event that overrides or implements a base member is missing documentation.
-    *   *Note:* This specific rule suggests adding `<inheritdoc />` or custom documentation.
-    *   *Configurable:* Allow skipping documentation for these members entirely using `comment_sense.allow_implicit_inheritdoc`.
+*   **CSENSE018**: Warns when a member that overrides or implements a base member is missing explicit documentation (when configured to require it).
+    *   *Note:* By default, these members are allowed to implicitly inherit documentation.
+    *   *Configurable:* Set `comment_sense.allow_implicit_inheritdoc = false` to require explicit documentation (e.g., `<inheritdoc />`) for all inheriting members.
 *   **CSENSE016**: Flags "low quality" documentation.
     *   *Default:* Flags empty content or content that just repeats the symbol name.
     *   *Configurable:* Add custom terms, minimum length, punctuation requirements, and similarity thresholds.
@@ -106,7 +106,9 @@ comment_sense.exclude_constants = true
 ```
 
 ### Implicit Documentation Inheritance
-Allow skipping documentation entirely for methods, properties, and events that override or implement base members (enabled by default). This does not apply to types (classes, interfaces, etc.), which always require explicit documentation.
+By default, CommentSense allows skipping documentation for methods, properties, and events that override or implement base members, as they implicitly inherit documentation. This does not apply to types (classes, interfaces, etc.), which always require explicit documentation.
+
+To disable this behavior and require explicit documentation (e.g., `<inheritdoc />`) for these members, set this option to `false`. This will trigger **CSENSE018** when documentation is missing.
 ```ini
 [*.cs]
 comment_sense.allow_implicit_inheritdoc = false
