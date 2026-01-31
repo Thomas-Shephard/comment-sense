@@ -21,6 +21,7 @@ Always verify changes using these commands.
 
 ## 3. Project Layout
 *   **`src/CommentSense.Analyzers/`**: The main analyzer project. Contains the diagnostic analyzer implementations, rule definitions, and specialized analyzer logic.
+    *   **`CommentSenseSuppressor.cs`**: Automatically silences overlapping built-in compiler diagnostics.
 *   **`src/CommentSense.Core/`**: Shared core logic. Contains common utilities for accessibility checks and XML documentation parsing.
 *   **`tests/CommentSense.Analyzers.Tests/`**: Integration tests for the diagnostic rules.
 *   **`tests/CommentSense.Core.Tests/`**: Unit tests for the core utilities.
@@ -33,6 +34,7 @@ Always verify changes using these commands.
     *   Use `ImmutableArray` for collections.
     *   Register actions in `Initialize` (e.g., `context.RegisterSymbolAction`).
     *   Avoid state in the analyzer class itself (use the `AnalysisContext`).
+    *   Use `DiagnosticSuppressor` to handle overlapping compiler diagnostics.
 *   **Testing:**
     *   Use `Microsoft.CodeAnalysis.CSharp.Analyzer.Testing` with `NUnit`.
     *   Inherit from `CommentSenseAnalyzerTestBase<T>` for analyzer tests.
@@ -58,7 +60,7 @@ When reviewing code or suggesting changes, you **MUST** check for the following:
     *   **Action:** Verify that ALL relevant documentation is updated. This includes `README.md`, `CONTRIBUTING.md`, XML documentation comments (`/// <summary>`), and these `copilot-instructions.md` themselves. If any documentation is missing or outdated, **explicitly flag this** in your review.
 2.  **Code Consistency:**
     *   Verify that `Analyzers` inherit from `CommentSenseAnalyzerBase` where applicable.
-    *   Diagnostic messages should generally use `SymbolDisplayFormat.MinimallyQualifiedFormat` when including type names to ensure readability (e.g. `List<T>` instead of just `List` or `System.Collections.Generic.List<T>`).
+    *   Diagnostic messages should generally use `symbol.GetDisplayName()` to ensure friendly names (especially for constructors) and falling back to `SymbolDisplayFormat.MinimallyQualifiedFormat` when appropriate.
 3.  **Diagnostic IDs:** Ensure new diagnostics follow the `CSENSExxx` naming convention and are added to `SupportedDiagnostics`.
 4.  **Test Coverage:** Ensure new rules or logic branches have corresponding `[Test]` cases in the relevant test projects.
 5.  **Performance:** Ensure `AnalyzeSymbol` is efficient and returns early for ineligible symbols (using `AnalyzerExtensions.IsEligibleForAnalysis`).
@@ -77,3 +79,4 @@ The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.similarity_threshold`: Double (0.0 to 1.0) for similarity analysis threshold.
 *   `comment_sense.allow_implicit_inheritdoc`: Boolean to allow skipping documentation for overrides/implementations.
 *   `comment_sense.exclude_constants`: Boolean to skip documentation requirements for constant fields.
+*   `comment_sense.enable_conditional_suppression`: Boolean to only suppress compiler warnings for members that are eligible for CommentSense analysis.
