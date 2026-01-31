@@ -11,6 +11,10 @@ internal static class ExceptionAnalyzer
 {
     private const string ExceptionTag = "exception";
 
+    private static readonly SymbolDisplayFormat FullNameFormat = new(
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
+
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
         var documentedExceptionElements = DocumentationExtensions.GetTargetElements(xml, ExceptionTag).ToList();
@@ -21,8 +25,7 @@ internal static class ExceptionAnalyzer
         if (!DocumentationExtensions.HasInheritDoc(xml) && !DocumentationExtensions.HasAutoValidTag(xml))
         {
             foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) &&
-                                                             !options.IgnoredExceptions.Contains(t.Name) &&
-                                                             !options.IgnoredExceptions.Contains(t.ToDisplayString())))
+                                                             !IsIgnored(t, options)))
             {
                 var location = symbol.Locations.GetPrimaryLocation();
                 context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
@@ -42,6 +45,25 @@ internal static class ExceptionAnalyzer
                 QualityAnalyzer.Report(context, symbol, ExceptionTag, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
             }
         }
+    }
+
+    private static bool IsIgnored(ITypeSymbol type, CommentSenseOptions options)
+    {
+        if (options.IgnoredExceptions.Contains(type.Name) || options.IgnoredExceptions.Contains(type.ToDisplayString(FullNameFormat)))
+            return true;
+
+        var ns = type.ContainingNamespace.ToDisplayString();
+
+        if (options.IgnoreSystemExceptions && IsInNamespace(ns, "System"))
+            return true;
+
+        return options.IgnoredExceptionNamespaces.Any(targetNs => IsInNamespace(ns, targetNs));
+    }
+
+    private static bool IsInNamespace(string ns, string targetNamespace)
+    {
+        return ns.Equals(targetNamespace, StringComparison.OrdinalIgnoreCase) ||
+               ns.StartsWith(targetNamespace + ".", StringComparison.OrdinalIgnoreCase);
     }
 
     private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(SymbolAnalysisContext context, IEnumerable<XElement> exceptionElements)

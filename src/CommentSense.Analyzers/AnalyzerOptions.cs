@@ -22,6 +22,8 @@ internal static class AnalyzerOptions
                 AllowImplicitInheritDoc: GetBoolOption(o, globalOptions, "allow_implicit_inheritdoc", true),
                 LowQualityTerms: GetSetOption(o, globalOptions, "low_quality_terms", []),
                 IgnoredExceptions: GetSetOption(o, globalOptions, "ignored_exceptions", []),
+                IgnoreSystemExceptions: GetBoolOption(o, globalOptions, "ignore_system_exceptions"),
+                IgnoredExceptionNamespaces: GetSetOption(o, globalOptions, "ignored_exception_namespaces", []),
                 MinSummaryLength: GetIntOption(o, globalOptions, "min_summary_length", 0),
                 RequireEndingPunctuation: GetBoolOption(o, globalOptions, "require_ending_punctuation"),
                 SimilarityThreshold: Math.Max(0.0, Math.Min(1.0, GetDoubleOption(o, globalOptions, "similarity_threshold", 0.0)))
@@ -93,7 +95,22 @@ internal record CommentSenseOptions(
     bool AllowImplicitInheritDoc,
     IImmutableSet<string> LowQualityTerms,
     IImmutableSet<string> IgnoredExceptions,
+    bool IgnoreSystemExceptions,
+    IImmutableSet<string> IgnoredExceptionNamespaces,
     int MinSummaryLength,
     bool RequireEndingPunctuation,
     double SimilarityThreshold
-);
+)
+{
+    public static readonly CommentSenseOptions Default = new(
+        AnalyzeInternal: false,
+        AllowImplicitInheritDoc: true,
+        LowQualityTerms: ImmutableHashSet<string>.Empty,
+        IgnoredExceptions: ImmutableHashSet<string>.Empty,
+        IgnoreSystemExceptions: false,
+        IgnoredExceptionNamespaces: ImmutableHashSet<string>.Empty,
+        MinSummaryLength: 0,
+        RequireEndingPunctuation: false,
+        SimilarityThreshold: 0.0
+    );
+}

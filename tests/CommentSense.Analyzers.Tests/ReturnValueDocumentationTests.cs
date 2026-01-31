@@ -540,7 +540,7 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     [Test]
     public void IsLowQualityCheckReferenceEquals()
     {
-        var options = new CommentSenseOptions(false, true, [], [], 0, false, 0.0);
+        var options = CommentSenseOptions.Default;
 
         var syntaxTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText("class C {}");
         var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("Test")
@@ -555,7 +555,7 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     [Test]
     public void IsLowQualityCheckDifferentSymbols()
     {
-        var options = new CommentSenseOptions(false, true, [], [], 0, false, 0.0);
+        var options = CommentSenseOptions.Default;
 
         var syntaxTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText("class C { void M() {} }");
         var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("Test")
