@@ -8,6 +8,22 @@ namespace CommentSense.Analyzers;
 
 internal static class AnalyzerExtensions
 {
+    private static readonly SymbolDisplayFormat FriendlyConstructorFormat = new(
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameOnly,
+        memberOptions: SymbolDisplayMemberOptions.IncludeParameters,
+        parameterOptions: SymbolDisplayParameterOptions.IncludeType,
+        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
+    public static string GetDisplayName(this ISymbol symbol)
+    {
+        if (symbol is IMethodSymbol { MethodKind: MethodKind.Constructor or MethodKind.StaticConstructor } method)
+        {
+            return method.ToDisplayString(FriendlyConstructorFormat);
+        }
+
+        return symbol.Name;
+    }
+
     public static bool IsEligibleForAnalysis(this ISymbol symbol, VisibilityLevel visibilityLevel = VisibilityLevel.Protected)
     {
         if (symbol.IsImplicitlyDeclared)

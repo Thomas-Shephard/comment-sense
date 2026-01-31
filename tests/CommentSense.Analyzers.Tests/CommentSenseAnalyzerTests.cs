@@ -1,4 +1,5 @@
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -29,6 +30,90 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             """;
 
         await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task PublicConstructorWithoutDocumentationReportsFriendlyName()
+    {
+        const string testCode = """
+            /// <summary>My class</summary>
+            public class MyClass
+            {
+                public {|#0:MyClass|}(int x)
+                {
+                }
+            }
+            """;
+
+        var expected = new DiagnosticResult(CommentSenseRules.MissingDocumentationRule)
+            .WithLocation(0)
+            .WithArguments("MyClass(int)");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
+    }
+
+    [Test]
+    public async Task PublicParameterlessConstructorWithoutDocumentationReportsFriendlyName()
+    {
+        const string testCode = """
+            /// <summary>My class</summary>
+            public class MyClass
+            {
+                public {|#0:MyClass|}()
+                {
+                }
+            }
+            """;
+
+        var expected = new DiagnosticResult(CommentSenseRules.MissingDocumentationRule)
+            .WithLocation(0)
+            .WithArguments("MyClass()");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
+    }
+
+    [Test]
+    public async Task ConstructorWithLowQualitySummaryReportsFriendlyName()
+    {
+        const string testCode = """
+            /// <summary>My class</summary>
+            public class MyClass
+            {
+                /// <summary>MyClass(int)</summary>
+                /// <param name="x">The value.</param>
+                public {|#0:MyClass|}(int x)
+                {
+                }
+            }
+            """;
+
+        var expected = new DiagnosticResult(CommentSenseRules.LowQualityDocumentationRule)
+            .WithLocation(0)
+            .WithArguments("summary", "MyClass(int)");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
+    }
+
+    [Test]
+    public async Task ConstructorWithStrayReturnsReportsFriendlyName()
+    {
+        const string testCode = """
+            /// <summary>My class</summary>
+            public class MyClass
+            {
+                /// <summary>This is the summary for the constructor.</summary>
+                /// <returns>Stray</returns>
+                public {|#0:MyClass|}()
+                {
+                }
+            }
+            """;
+
+        var expected = new DiagnosticResult(CommentSenseRules.StrayReturnValueDocumentationRule)
+            .WithLocation(0)
+            .WithArguments("MyClass()");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
     }
 
     [Test]

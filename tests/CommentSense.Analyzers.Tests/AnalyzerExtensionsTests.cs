@@ -725,6 +725,38 @@ public class AnalyzerExtensionsTests
         Assert.That(taskType.IsTaskType(isGeneric: true), Is.False);
     }
 
+    [Test]
+    public void GetDisplayNameReturnsFriendlyNameForConstructor()
+    {
+        const string source = "public class C { public C() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "C");
+        Assert.That(symbol.GetDisplayName(), Is.EqualTo("C()"));
+    }
+
+    [Test]
+    public void GetDisplayNameReturnsFriendlyNameForConstructorWithParameters()
+    {
+        const string source = "public class C { public C(int x, string y) {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "C");
+        Assert.That(symbol.GetDisplayName(), Is.EqualTo("C(int, string)"));
+    }
+
+    [Test]
+    public void GetDisplayNameReturnsDefaultNameForStaticConstructor()
+    {
+        const string source = "public class C { static C() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "C");
+        Assert.That(symbol.GetDisplayName(), Is.EqualTo("C()"));
+    }
+
+    [Test]
+    public void GetDisplayNameReturnsNameForMethod()
+    {
+        const string source = "public class C { public void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        Assert.That(symbol.GetDisplayName(), Is.EqualTo("M"));
+    }
+
     private static (ISymbol symbol, Compilation compilation) GetSymbolsFromSource(string source, string symbolName)
     {
         var tree = CSharpSyntaxTree.ParseText(source);
@@ -732,6 +764,7 @@ public class AnalyzerExtensionsTests
         var semanticModel = compilation.GetSemanticModel(tree);
         var declaration = tree.GetRoot().DescendantNodes()
             .Last(n => n is MemberDeclarationSyntax m && (m is MethodDeclarationSyntax md && md.Identifier.ValueText == symbolName ||
+                                                         m is ConstructorDeclarationSyntax cd && cd.Identifier.ValueText == symbolName ||
                                                          m is PropertyDeclarationSyntax pd && pd.Identifier.ValueText == symbolName ||
                                                          m is IndexerDeclarationSyntax id && (symbolName == "this[]" || id.ThisKeyword.ValueText == "this") ||
                                                          m is EventDeclarationSyntax ed && ed.Identifier.ValueText == symbolName ||
