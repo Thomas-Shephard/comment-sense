@@ -93,6 +93,13 @@ Enable analysis for `internal` and `private protected` members (disabled by defa
 comment_sense.analyze_internal = true
 ```
 
+### Constant Field Analysis
+Skip documentation requirements for constant fields (disabled by default). Constants like `public const string Version = "1.0";` are often self-explanatory.
+```ini
+[*.cs]
+comment_sense.exclude_constants = true
+```
+
 ### Implicit Documentation Inheritance
 Allow skipping documentation entirely for methods, properties, and events that override or implement base members (enabled by default). This does not apply to types (classes, interfaces, etc.), which always require explicit documentation.
 ```ini

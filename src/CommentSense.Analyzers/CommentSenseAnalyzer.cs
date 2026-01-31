@@ -73,6 +73,9 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (!symbol.IsEligibleForAnalysis(options.AnalyzeInternal))
             return;
 
+        if (options.ExcludeConstants && symbol is IFieldSymbol { IsConst: true })
+            return;
+
         var isInheriting = symbol.IsInheriting();
         var xml = symbol.GetDocumentationCommentXml();
 

@@ -18,8 +18,11 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
             ["comment_sense.similarity_threshold"] = "0.75",
             ["comment_sense.low_quality_terms"] = "BAD, TERMS",
             ["comment_sense.ignored_exceptions"] = "Ex1, Ex2",
+            ["comment_sense.ignore_system_exceptions"] = "true",
+            ["comment_sense.ignored_exception_namespaces"] = "System.Text",
             ["comment_sense.analyze_internal"] = "true",
-            ["comment_sense.allow_implicit_inheritdoc"] = "false"
+            ["comment_sense.allow_implicit_inheritdoc"] = "false",
+            ["comment_sense.exclude_constants"] = "true"
         });
 
         var provider = new CustomProvider(localOptions, globalOptions);
@@ -33,8 +36,11 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
             Assert.That(options.SimilarityThreshold, Is.EqualTo(0.75));
             Assert.That(options.LowQualityTerms, Contains.Item("BAD"));
             Assert.That(options.IgnoredExceptions, Contains.Item("Ex1"));
+            Assert.That(options.IgnoreSystemExceptions, Is.True);
+            Assert.That(options.IgnoredExceptionNamespaces, Contains.Item("System.Text"));
             Assert.That(options.AnalyzeInternal, Is.True);
             Assert.That(options.AllowImplicitInheritDoc, Is.False);
+            Assert.That(options.ExcludeConstants, Is.True);
         }
     }
 
@@ -242,5 +248,57 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
             """;
 
         await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task ConstantFieldWithoutDocumentationReportsDiagnosticByDefault()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                public const string {|CSENSE001:Version|} = "1.0";
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task ConstantFieldWithoutDocumentationDoesNotReportDiagnosticWhenExcluded()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                public const string Version = "1.0";
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.exclude_constants"] = "true"
+        };
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, configOptions: config);
+    }
+
+    [Test]
+    public async Task NonConstantFieldWithoutDocumentationStillReportsDiagnosticWhenConstantsExcluded()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                public string {|CSENSE001:Version|} = "1.0";
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.exclude_constants"] = "true"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
     }
 }

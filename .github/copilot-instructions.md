@@ -68,4 +68,11 @@ When reviewing code or suggesting changes, you **MUST** check for the following:
 The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.low_quality_terms`: Comma-separated list of terms to flag as low quality.
 *   `comment_sense.ignored_exceptions`: Comma-separated list of exceptions to ignore.
+*   `comment_sense.ignore_system_exceptions`: Boolean to ignore all exceptions in the `System` namespace.
+*   `comment_sense.ignored_exception_namespaces`: Comma-separated list of namespaces to ignore.
 *   `comment_sense.analyze_internal`: Boolean to enable analysis of internal members.
+*   `comment_sense.min_summary_length`: Integer for minimum length of summary text.
+*   `comment_sense.require_ending_punctuation`: Boolean to require summaries to end with punctuation.
+*   `comment_sense.similarity_threshold`: Double (0.0 to 1.0) for similarity analysis threshold.
+*   `comment_sense.allow_implicit_inheritdoc`: Boolean to allow skipping documentation for overrides/implementations.
+*   `comment_sense.exclude_constants`: Boolean to skip documentation requirements for constant fields.
