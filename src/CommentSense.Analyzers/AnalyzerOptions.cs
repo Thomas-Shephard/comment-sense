@@ -35,6 +35,7 @@ internal static class AnalyzerOptions
                 MinSummaryLength: GetIntOption(o, globalOptions, "min_summary_length", 0),
                 RequireEndingPunctuation: GetBoolOption(o, globalOptions, "require_ending_punctuation"),
                 ExcludeConstants: GetBoolOption(o, globalOptions, "exclude_constants"),
+                ExcludeEnums: GetBoolOption(o, globalOptions, "exclude_enums"),
                 SimilarityThreshold: Math.Max(0.0, Math.Min(1.0, GetDoubleOption(o, globalOptions, "similarity_threshold", 0.0))),
                 EnableConditionalSuppression: GetBoolOption(o, globalOptions, "enable_conditional_suppression")
             );
@@ -128,6 +129,7 @@ internal record CommentSenseOptions(
     int MinSummaryLength,
     bool RequireEndingPunctuation,
     bool ExcludeConstants,
+    bool ExcludeEnums,
     double SimilarityThreshold,
     bool EnableConditionalSuppression
 )
@@ -142,6 +144,7 @@ internal record CommentSenseOptions(
         MinSummaryLength: 0,
         RequireEndingPunctuation: false,
         ExcludeConstants: false,
+        ExcludeEnums: false,
         SimilarityThreshold: 0.0,
         EnableConditionalSuppression: false
     );

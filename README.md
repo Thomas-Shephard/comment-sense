@@ -128,6 +128,13 @@ Skip documentation requirements for constant fields (disabled by default). Const
 comment_sense.exclude_constants = true
 ```
 
+### Enum Member Analysis
+Skip documentation requirements for enum members (disabled by default).
+```ini
+[*.cs]
+comment_sense.exclude_enums = true
+```
+
 ### Implicit Documentation Inheritance
 By default, CommentSense allows skipping documentation for methods, properties, and events that override or implement base members, as they implicitly inherit documentation. This does not apply to types (classes, interfaces, etc.), which always require explicit documentation.
 
