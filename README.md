@@ -49,8 +49,31 @@ Ensures the `<param>` and `<typeparam>` tags match the method signature exactly.
     *   *Default:* Disabled.
 *   **CSENSE015**: Flags stray `<value>` tags.
 
+## Automatic Suppression
+CommentSense automatically suppresses several built-in C# compiler diagnostics that overlap with its own rules. This prevents duplicate warnings and ensures a cleaner "Error List" experience.
+
+The following diagnostics are suppressed globally by default:
+*   **CS1591**: Missing XML comment for publicly visible type or member.
+*   **CS1573**: Parameter has no matching param tag in the XML comment.
+*   **CS1572**: XML comment has a param tag for a non-existent parameter.
+*   **CS1571**: XML comment has a duplicate param tag.
+*   **CS1584**: XML comment has syntactically incorrect cref attribute.
+*   **CS1574**: XML comment has cref attribute that could not be resolved.
+*   **CS1658**: Error in XML comment (e.g. syntax error in cref).
+
 ## Configuration
 You can configure the analyzer behavior using an `.editorconfig` file in your project root or solution directory.
+
+### Conditional Suppression
+By default, CommentSense suppresses the above compiler warnings globally for the project. If you want to suppress them *only* for members that CommentSense is actively analyzing (based on visibility or other exclusions), enable this option.
+
+This is useful if you exclude certain members (e.g. constants) from CommentSense but still want the standard C# compiler warnings to report issues for them.
+
+```ini
+[*.cs]
+# Default: false (global suppression)
+comment_sense.enable_conditional_suppression = true
+```
 
 ### Low Quality Analysis
 Specify criteria for what is considered "low quality" documentation.

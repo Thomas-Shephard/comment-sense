@@ -2,6 +2,7 @@ namespace CommentSense.Core;
 
 internal static class CommentSenseDiagnosticIds
 {
+    // Rules
     public const string DisabledDocumentationParsingId = "CSENSE000";
     public const string MissingDocumentationId = "CSENSE001";
     public const string MissingParameterDocumentationId = "CSENSE002";
@@ -21,4 +22,13 @@ internal static class CommentSenseDiagnosticIds
     public const string LowQualityDocumentationId = "CSENSE016";
     public const string InvalidExceptionTypeId = "CSENSE017";
     public const string MissingInheritDocId = "CSENSE018";
+
+    // Suppressions
+    public const string SuppressMissingXmlCommentId = "CSENSESUP001";
+    public const string SuppressMissingParamTagId = "CSENSESUP002";
+    public const string SuppressStrayParamTagId = "CSENSESUP003";
+    public const string SuppressDuplicateParamTagId = "CSENSESUP004";
+    public const string SuppressInvalidCrefId = "CSENSESUP005";
+    public const string SuppressUnresolvedCrefId = "CSENSESUP006";
+    public const string SuppressInvalidCrefSecondaryId = "CSENSESUP007";
 }

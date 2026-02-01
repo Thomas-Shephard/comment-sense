@@ -572,5 +572,14 @@ namespace CommentSense.Analyzers {
                 return ResourceManager.GetString("MissingInheritDocDescription", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Handled by CommentSense analyzer..
+        /// </summary>
+        internal static string SuppressionJustification {
+            get {
+                return ResourceManager.GetString("SuppressionJustification", resourceCulture);
+            }
+        }
     }
 }

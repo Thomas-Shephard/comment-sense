@@ -35,7 +35,8 @@ internal static class AnalyzerOptions
                 MinSummaryLength: GetIntOption(o, globalOptions, "min_summary_length", 0),
                 RequireEndingPunctuation: GetBoolOption(o, globalOptions, "require_ending_punctuation"),
                 ExcludeConstants: GetBoolOption(o, globalOptions, "exclude_constants"),
-                SimilarityThreshold: Math.Max(0.0, Math.Min(1.0, GetDoubleOption(o, globalOptions, "similarity_threshold", 0.0)))
+                SimilarityThreshold: Math.Max(0.0, Math.Min(1.0, GetDoubleOption(o, globalOptions, "similarity_threshold", 0.0))),
+                EnableConditionalSuppression: GetBoolOption(o, globalOptions, "enable_conditional_suppression")
             );
         });
     }
@@ -127,7 +128,8 @@ internal record CommentSenseOptions(
     int MinSummaryLength,
     bool RequireEndingPunctuation,
     bool ExcludeConstants,
-    double SimilarityThreshold
+    double SimilarityThreshold,
+    bool EnableConditionalSuppression
 )
 {
     public static readonly CommentSenseOptions Default = new(
@@ -140,6 +142,7 @@ internal record CommentSenseOptions(
         MinSummaryLength: 0,
         RequireEndingPunctuation: false,
         ExcludeConstants: false,
-        SimilarityThreshold: 0.0
+        SimilarityThreshold: 0.0,
+        EnableConditionalSuppression: false
     );
 }

@@ -9,9 +9,9 @@ namespace CommentSense.TestHelpers;
 public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
     where TAnalyzer : DiagnosticAnalyzer, new()
 {
-    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true, CompilerDiagnostics compilerDiagnostics = CompilerDiagnostics.Errors, IEnumerable<(string Id, ReportDiagnostic Severity)>? diagnosticOptions = null, IDictionary<string, string>? configOptions = null, DocumentationMode documentationMode = DocumentationMode.Parse, IEnumerable<DiagnosticResult>? expectedDiagnostics = null, ReferenceAssemblies? referenceAssemblies = null, Func<Solution, ProjectId, Solution>? solutionTransform = null)
+    protected static async Task VerifyCSenseAsync(string source, bool expectDiagnostic = true, CompilerDiagnostics compilerDiagnostics = CompilerDiagnostics.Errors, IEnumerable<(string Id, ReportDiagnostic Severity)>? diagnosticOptions = null, IDictionary<string, string>? configOptions = null, DocumentationMode documentationMode = DocumentationMode.Parse, IEnumerable<DiagnosticResult>? expectedDiagnostics = null, ReferenceAssemblies? referenceAssemblies = null, Func<Solution, ProjectId, Solution>? solutionTransform = null, IEnumerable<DiagnosticAnalyzer>? additionalAnalyzers = null)
     {
-        var tester = new CSharpAnalyzerTest<TAnalyzer, NUnitVerifier>
+        var tester = new CustomAnalyzerTest(additionalAnalyzers)
         {
             TestCode = source,
             MarkupOptions = MarkupOptions.UseFirstDescriptor,
@@ -74,5 +74,20 @@ public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
             Assert.Fail("Test code contains diagnostic markers {| |} but expectDiagnostic is false.");
 
         await tester.RunAsync();
+    }
+
+    private sealed class CustomAnalyzerTest(IEnumerable<DiagnosticAnalyzer>? additionalAnalyzers) : CSharpAnalyzerTest<TAnalyzer, NUnitVerifier>
+    {
+        protected override IEnumerable<DiagnosticAnalyzer> GetDiagnosticAnalyzers()
+        {
+            foreach (var analyzer in base.GetDiagnosticAnalyzers())
+                yield return analyzer;
+
+            if (additionalAnalyzers == null)
+                yield break;
+
+            foreach (var analyzer in additionalAnalyzers)
+                yield return analyzer;
+        }
     }
 }

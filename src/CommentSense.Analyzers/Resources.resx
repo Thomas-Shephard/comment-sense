@@ -229,4 +229,7 @@
   <data name="MissingInheritDocDescription" xml:space="preserve">
     <value>The symbol overrides or implements a base member but is missing documentation.</value>
   </data>
+  <data name="SuppressionJustification" xml:space="preserve">
+    <value>Handled by CommentSense analyzer.</value>
+  </data>
 </root>
