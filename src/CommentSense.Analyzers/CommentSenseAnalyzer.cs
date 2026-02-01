@@ -76,6 +76,9 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (options.ExcludeConstants && symbol is IFieldSymbol { IsConst: true })
             return;
 
+        if (options.ExcludeEnums && symbol is IFieldSymbol { ContainingType.TypeKind: TypeKind.Enum })
+            return;
+
         var isInheriting = symbol.IsInheriting();
         var xml = symbol.GetDocumentationCommentXml();
 

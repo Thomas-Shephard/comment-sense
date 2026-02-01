@@ -79,4 +79,5 @@ The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.similarity_threshold`: Double (0.0 to 1.0) for similarity analysis threshold.
 *   `comment_sense.allow_implicit_inheritdoc`: Boolean to allow skipping documentation for overrides/implementations.
 *   `comment_sense.exclude_constants`: Boolean to skip documentation requirements for constant fields.
+*   `comment_sense.exclude_enums`: Boolean to skip documentation requirements for enum members.
 *   `comment_sense.enable_conditional_suppression`: Boolean to only suppress compiler warnings for members that are eligible for CommentSense analysis.
