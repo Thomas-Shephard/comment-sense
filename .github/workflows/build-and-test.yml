@@ -9,7 +9,7 @@ on:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
@@ -54,8 +54,10 @@ jobs:
         run: dotnet coveragechecker --format Cobertura --glob-patterns 'coverage/**/coverage.cobertura.xml' --line-threshold 100 --branch-threshold 100
       - name: Pack
         run: dotnet pack CommentSense.slnx --configuration Release --no-build --output artifacts/package
-      - name: Upload NuGet Packages
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: nuget-packages
-          path: artifacts/package/*.nupkg
+          name: build-artifacts
+          path: |
+            artifacts/package/*.nupkg
+            artifacts/vsix/CommentSense.vsix

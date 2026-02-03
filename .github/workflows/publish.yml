@@ -7,8 +7,8 @@ on:
 
 jobs:
   publish:
-    name: Publish to NuGet.org
-    runs-on: ubuntu-latest
+    name: Publish NuGet and VSIX
+    runs-on: windows-latest
     permissions:
       id-token: write
       contents: read
@@ -44,3 +44,13 @@ jobs:
           user: ${{ secrets.NUGET_USERNAME }}
       - name: Push to NuGet.org
         run: dotnet nuget push "artifacts/package/*.nupkg" --api-key ${{ steps.nuget-auth.outputs.nuget_api_key }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Publish VSIX to Visual Studio Marketplace
+        env:
+          VS_MARKETPLACE_PAT: ${{ secrets.VS_MARKETPLACE_PAT }}
+        run: |
+          $vssdkPath = dotnet build src/CommentSense.Vsix/CommentSense.Vsix.csproj --getProperty:PkgMicrosoft_VSSDK_BuildTools
+          if (-not $vssdkPath) { throw "Could not determine Microsoft.VSSDK.BuildTools path. Ensure the project is restored." }
+          $vsixPublisher = Join-Path $vssdkPath "tools\vssdk\bin\VsixPublisher.exe"
+          if (-not (Test-Path $vsixPublisher)) { throw "VsixPublisher.exe not found at expected path: $vsixPublisher" }
+          & $vsixPublisher publish -payload "artifacts/vsix/CommentSense.vsix" -publishManifest "src/CommentSense.Vsix/publish-manifest.json" -personalAccessToken "$VS_MARKETPLACE_PAT"
+        shell: pwsh

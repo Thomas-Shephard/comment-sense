@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CommentSense.TestHelpers\CommentSense.TestHelpers.csproj" />
+  </ItemGroup>
+
+</Project>

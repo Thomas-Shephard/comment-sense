@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+    <Identity Id="CommentSense.Vsix.ThomasShephard" Version="0.0.0" Language="en-US" Publisher="PUBLISHER_PLACEHOLDER" />
+    <DisplayName>CommentSense</DisplayName>
+    <Description xml:space="preserve">A Roslyn-based analyzer to enforce meaningful XML documentation comments for C#.</Description>
+    <MoreInfo>https://github.com/Thomas-Shephard/comment-sense</MoreInfo>
+    <License>LICENSE</License>
+    <Icon>Logo.png</Icon>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">
+      <ProductArchitecture>amd64</ProductArchitecture>
+    </InstallationTarget>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">
+      <ProductArchitecture>arm64</ProductArchitecture>
+    </InstallationTarget>
+  </Installation>
+  <Dependencies>
+    <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" Version="[4.7.2,)" />
+  </Dependencies>
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.Analyzer" d:Source="Project" d:ProjectName="CommentSense.Analyzers" Path="|CommentSense.Analyzers|" />
+  </Assets>
+  <Prerequisites>
+    <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,18.0)" DisplayName="Visual Studio Core Editor" />
+  </Prerequisites>
+</PackageManifest>

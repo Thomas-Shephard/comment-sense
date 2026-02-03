@@ -10,7 +10,7 @@ public class DogfoodTests
     [Test]
     public async Task Dogfood()
     {
-        var repoRoot = GetRepositoryRoot();
+        var repoRoot = ProjectLayout.RepositoryRoot;
         var srcDir = Path.Combine(repoRoot, "src");
 
         var sourceFiles = GetSourceFiles(srcDir)
@@ -53,19 +53,4 @@ public class DogfoodTests
                  .Where(f =>
                      !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) &&
                      !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar));
-
-    private static string GetRepositoryRoot()
-    {
-        var dir = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(dir))
-        {
-            if (File.Exists(Path.Combine(dir, "CommentSense.slnx")))
-            {
-                return dir;
-            }
-            dir = Path.GetDirectoryName(dir);
-        }
-
-        throw new DirectoryNotFoundException("Could not find repository root.");
-    }
 }

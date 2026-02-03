@@ -1,0 +1,110 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+
+    <!-- VSIX Configuration -->
+    <OutDir>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\</OutDir>
+    <IntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(Configuration)\$(TargetFramework)\</IntermediateOutputPath>
+    <IsVsixProject>true</IsVsixProject>
+    <VsixType>v3</VsixType>
+    <TargetVsixContainerName>CommentSense.vsix</TargetVsixContainerName>
+    <GenerateVsixContainer>true</GenerateVsixContainer>
+    <GeneratePkgDefFile>false</GeneratePkgDefFile>
+    <GenerateExtension>true</GenerateExtension>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Placeholder.cs" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" PrivateAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CommentSense.Analyzers\CommentSense.Analyzers.csproj">
+        <Name>CommentSense.Analyzers</Name>
+        <IncludeOutputGroupsInVSIX>BuiltProjectOutputGroup;BuiltProjectOutputGroupDependencies;GetCopyToOutputDirectoryItems;SatelliteDllsProjectOutputGroup;</IncludeOutputGroupsInVSIX>
+        <IncludeOutputGroupsInVSIXLocalOnly>DebugSymbolsProjectOutputGroup;</IncludeOutputGroupsInVSIXLocalOnly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\LICENSE">
+      <Link>LICENSE</Link>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="..\..\Logo.png">
+        <Link>Logo.png</Link>
+        <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <None Include="source.extension.vsixmanifest">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="publish-manifest.json" />
+    <None Include="overview.md" />
+  </ItemGroup>
+
+  <Target Name="GenerateMarketplaceMetadata" BeforeTargets="GetVsixSourceItems">
+    <PropertyGroup>
+      <MarketplaceManifestContent>
+{
+    "$schema": "http://json.schemastore.org/vsix-publish",
+    "categories": [ "coding", "analyzers" ],
+    "identity": {
+        "internalName": "CommentSense"
+    },
+    "overview": "overview.md",
+    "priceCategory": "free",
+    "publisher": "$(Authors.Replace(' ', ''))",
+    "private": false,
+    "qna": true,
+    "repo": "$(RepositoryUrl)"
+}
+      </MarketplaceManifestContent>
+    </PropertyGroup>
+
+    <WriteLinesToFile File="publish-manifest.json" Lines="$(MarketplaceManifestContent)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\README.md" DestinationFiles="overview.md" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="GenerateVsixManifest" BeforeTargets="GetVsixSourceItems" DependsOnTargets="MinVer">
+    <PropertyGroup>
+      <GeneratedVsixManifest>$(IntermediateOutputPath)extension.vsixmanifest</GeneratedVsixManifest>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <Copy SourceFiles="source.extension.vsixmanifest" DestinationFiles="$(GeneratedVsixManifest)" />
+
+    <Message Text="Generating VSIX Manifest at $(GeneratedVsixManifest)" Importance="high" />
+    <Message Text="Version: $(Version), Publisher: $(Authors)" Importance="high" />
+
+    <XmlPoke XmlInputPath="$(GeneratedVsixManifest)"
+             Query="/*[local-name()='PackageManifest']/*[local-name()='Metadata']/*[local-name()='Identity']/@Version"
+             Value="$(MinVerMajor).$(MinVerMinor).$(MinVerPatch).0" />
+
+    <XmlPoke XmlInputPath="$(GeneratedVsixManifest)"
+             Query="/*[local-name()='PackageManifest']/*[local-name()='Metadata']/*[local-name()='Identity']/@Publisher"
+             Value="$(Authors)" />
+
+    <ItemGroup>
+      <VsixManifest Remove="@(VsixManifest)" />
+      <VsixManifest Include="$(GeneratedVsixManifest)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="BuildVsixContainer" AfterTargets="Build">
+    <CallTarget Targets="CreateVsixContainer" />
+  </Target>
+
+  <Target Name="CopyVsixToArtifacts" AfterTargets="CreateVsixContainer">
+    <MakeDir Directories="$(ArtifactsPath)\vsix\" />
+    <Copy SourceFiles="$(OutDir)$(TargetVsixContainerName)" DestinationFolder="$(ArtifactsPath)\vsix\" />
+  </Target>
+
+  <Import Project="$(PkgMicrosoft_VSSDK_BuildTools)\tools\vssdk\Microsoft.VsSDK.targets" Condition="'$(PkgMicrosoft_VSSDK_BuildTools)' != ''" />
+</Project>
