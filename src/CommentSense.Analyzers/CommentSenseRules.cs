@@ -185,6 +185,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: CreateResourceString(nameof(Resources.MissingInheritDocDescription)));
 
+    public static readonly DiagnosticDescriptor UseLangwordRule = new(
+        CommentSenseDiagnosticIds.UseLangwordId,
+        CreateResourceString(nameof(Resources.UseLangwordTitle)),
+        CreateResourceString(nameof(Resources.UseLangwordMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.UseLangwordDescription)));
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =
     [
         DisabledDocumentationParsingRule,
@@ -205,6 +214,7 @@ internal static class CommentSenseRules
         StrayValueDocumentationRule,
         LowQualityDocumentationRule,
         InvalidExceptionTypeRule,
-        MissingInheritDocRule
+        MissingInheritDocRule,
+        UseLangwordRule
     ];
 }

@@ -69,6 +69,7 @@ When reviewing code or suggesting changes, you **MUST** check for the following:
 ## 7. Configuration Options
 The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.low_quality_terms`: Comma-separated list of terms to flag as low quality.
+*   `comment_sense.langwords`: Comma-separated list of C# keywords to flag for replacement with `<see langword="..." />`.
 *   `comment_sense.ignored_exceptions`: Comma-separated list of exceptions to ignore.
 *   `comment_sense.ignore_system_exceptions`: Boolean to ignore all exceptions in the `System` namespace.
 *   `comment_sense.ignored_exception_namespaces`: Comma-separated list of namespaces to ignore.

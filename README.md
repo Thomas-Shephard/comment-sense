@@ -28,6 +28,8 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Default:* Flags empty content or content that just repeats the symbol name.
     *   *Configurable:* Add custom terms, minimum length, punctuation requirements, and similarity thresholds.
 *   **CSENSE007**: Validates that `cref` attributes in documentation point to valid symbols.
+*   **CSENSE019**: Recommends using the `<see langword="..." />` tag for C# keywords (e.g., `true`, `false`, `null`, `void`) instead of plain text.
+    *   *Configurable:* Customize the list of keywords using `comment_sense.langwords`.
 
 ### Parameters & Type Parameters
 Ensures the `<param>` and `<typeparam>` tags match the method signature exactly.
@@ -93,6 +95,15 @@ comment_sense.require_ending_punctuation = true
 # A value of 1.0 only flags documentation identical to the symbol name.
 # Recommended: 0.7 to 0.8
 comment_sense.similarity_threshold = 0.8
+```
+
+### Langword Analysis
+Configure which C# keywords should be flagged for replacement with `<see langword="..." />`.
+```ini
+[*.cs]
+# Comma-separated list of keywords (case-insensitive)
+# Default: true, false, null, void
+comment_sense.langwords = true, false, null, void, async, await
 ```
 
 ### Ignored Exceptions

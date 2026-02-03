@@ -229,6 +229,15 @@
   <data name="MissingInheritDocDescription" xml:space="preserve">
     <value>The symbol overrides or implements a base member but is missing documentation.</value>
   </data>
+  <data name="UseLangwordTitle" xml:space="preserve">
+    <value>Use langword for keywords</value>
+  </data>
+  <data name="UseLangwordMessage" xml:space="preserve">
+    <value>The word '{0}' should be replaced with &lt;see langword="{0}"/&gt;</value>
+  </data>
+  <data name="UseLangwordDescription" xml:space="preserve">
+    <value>C# keywords should be referenced using the &lt;see langword="..."/&gt; tag in documentation.</value>
+  </data>
   <data name="SuppressionJustification" xml:space="preserve">
     <value>Handled by CommentSense analyzer.</value>
   </data>
