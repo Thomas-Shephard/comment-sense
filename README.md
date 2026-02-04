@@ -43,7 +43,9 @@ Ensures the `<param>` and `<typeparam>` tags match the method signature exactly.
 *   **CSENSE013**: Flags stray `<returns>` tags on members that do not produce a documented return value (including `void`, `Task`, and `ValueTask` members), as well as on properties and indexers.
 ### Exceptions
 *   **CSENSE012**: Scans the method body for explicitly thrown exceptions (including static guard clauses like `ArgumentNullException.ThrowIfNull`) and ensures they are documented with `<exception>` tags.
-    *   *Configurable:* Ignore exceptions using `comment_sense.ignored_exceptions`, `comment_sense.ignore_system_exceptions`, and `comment_sense.ignored_exception_namespaces`.
+    *   *Configurable:*
+        *   Ignore exceptions using `comment_sense.ignored_exceptions`, `comment_sense.ignore_system_exceptions`, and `comment_sense.ignored_exception_namespaces`.
+        *   Enable scanning of called methods and constructors for their documented exceptions using `comment_sense.scan_called_methods_for_exceptions = true`.
 *   **CSENSE017**: Validates that the `cref` attribute in an `<exception>` tag refers to a valid Exception type.
 
 ### Properties
@@ -118,6 +120,10 @@ comment_sense.ignore_system_exceptions = true
 
 # Comma-separated list of namespaces. Exceptions in these namespaces (or sub-namespaces) will be ignored.
 comment_sense.ignored_exception_namespaces = MyProject.Internal, System.Data
+
+# Whether to scan called methods and constructors for their documented exceptions (default: false).
+# When enabled, CSENSE012 will also report exceptions documented in the XML comments of called members.
+comment_sense.scan_called_methods_for_exceptions = true
 ```
 
 ### Visibility Level Analysis
