@@ -527,4 +527,84 @@ public class DocumentationExtensionsTests
         var expected = new[] { "T:System.Exception" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
+
+    [Test]
+    public void HasInheritDocReturnsTrueWhenPresent()
+    {
+        var root = XElement.Parse("<root><inheritdoc/></root>");
+        Assert.That(DocumentationExtensions.HasInheritDoc(root), Is.True);
+    }
+
+    [Test]
+    public void HasInheritDocReturnsFalseWhenAbsent()
+    {
+        var root = XElement.Parse("<root><summary/></root>");
+        Assert.That(DocumentationExtensions.HasInheritDoc(root), Is.False);
+    }
+
+    [Test]
+    public void HasInheritDocWithCrefReturnsTrueWhenCrefPresent()
+    {
+        var root = XElement.Parse("<root><inheritdoc cref='T:System.Object'/></root>");
+        Assert.That(DocumentationExtensions.HasInheritDocWithCref(root), Is.True);
+    }
+
+    [Test]
+    public void HasInheritDocWithCrefReturnsFalseWhenCrefAbsent()
+    {
+        var root = XElement.Parse("<root><inheritdoc/></root>");
+        Assert.That(DocumentationExtensions.HasInheritDocWithCref(root), Is.False);
+    }
+
+    [Test]
+    public void HasValueTagReturnsTrueWhenPresent()
+    {
+        var root = XElement.Parse("<root><value>Test</value></root>");
+        Assert.That(DocumentationExtensions.HasValueTag(root), Is.True);
+    }
+
+    [Test]
+    public void HasValueTagReturnsFalseWhenAbsent()
+    {
+        var root = XElement.Parse("<root><summary/></root>");
+        Assert.That(DocumentationExtensions.HasValueTag(root), Is.False);
+    }
+
+    [Test]
+    public void HasValidDocumentationWithAutoValidTagReturnsTrue()
+    {
+        var root = XElement.Parse("<root><inheritdoc/></root>");
+        Assert.That(DocumentationExtensions.HasValidDocumentation(root), Is.True);
+    }
+
+    [Test]
+    public void HasValidDocumentationWithUnknownTagReturnsFalse()
+    {
+        var root = XElement.Parse("<root><unknown/></root>");
+        Assert.That(DocumentationExtensions.HasValidDocumentation(root), Is.False);
+    }
+
+    [Test]
+    public void GetTargetElementsWithTagNameReturnsOnlyMatching()
+    {
+        var root = XElement.Parse("<root><summary>S</summary><remarks>R</remarks></root>");
+        var result = DocumentationExtensions.GetTargetElements(root, "summary").ToList();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Has.Count.EqualTo(1));
+            Assert.That(result[0].Name.LocalName, Is.EqualTo("summary"));
+        }
+    }
+
+    [Test]
+    public void GetTargetElementsWithMemberElementReturnsDirectChildren()
+    {
+        var root = XElement.Parse("<member><summary>S</summary></member>");
+        var result = DocumentationExtensions.GetTargetElements(root).ToList();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Has.Count.EqualTo(1));
+            Assert.That(result[0].Name.LocalName, Is.EqualTo("summary"));
+        }
+    }
 }

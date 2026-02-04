@@ -46,6 +46,123 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
     }
 
     [Test]
+    public void AnalyzerOptionsLocalOverGlobal()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.min_summary_length"] = "20",
+            ["comment_sense.visibility_level"] = "Public"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.min_summary_length"] = "15",
+            ["comment_sense.visibility_level"] = "Internal"
+        });
+
+        var provider = new CustomProvider(localOptions, globalOptions);
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var options = AnalyzerOptions.GetOptions(provider, null!);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(options.MinSummaryLength, Is.EqualTo(20));
+            Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Public));
+        }
+    }
+
+    [Test]
+    public void AnalyzerOptionsFallbackOnInvalidLocal()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.min_summary_length"] = "not-an-int",
+            ["comment_sense.visibility_level"] = "InvalidLevel",
+            ["comment_sense.require_ending_punctuation"] = "not-a-bool"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.min_summary_length"] = "15",
+            ["comment_sense.visibility_level"] = "Internal",
+            ["comment_sense.require_ending_punctuation"] = "true"
+        });
+
+        var provider = new CustomProvider(localOptions, globalOptions);
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var options = AnalyzerOptions.GetOptions(provider, null!);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(options.MinSummaryLength, Is.EqualTo(15));
+            Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Internal));
+            Assert.That(options.RequireEndingPunctuation, Is.True);
+        }
+    }
+
+    [Test]
+    public void AnalyzerOptionsEmptyAndWhiteSpace()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.min_summary_length"] = "",
+            ["comment_sense.visibility_level"] = "   "
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.min_summary_length"] = "15",
+            ["comment_sense.visibility_level"] = "Internal"
+        });
+
+        var provider = new CustomProvider(localOptions, globalOptions);
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var options = AnalyzerOptions.GetOptions(provider, null!);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(options.MinSummaryLength, Is.EqualTo(15));
+            Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Internal));
+        }
+    }
+
+    [Test]
+    public void AnalyzerOptionsSimilarityThresholdEdgeCases()
+    {
+        var configLow = new Dictionary<string, string> { ["comment_sense.similarity_threshold"] = "-0.5" };
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var optionsLow = AnalyzerOptions.GetOptions(new CustomProvider(new MapOptions(configLow), new MapOptions(new Dictionary<string, string>())), null!);
+
+        var configHigh = new Dictionary<string, string> { ["comment_sense.similarity_threshold"] = "1.5" };
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var optionsHigh = AnalyzerOptions.GetOptions(new CustomProvider(new MapOptions(configHigh), new MapOptions(new Dictionary<string, string>())), null!);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(optionsLow.SimilarityThreshold, Is.Zero);
+            Assert.That(optionsHigh.SimilarityThreshold, Is.EqualTo(1.0));
+        }
+    }
+
+    [Test]
+    public void AnalyzerOptionsGlobalInvalidFallback()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>());
+        var globalOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.min_summary_length"] = "not-an-int",
+            ["comment_sense.visibility_level"] = "   "
+        });
+
+        var provider = new CustomProvider(localOptions, globalOptions);
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var options = AnalyzerOptions.GetOptions(provider, null!);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(options.MinSummaryLength, Is.Zero);
+            Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Protected));
+        }
+    }
+
+    [Test]
     public void VisibilityLevelBackwardCompatibility()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>
@@ -59,6 +176,22 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
         var options = AnalyzerOptions.GetOptions(provider, null!);
 
         Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Internal));
+    }
+
+    [Test]
+    public void AnalyzerOptionsVisibilityLevelBackwardCompatibilityNoOption()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.analyze_internal"] = "false"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>());
+
+        var provider = new CustomProvider(localOptions, globalOptions);
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var options = AnalyzerOptions.GetOptions(provider, null!);
+
+        Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Protected));
     }
 
     [Test]
