@@ -25,6 +25,26 @@ public class AccessibilityExtensionsTests
         Assert.That(symbol.IsEffectivelyAccessible(), Is.EqualTo(expected));
     }
 
+    [TestCase("public class C { public void M() {} }", "M", VisibilityLevel.Public, true)]
+    [TestCase("public class C { protected void M() {} }", "M", VisibilityLevel.Public, false)]
+    [TestCase("public class C { internal void M() {} }", "M", VisibilityLevel.Internal, true)]
+    [TestCase("public class C { private void M() {} }", "M", VisibilityLevel.Internal, false)]
+    [TestCase("public class C { private void M() {} }", "M", VisibilityLevel.Private, true)]
+    [TestCase("internal class C { public void M() {} }", "M", VisibilityLevel.Internal, true)]
+    [TestCase("internal class C { public void M() {} }", "M", VisibilityLevel.Public, false)]
+    public void IsEffectivelyAccessibleWithVisibilityLevel(string source, string symbolName, VisibilityLevel level, bool expected)
+    {
+        var symbol = RoslynTestUtils.GetSymbolFromSource(source, symbolName);
+        Assert.That(symbol.IsEffectivelyAccessible(level), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void IsEffectivelyAccessibleWithInvalidVisibilityLevelReturnsFalse()
+    {
+        var symbol = RoslynTestUtils.GetSymbolFromSource("public class C {}", "C");
+        Assert.That(symbol.IsEffectivelyAccessible((VisibilityLevel)999), Is.False);
+    }
+
     [Test]
     public void IsEffectivelyAccessibleReturnsTrueForAssembly()
     {
