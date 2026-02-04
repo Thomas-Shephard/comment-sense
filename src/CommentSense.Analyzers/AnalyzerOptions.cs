@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -28,10 +29,11 @@ internal static class AnalyzerOptions
             return new CommentSenseOptions(
                 VisibilityLevel: visibilityLevel,
                 AllowImplicitInheritDoc: GetBoolOption(o, globalOptions, "allow_implicit_inheritdoc", true),
-                LowQualityTerms: GetSetOption(o, globalOptions, "low_quality_terms", []),
-                IgnoredExceptions: GetSetOption(o, globalOptions, "ignored_exceptions", []),
+                LowQualityTerms: GetSetOption(o, globalOptions, "low_quality_terms", ImmutableHashSet.Create<string>(StringComparer.OrdinalIgnoreCase)),
+                Langwords: GetSetOption(o, globalOptions, "langwords", ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "true", "false", "null", "void")),
+                IgnoredExceptions: GetSetOption(o, globalOptions, "ignored_exceptions", ImmutableHashSet.Create<string>(StringComparer.OrdinalIgnoreCase)),
                 IgnoreSystemExceptions: GetBoolOption(o, globalOptions, "ignore_system_exceptions"),
-                IgnoredExceptionNamespaces: GetSetOption(o, globalOptions, "ignored_exception_namespaces", []),
+                IgnoredExceptionNamespaces: GetSetOption(o, globalOptions, "ignored_exception_namespaces", ImmutableHashSet.Create<string>(StringComparer.OrdinalIgnoreCase)),
                 MinSummaryLength: GetIntOption(o, globalOptions, "min_summary_length", 0),
                 RequireEndingPunctuation: GetBoolOption(o, globalOptions, "require_ending_punctuation"),
                 ExcludeConstants: GetBoolOption(o, globalOptions, "exclude_constants"),
@@ -99,10 +101,10 @@ internal static class AnalyzerOptions
     private static IImmutableSet<string> GetSetOption(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name, IImmutableSet<string> defaultValue)
     {
         var key = Prefix + name;
-        if (options.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+        if (options.TryGetValue(key, out var value))
             return ParseSet(value);
 
-        if (globalOptions.TryGetValue(key, out value) && !string.IsNullOrWhiteSpace(value))
+        if (globalOptions.TryGetValue(key, out value))
             return ParseSet(value);
 
         return defaultValue;
@@ -123,6 +125,7 @@ internal record CommentSenseOptions(
     VisibilityLevel VisibilityLevel,
     bool AllowImplicitInheritDoc,
     IImmutableSet<string> LowQualityTerms,
+    IImmutableSet<string> Langwords,
     IImmutableSet<string> IgnoredExceptions,
     bool IgnoreSystemExceptions,
     IImmutableSet<string> IgnoredExceptionNamespaces,
@@ -134,10 +137,12 @@ internal record CommentSenseOptions(
     bool EnableConditionalSuppression
 )
 {
-    public static readonly CommentSenseOptions Default = new(
+    [ExcludeFromCodeCoverage]
+    public static CommentSenseOptions Default { get; } = new(
         VisibilityLevel: VisibilityLevel.Protected,
         AllowImplicitInheritDoc: true,
         LowQualityTerms: ImmutableHashSet<string>.Empty,
+        Langwords: ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "true", "false", "null", "void"),
         IgnoredExceptions: ImmutableHashSet<string>.Empty,
         IgnoreSystemExceptions: false,
         IgnoredExceptionNamespaces: ImmutableHashSet<string>.Empty,

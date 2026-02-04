@@ -574,6 +574,33 @@ namespace CommentSense.Analyzers {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Use langword for keywords.
+        /// </summary>
+        internal static string UseLangwordTitle {
+            get {
+                return ResourceManager.GetString("UseLangwordTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The word &apos;{0}&apos; should be replaced with &lt;see langword=&quot;{0}&quot;/&gt;.
+        /// </summary>
+        internal static string UseLangwordMessage {
+            get {
+                return ResourceManager.GetString("UseLangwordMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to C# keywords should be referenced using the &lt;see langword=&quot;...&quot;/&gt; tag in documentation.
+        /// </summary>
+        internal static string UseLangwordDescription {
+            get {
+                return ResourceManager.GetString("UseLangwordDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Handled by CommentSense analyzer..
         /// </summary>
         internal static string SuppressionJustification {

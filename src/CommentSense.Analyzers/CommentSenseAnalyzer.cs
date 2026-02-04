@@ -53,6 +53,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 SymbolKind.Event);
 
             compilationContext.RegisterSyntaxNodeAction(CrefAnalyzer.Analyze, SyntaxKind.XmlCrefAttribute);
+            compilationContext.RegisterSyntaxNodeAction(LangwordAnalyzer.Analyze, SyntaxKind.XmlText);
         });
     }
 

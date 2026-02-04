@@ -168,9 +168,9 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             /// <summary>This is a summary for the exception class.</summary>
             public class MyException : Exception
             {
-                /// <summary>Throws if condition is true.</summary>
+                /// <summary>Throws if condition is <see langword="true"/>.</summary>
                 /// <param name="condition">The condition.</param>
-                /// <exception cref="MyException">Thrown when condition is true.</exception>
+                /// <exception cref="MyException">Thrown when condition is <see langword="true"/>.</exception>
                 public static void ThrowIf(bool condition)
                 {
                     if (condition) throw new MyException();
@@ -1086,7 +1086,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             {
                 /// <summary>Method.</summary>
                 /// <param name="arg">The argument.</param>
-                /// <exception cref="ArgumentNullException">Thrown when arg is null.</exception>
+                /// <exception cref="ArgumentNullException">Thrown when arg is <see langword="null"/>.</exception>
                 public void MyMethod(string arg)
                 {
                     ArgumentNullException.ThrowIfNull(arg);
