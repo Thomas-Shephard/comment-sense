@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -15,17 +17,19 @@ internal static class ExceptionAnalyzer
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
         genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
 
+    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>> CompilationExceptionCache = new();
+
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
         var documentedExceptionElements = DocumentationExtensions.GetTargetElements(xml, ExceptionTag).ToList();
         var documentedTypes = GetDocumentedExceptionTypes(context, documentedExceptionElements);
-        var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor);
+        var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor, options);
 
         // CSENSE012: Missing Exception Documentation
         if (!DocumentationExtensions.HasInheritDoc(xml) && !DocumentationExtensions.HasAutoValidTag(xml))
         {
             foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) &&
-                                                             !IsIgnored(t, options)))
+                                                              !IsIgnored(t, options)))
             {
                 var location = symbol.Locations.GetPrimaryLocation();
                 context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
@@ -107,13 +111,14 @@ internal static class ExceptionAnalyzer
 
         // Try lookup by name (e.g. "ArgumentNullException" instead of "System.ArgumentNullException")
         return compilation.GetSymbolsWithName(simpleName, SymbolFilter.Type)
-                   .OfType<ITypeSymbol>()
-                   .FirstOrDefault(t => (t.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) == typeName || t.Name == typeName) && !t.IsImplicitlyDeclared);
+                          .OfType<ITypeSymbol>()
+                          .FirstOrDefault(t => (t.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) == typeName || t.Name == typeName) && !t.IsImplicitlyDeclared);
     }
 
-    private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor)
+    private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options)
     {
         var thrownTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+        var exceptionCache = CompilationExceptionCache.GetValue(context.Compilation, _ => new ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>(SymbolEqualityComparer.Default));
 
         foreach (var syntaxReference in symbol.DeclaringSyntaxReferences)
         {
@@ -121,7 +126,7 @@ internal static class ExceptionAnalyzer
             var semanticModel = context.Compilation.GetSemanticModel(syntax.SyntaxTree);
 
             var nodes = GetDescendantNodesOfInterest(syntax, isPrimaryCtor);
-            var exceptions = IdentifyThrownExceptions(nodes, semanticModel, context.CancellationToken);
+            var exceptions = IdentifyThrownExceptions(nodes, semanticModel, options, exceptionCache, context.CancellationToken);
 
             thrownTypes.UnionWith(exceptions);
         }
@@ -152,16 +157,16 @@ internal static class ExceptionAnalyzer
         // Block members that have their own analysis to avoid duplicates.
         // We descend into FieldDeclaration because fields don't have their own ExceptionAnalyzer.
         return n is MethodDeclarationSyntax
-               or ConstructorDeclarationSyntax
-               or PropertyDeclarationSyntax
-               or IndexerDeclarationSyntax
-               or AccessorListSyntax
-               or AccessorDeclarationSyntax
-               or EventDeclarationSyntax
-               or ArrowExpressionClauseSyntax;
+                    or ConstructorDeclarationSyntax
+                    or PropertyDeclarationSyntax
+                    or IndexerDeclarationSyntax
+                    or AccessorListSyntax
+                    or AccessorDeclarationSyntax
+                    or EventDeclarationSyntax
+                    or ArrowExpressionClauseSyntax;
     }
 
-    private static IEnumerable<ITypeSymbol> IdentifyThrownExceptions(IEnumerable<SyntaxNode> nodes, SemanticModel semanticModel, CancellationToken token)
+    private static IEnumerable<ITypeSymbol> IdentifyThrownExceptions(IEnumerable<SyntaxNode> nodes, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
         var exceptionType = semanticModel.Compilation.GetTypeByMetadataName("System.Exception");
         if (exceptionType == null)
@@ -169,45 +174,156 @@ internal static class ExceptionAnalyzer
 
         foreach (var node in nodes)
         {
-            ITypeSymbol? type;
-
-            switch (node)
-            {
-                case ThrowStatementSyntax ts:
-                    type = ts.Expression is not null
-                        ? semanticModel.GetTypeInfo(ts.Expression, token).Type
-                        : GetCaughtExceptionType(ts, semanticModel, exceptionType, token);
-                    break;
-                case ThrowExpressionSyntax te:
-                    type = semanticModel.GetTypeInfo(te.Expression, token).Type;
-                    break;
-                case InvocationExpressionSyntax invocation:
-                    type = GetExceptionTypeFromGuardClause(invocation, semanticModel, exceptionType, token);
-                    break;
-                default:
-                    continue;
-            }
-
-            if (type is not null && !IsCaughtLocally(node, type, semanticModel))
+            var exceptions = GetExceptionsFromNode(node, semanticModel, options, exceptionType, exceptionCache, token);
+            foreach (var type in exceptions.OfType<ITypeSymbol>().Where(t => !IsCaughtLocally(node, t, semanticModel)))
             {
                 yield return type;
             }
         }
     }
 
-    private static ITypeSymbol? GetExceptionTypeFromGuardClause(InvocationExpressionSyntax invocation, SemanticModel semanticModel, ITypeSymbol exceptionType, CancellationToken token)
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromNode(SyntaxNode node, SemanticModel semanticModel, CommentSenseOptions options, ITypeSymbol exceptionType, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        return node switch
+        {
+            ThrowStatementSyntax ts                                       => GetExceptionsFromThrowStatement(ts, semanticModel, exceptionType, token),
+            ThrowExpressionSyntax te                                      => GetExceptionsFromThrowExpression(te, semanticModel, token),
+            InvocationExpressionSyntax invocation                         => GetExceptionsFromInvocationInternal(invocation, semanticModel, options, exceptionType, exceptionCache, token),
+            ObjectCreationExpressionSyntax objectCreation                 => GetExceptionsFromObjectCreation(objectCreation, semanticModel, options, exceptionCache, token),
+            ImplicitObjectCreationExpressionSyntax implicitObjectCreation => GetExceptionsFromImplicitObjectCreation(implicitObjectCreation, semanticModel, options, exceptionCache, token),
+            ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions =>
+                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache),
+            MemberAccessExpressionSyntax ma when options.ScanCalledMethodsForExceptions => GetExceptionsFromMemberAccess(ma, semanticModel, exceptionCache, token),
+            MemberBindingExpressionSyntax mb when options.ScanCalledMethodsForExceptions => GetExceptionsFromMemberBinding(mb, semanticModel, exceptionCache, token),
+            IdentifierNameSyntax id when options.ScanCalledMethodsForExceptions => GetExceptionsFromIdentifier(id, semanticModel, exceptionCache, token),
+            ElementAccessExpressionSyntax elementAccess when options.ScanCalledMethodsForExceptions =>
+                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(elementAccess, token).Symbol, semanticModel.Compilation, exceptionCache),
+            ElementBindingExpressionSyntax eb when options.ScanCalledMethodsForExceptions =>
+                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(eb, token).Symbol, semanticModel.Compilation, exceptionCache),
+            _ => []
+        };
+    }
+
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromThrowStatement(ThrowStatementSyntax ts, SemanticModel semanticModel, ITypeSymbol exceptionType, CancellationToken token)
+    {
+        return
+        [
+            ts.Expression is not null
+                ? semanticModel.GetTypeInfo(ts.Expression, token).Type
+                : GetCaughtExceptionType(ts, semanticModel, exceptionType, token)
+        ];
+    }
+
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromThrowExpression(ThrowExpressionSyntax te, SemanticModel semanticModel, CancellationToken token)
+    {
+        return [semanticModel.GetTypeInfo(te.Expression, token).Type];
+    }
+
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromInvocationInternal(InvocationExpressionSyntax invocation, SemanticModel semanticModel, CommentSenseOptions options, ITypeSymbol exceptionType, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        if (options.ScanCalledMethodsForExceptions)
+        {
+            return GetExceptionsFromInvocation(invocation, semanticModel, exceptionType, exceptionCache, token);
+        }
+
+        var symbol = semanticModel.GetSymbolInfo(invocation, token).Symbol;
+        return [GetExceptionTypeFromGuardClause(invocation, symbol, exceptionType)];
+    }
+
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromObjectCreation(ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        return options.ScanCalledMethodsForExceptions
+            ? GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(objectCreation, token).Symbol, semanticModel.Compilation, exceptionCache)
+            : [];
+    }
+
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromImplicitObjectCreation(ImplicitObjectCreationExpressionSyntax implicitObjectCreation, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        return options.ScanCalledMethodsForExceptions
+            ? GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(implicitObjectCreation, token).Symbol, semanticModel.Compilation, exceptionCache)
+            : [];
+    }
+
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberAccess(MemberAccessExpressionSyntax ma, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
+        return ma.Parent is InvocationExpressionSyntax parentInvocation && parentInvocation.Expression == ma
+            ? []
+            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ma, token).Symbol, semanticModel.Compilation, exceptionCache);
+    }
+
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberBinding(MemberBindingExpressionSyntax mb, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
+        return mb.Parent is InvocationExpressionSyntax parentInvocationMb && parentInvocationMb.Expression == mb
+            ? []
+            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(mb, token).Symbol, semanticModel.Compilation, exceptionCache);
+    }
+
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromIdentifier(IdentifierNameSyntax id, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        // Avoid redundant processing:
+        // 1. If it's the Name of a MemberAccessExpression, the MemberAccessExpression itself handles the symbol.
+        // 2. If it's the Expression of an InvocationExpression, the InvocationExpression handles it.
+        var isRedundant = (id.Parent is MemberAccessExpressionSyntax maParent && maParent.Name == id) ||
+                          (id.Parent is InvocationExpressionSyntax parentInvocation2 && parentInvocation2.Expression == id);
+
+        return isRedundant
+            ? []
+            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(id, token).Symbol, semanticModel.Compilation, exceptionCache);
+    }
+
+    private static IEnumerable<ITypeSymbol> GetExceptionsFromInvocation(InvocationExpressionSyntax invocation, SemanticModel semanticModel, ITypeSymbol exceptionType, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        var symbol = semanticModel.GetSymbolInfo(invocation, token).Symbol;
+
+        var guardException = GetExceptionTypeFromGuardClause(invocation, symbol, exceptionType);
+
+        foreach (var exception in GetExceptionsFromSymbol(symbol, semanticModel.Compilation, exceptionCache))
+        {
+            if (guardException != null && SymbolEqualityComparer.Default.Equals(exception, guardException))
+                guardException = null;
+
+            yield return exception;
+        }
+
+        if (guardException != null)
+            yield return guardException;
+    }
+
+    private static IEnumerable<ITypeSymbol> GetExceptionsFromSymbol(ISymbol? symbol, Compilation compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> cache)
+    {
+        if (symbol is not (IMethodSymbol or IPropertySymbol or IEventSymbol))
+            return [];
+
+        return cache.GetOrAdd(symbol, s => GetExceptionsFromSymbolInternal(s, compilation).ToList());
+    }
+
+    private static IEnumerable<ITypeSymbol> GetExceptionsFromSymbolInternal(ISymbol symbol, Compilation compilation)
+    {
+        if (symbol is IMethodSymbol { MethodKind: MethodKind.DelegateInvoke } delegateMethod)
+        {
+            symbol = delegateMethod.ContainingType;
+        }
+
+        return DocumentationExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml())
+                                      .Select(cref => ResolveExceptionType(cref, compilation))
+                                      .OfType<ITypeSymbol>();
+    }
+
+    private static ITypeSymbol? GetExceptionTypeFromGuardClause(InvocationExpressionSyntax invocation, ISymbol? symbol, ITypeSymbol exceptionType)
     {
         var name = invocation.Expression switch
         {
             MemberAccessExpressionSyntax ma => ma.Name.Identifier.ValueText,
-            IdentifierNameSyntax id => id.Identifier.ValueText,
-            _ => null
+            IdentifierNameSyntax id         => id.Identifier.ValueText,
+            _                               => null
         };
 
         if (name == null || !name.StartsWith("Throw", StringComparison.Ordinal))
             return null;
 
-        if (semanticModel.GetSymbolInfo(invocation, token).Symbol is not IMethodSymbol { IsStatic: true, ReturnsVoid: true } method)
+        if (symbol is not IMethodSymbol { IsStatic: true, ReturnsVoid: true } method)
             return null;
 
         if (method.ContainingType.InheritsFromOrEquals(exceptionType))
@@ -230,10 +346,10 @@ internal static class ExceptionAnalyzer
                     if (tryStatement.Block.Span.Contains(throwNode.Span))
                     {
                         var isCaught = tryStatement.Catches
-                            .Where(c => c.Filter == null)
-                            .Any(c => c.Declaration == null ||
-                                      (semanticModel.GetTypeInfo(c.Declaration.Type).Type is { } caughtType &&
-                                       thrownType.InheritsFromOrEquals(caughtType)));
+                                                   .Where(c => c.Filter == null)
+                                                   .Any(c => c.Declaration == null ||
+                                                             (semanticModel.GetTypeInfo(c.Declaration.Type).Type is { } caughtType &&
+                                                              thrownType.InheritsFromOrEquals(caughtType)));
 
                         if (isCaught)
                             return true;
@@ -259,9 +375,7 @@ internal static class ExceptionAnalyzer
     {
         var catchClause = throwStatement.Ancestors().OfType<CatchClauseSyntax>().FirstOrDefault();
         if (catchClause?.Declaration is null)
-        {
             return exceptionType;
-        }
 
         return semanticModel.GetTypeInfo(catchClause.Declaration.Type, cancellationToken).Type;
     }

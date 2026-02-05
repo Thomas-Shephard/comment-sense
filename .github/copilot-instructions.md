@@ -82,3 +82,4 @@ The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.exclude_constants`: Boolean to skip documentation requirements for constant fields.
 *   `comment_sense.exclude_enums`: Boolean to skip documentation requirements for enum members.
 *   `comment_sense.enable_conditional_suppression`: Boolean to only suppress compiler warnings for members that are eligible for CommentSense analysis.
+*   `comment_sense.scan_called_methods_for_exceptions`: Boolean to enable scanning of called methods and constructors for their documented exceptions.

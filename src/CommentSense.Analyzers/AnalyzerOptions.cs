@@ -39,7 +39,8 @@ internal static class AnalyzerOptions
                 ExcludeConstants: GetBoolOption(o, globalOptions, "exclude_constants"),
                 ExcludeEnums: GetBoolOption(o, globalOptions, "exclude_enums"),
                 SimilarityThreshold: Math.Max(0.0, Math.Min(1.0, GetDoubleOption(o, globalOptions, "similarity_threshold", 0.0))),
-                EnableConditionalSuppression: GetBoolOption(o, globalOptions, "enable_conditional_suppression")
+                EnableConditionalSuppression: GetBoolOption(o, globalOptions, "enable_conditional_suppression"),
+                ScanCalledMethodsForExceptions: GetBoolOption(o, globalOptions, "scan_called_methods_for_exceptions")
             );
         });
     }
@@ -134,7 +135,8 @@ internal record CommentSenseOptions(
     bool ExcludeConstants,
     bool ExcludeEnums,
     double SimilarityThreshold,
-    bool EnableConditionalSuppression
+    bool EnableConditionalSuppression,
+    bool ScanCalledMethodsForExceptions
 )
 {
     [ExcludeFromCodeCoverage]
@@ -151,6 +153,7 @@ internal record CommentSenseOptions(
         ExcludeConstants: false,
         ExcludeEnums: false,
         SimilarityThreshold: 0.0,
-        EnableConditionalSuppression: false
+        EnableConditionalSuppression: false,
+        ScanCalledMethodsForExceptions: false
     );
 }
