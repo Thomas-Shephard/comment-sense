@@ -20,7 +20,8 @@
     <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" Version="[4.7.2,)" />
   </Dependencies>
   <Assets>
-    <Asset Type="Microsoft.VisualStudio.Analyzer" d:Source="Project" d:ProjectName="CommentSense.Analyzers" Path="|CommentSense.Analyzers|" />
+    <Asset Type="Microsoft.VisualStudio.Analyzer" Path="CommentSense.Analyzers.dll" />
+    <Asset Type="Microsoft.VisualStudio.Analyzer" Path="CommentSense.Core.dll" />
   </Assets>
   <Prerequisites>
     <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,18.0)" DisplayName="Visual Studio Core Editor" />

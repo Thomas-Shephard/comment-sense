@@ -42,7 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: dotnet sonarscanner begin /k:"${{ vars.SONAR_PROJECT_KEY }}" /o:"${{ vars.SONAR_ORGANIZATION }}" /d:sonar.host.url="${{ vars.SONAR_HOST_URL }}" /d:sonar.cs.opencover.reportsPaths="coverage/**/coverage.opencover.xml"
       - name: Build
-        run: dotnet build CommentSense.slnx --configuration Release
+        run: dotnet build CommentSense.slnx --configuration Release -p:VsixPublisherId=${{ vars.VS_MARKETPLACE_PUBLISHER }}
       - name: Test
         run: dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings --results-directory ./coverage
       - name: Run SonarScanner End

@@ -404,10 +404,6 @@ FodyWeavers.xsd
 *.sln.iml
 .idea/
 
-# CommentSense Generated Files
-src/CommentSense.Vsix/publish-manifest.json
-src/CommentSense.Vsix/overview.md
-
 ##
 ## Visual studio for Mac
 ##

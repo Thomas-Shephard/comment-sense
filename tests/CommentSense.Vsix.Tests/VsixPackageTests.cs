@@ -60,8 +60,8 @@ public class VsixPackageTests
     {
         using var archive = ZipFile.OpenRead(_vsixPath);
 
-        var hasAnalyzerDll = archive.Entries.Any(e => e.FullName.EndsWith("CommentSense.Analyzers.dll", StringComparison.OrdinalIgnoreCase));
-        var hasCoreDll = archive.Entries.Any(e => e.FullName.EndsWith("CommentSense.Core.dll", StringComparison.OrdinalIgnoreCase));
+        var hasAnalyzerDll = archive.Entries.Any(e => string.Equals(e.FullName, "CommentSense.Analyzers.dll", StringComparison.OrdinalIgnoreCase));
+        var hasCoreDll = archive.Entries.Any(e => string.Equals(e.FullName, "CommentSense.Core.dll", StringComparison.OrdinalIgnoreCase));
 
         using (Assert.EnterMultipleScope())
         {

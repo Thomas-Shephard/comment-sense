@@ -31,7 +31,7 @@ jobs:
       - name: Restore Tools
         run: dotnet tool restore
       - name: Build
-        run: dotnet build CommentSense.slnx --configuration Release
+        run: dotnet build CommentSense.slnx --configuration Release -p:VsixPublisherId=${{ vars.VS_MARKETPLACE_PUBLISHER }}
       - name: Test
         run: dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings
       - name: Pack
@@ -48,9 +48,14 @@ jobs:
         env:
           VS_MARKETPLACE_PAT: ${{ secrets.VS_MARKETPLACE_PAT }}
         run: |
-          $vssdkPath = dotnet build src/CommentSense.Vsix/CommentSense.Vsix.csproj --getProperty:PkgMicrosoft_VSSDK_BuildTools
+          $projectDir = "src/CommentSense.Vsix"
+          $vssdkPath = dotnet msbuild $projectDir -c Release -getProperty:PkgMicrosoft_VSSDK_BuildTools -v q
           if (-not $vssdkPath) { throw "Could not determine Microsoft.VSSDK.BuildTools path. Ensure the project is restored." }
           $vsixPublisher = Join-Path $vssdkPath "tools\vssdk\bin\VsixPublisher.exe"
           if (-not (Test-Path $vsixPublisher)) { throw "VsixPublisher.exe not found at expected path: $vsixPublisher" }
-          & $vsixPublisher publish -payload "artifacts/vsix/CommentSense.vsix" -publishManifest "src/CommentSense.Vsix/publish-manifest.json" -personalAccessToken "$VS_MARKETPLACE_PAT"
+
+          $intermediatePath = dotnet msbuild $projectDir -c Release -getProperty:IntermediateOutputPath -v q
+          $publishManifest = Join-Path $projectDir $intermediatePath "publish-manifest.json"
+
+          & $vsixPublisher publish -payload "artifacts/vsix/CommentSense.vsix" -publishManifest "$publishManifest" -personalAccessToken "$VS_MARKETPLACE_PAT"
         shell: pwsh
