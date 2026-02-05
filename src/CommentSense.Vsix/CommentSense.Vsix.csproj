@@ -8,7 +8,15 @@
     <IsPackable>false</IsPackable>
     <UseArtifactsOutput>false</UseArtifactsOutput>
 
-    <!-- VSIX Configuration -->
+    <!--
+      VSIX/VSSDK Compatibility Configuration:
+      The solution uses a centralized artifacts layout via Directory.Build.props (ArtifactsPath).
+      However, VSSDK build targets (like GetVsixSourceItems) and packaging tools are historically 
+      sensitive to path redirections. To ensure the manifest generation and VSIX bundling remain 
+      stable, this project opts out of centralized artifacts and explicitly overrides OutDir and 
+      IntermediateOutputPath to local directories. The final .vsix is then manually copied to 
+      the shared artifacts folder via the 'CopyVsixToArtifacts' target.
+    -->
     <OutDir>bin\$(Configuration)\</OutDir>
     <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
     <IsVsixProject>true</IsVsixProject>
