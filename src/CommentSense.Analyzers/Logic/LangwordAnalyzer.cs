@@ -29,7 +29,7 @@ internal static class LangwordAnalyzer
         foreach (var result in matches)
         {
             var start = result.token.SpanStart + result.match.Index;
-            var location = Location.Create(xmlText.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, result.match.Length));
+            var location = Location.Create(context.Node.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, result.match.Length));
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UseLangwordRule, location, result.match.Value));
         }
     }
