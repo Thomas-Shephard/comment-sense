@@ -601,6 +601,60 @@ namespace CommentSense.Analyzers {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Potential ghost parameter reference in documentation.
+        /// </summary>
+        internal static string GhostParameterReferenceTitle {
+            get {
+                return ResourceManager.GetString("GhostParameterReferenceTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The word &apos;{0}&apos; matches a parameter name and should be wrapped in &lt;paramref name=&quot;{0}&quot;/&gt;.
+        /// </summary>
+        internal static string GhostParameterReferenceMessage {
+            get {
+                return ResourceManager.GetString("GhostParameterReferenceMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Parameter names mentioned in documentation should be wrapped in &lt;paramref&gt; tags to ensure they stay in sync during refactoring.
+        /// </summary>
+        internal static string GhostParameterReferenceDescription {
+            get {
+                return ResourceManager.GetString("GhostParameterReferenceDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Potential ghost type parameter reference in documentation.
+        /// </summary>
+        internal static string GhostTypeParameterReferenceTitle {
+            get {
+                return ResourceManager.GetString("GhostTypeParameterReferenceTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The word &apos;{0}&apos; matches a type parameter name and should be wrapped in &lt;typeparamref name=&quot;{0}&quot;/&gt;.
+        /// </summary>
+        internal static string GhostTypeParameterReferenceMessage {
+            get {
+                return ResourceManager.GetString("GhostTypeParameterReferenceMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Type parameter names mentioned in documentation should be wrapped in &lt;typeparamref&gt; tags to ensure they stay in sync during refactoring.
+        /// </summary>
+        internal static string GhostTypeParameterReferenceDescription {
+            get {
+                return ResourceManager.GetString("GhostTypeParameterReferenceDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Handled by CommentSense analyzer..
         /// </summary>
         internal static string SuppressionJustification {
