@@ -40,7 +40,8 @@ internal static class AnalyzerOptions
                 ExcludeEnums: GetBoolOption(o, globalOptions, "exclude_enums"),
                 SimilarityThreshold: Math.Max(0.0, Math.Min(1.0, GetDoubleOption(o, globalOptions, "similarity_threshold", 0.0))),
                 EnableConditionalSuppression: GetBoolOption(o, globalOptions, "enable_conditional_suppression"),
-                ScanCalledMethodsForExceptions: GetBoolOption(o, globalOptions, "scan_called_methods_for_exceptions")
+                ScanCalledMethodsForExceptions: GetBoolOption(o, globalOptions, "scan_called_methods_for_exceptions"),
+                GhostReferenceMode: GetEnumOption(o, globalOptions, "ghost_references.mode", GhostReferenceMode.Safe)
             );
         });
     }
@@ -136,7 +137,8 @@ internal record CommentSenseOptions(
     bool ExcludeEnums,
     double SimilarityThreshold,
     bool EnableConditionalSuppression,
-    bool ScanCalledMethodsForExceptions
+    bool ScanCalledMethodsForExceptions,
+    GhostReferenceMode GhostReferenceMode
 )
 {
     [ExcludeFromCodeCoverage]
@@ -154,6 +156,7 @@ internal record CommentSenseOptions(
         ExcludeEnums: false,
         SimilarityThreshold: 0.0,
         EnableConditionalSuppression: false,
-        ScanCalledMethodsForExceptions: false
+        ScanCalledMethodsForExceptions: false,
+        GhostReferenceMode: GhostReferenceMode.Safe
     );
 }

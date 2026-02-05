@@ -23,6 +23,8 @@ internal static class CommentSenseDiagnosticIds
     public const string InvalidExceptionTypeId = "CSENSE017";
     public const string MissingInheritDocId = "CSENSE018";
     public const string UseLangwordId = "CSENSE019";
+    public const string GhostParameterReferenceId = "CSENSE020";
+    public const string GhostTypeParameterReferenceId = "CSENSE021";
 
     // Suppressions
     public const string SuppressMissingXmlCommentId = "CSENSESUP001";
