@@ -242,7 +242,7 @@
     <value>Potential ghost parameter reference in documentation</value>
   </data>
   <data name="GhostParameterReferenceMessage" xml:space="preserve">
-    <value>The word '{0}' matches a parameter name and should be wrapped in &lt;paramref name="{0}"/&gt;</value>
+    <value>The word '{0}' matches a parameter name and should be wrapped in &lt;paramref name="{1}"/&gt;</value>
   </data>
   <data name="GhostParameterReferenceDescription" xml:space="preserve">
     <value>Parameter names mentioned in documentation should be wrapped in &lt;paramref&gt; tags to ensure they stay in sync during refactoring.</value>
@@ -251,7 +251,7 @@
     <value>Potential ghost type parameter reference in documentation</value>
   </data>
   <data name="GhostTypeParameterReferenceMessage" xml:space="preserve">
-    <value>The word '{0}' matches a type parameter name and should be wrapped in &lt;typeparamref name="{0}"/&gt;</value>
+    <value>The word '{0}' matches a type parameter name and should be wrapped in &lt;typeparamref name="{1}"/&gt;</value>
   </data>
   <data name="GhostTypeParameterReferenceDescription" xml:space="preserve">
     <value>Type parameter names mentioned in documentation should be wrapped in &lt;typeparamref&gt; tags to ensure they stay in sync during refactoring.</value>

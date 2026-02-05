@@ -46,27 +46,42 @@ internal static class GhostReferenceAnalyzer
             return;
 
         var regex = GetRegex(names);
-        var matches = xmlText.TextTokens
-            .Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken))
-            .SelectMany(token => regex.Matches(token.Text).Cast<Match>(), (token, match) => new { token, match });
-
-        foreach (var result in matches)
+        foreach (var token in xmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
         {
-            var name = result.match.Value;
-
-            if (!IsEligible(name, options.GhostReferenceMode))
-                continue;
-
-            if (options.GhostReferenceMode == GhostReferenceMode.Safe)
+            foreach (Match match in regex.Matches(token.Text))
             {
-                if (containingTag == "param" && name == nameValue) continue;
-                if (containingTag == "typeparam" && name == nameValue) continue;
-            }
+                var matchedText = match.Value;
+                var originalName = ResolveOriginalName(matchedText, names);
 
-            var start = result.token.SpanStart + result.match.Index;
-            var location = Location.Create(context.Node.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, result.match.Length));
-            context.ReportDiagnostic(Diagnostic.Create(rule, location, name));
+                if (originalName == null || !IsGhostReference(matchedText, originalName, options, containingTag, nameValue))
+                    continue;
+
+                var start = token.SpanStart + match.Index;
+                var location = Location.Create(context.Node.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, match.Length));
+                context.ReportDiagnostic(Diagnostic.Create(rule, location, matchedText, originalName));
+            }
         }
+    }
+
+    private static string? ResolveOriginalName(string matchedText, ImmutableArray<string> names)
+    {
+        return names.FirstOrDefault(n => string.Equals(n, matchedText, StringComparison.Ordinal))
+               ?? names.FirstOrDefault(n => string.Equals(n, matchedText, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsGhostReference(string matchedText, string originalName, CommentSenseOptions options, string? containingTag, string? nameValue)
+    {
+        if (!IsEligible(matchedText, options.GhostReferenceMode) &&
+            (matchedText == originalName || !IsEligible(originalName, options.GhostReferenceMode)))
+            return false;
+
+        if (options.GhostReferenceMode == GhostReferenceMode.Safe)
+        {
+            if (containingTag == "param" && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
+            if (containingTag == "typeparam" && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
+        }
+
+        return true;
     }
 
     private static bool IsEligible(string name, GhostReferenceMode mode)
@@ -79,13 +94,13 @@ internal static class GhostReferenceAnalyzer
 
     private static Regex GetRegex(ImmutableArray<string> names)
     {
-        var sortedForCache = names.OrderBy(n => n).ToList();
-        var key = string.Join("|", sortedForCache);
+        var key = string.Join("|", names.Select(n => n.ToLowerInvariant()).OrderBy(n => n).Distinct());
 
         return RegexCache.GetOrAdd(key, _ =>
         {
-            var pattern = $@"\b({string.Join("|", names.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
-            return new Regex(pattern, RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+            var uniqueNames = names.Distinct(StringComparer.OrdinalIgnoreCase);
+            var pattern = $@"\b({string.Join("|", uniqueNames.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
+            return new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
         });
     }
 
