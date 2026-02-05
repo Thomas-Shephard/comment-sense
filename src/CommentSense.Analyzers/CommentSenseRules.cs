@@ -194,6 +194,24 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: CreateResourceString(nameof(Resources.UseLangwordDescription)));
 
+    public static readonly DiagnosticDescriptor GhostParameterReferenceRule = new(
+        CommentSenseDiagnosticIds.GhostParameterReferenceId,
+        CreateResourceString(nameof(Resources.GhostParameterReferenceTitle)),
+        CreateResourceString(nameof(Resources.GhostParameterReferenceMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.GhostParameterReferenceDescription)));
+
+    public static readonly DiagnosticDescriptor GhostTypeParameterReferenceRule = new(
+        CommentSenseDiagnosticIds.GhostTypeParameterReferenceId,
+        CreateResourceString(nameof(Resources.GhostTypeParameterReferenceTitle)),
+        CreateResourceString(nameof(Resources.GhostTypeParameterReferenceMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.GhostTypeParameterReferenceDescription)));
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =
     [
         DisabledDocumentationParsingRule,
@@ -215,6 +233,8 @@ internal static class CommentSenseRules
         LowQualityDocumentationRule,
         InvalidExceptionTypeRule,
         MissingInheritDocRule,
-        UseLangwordRule
+        UseLangwordRule,
+        GhostParameterReferenceRule,
+        GhostTypeParameterReferenceRule
     ];
 }

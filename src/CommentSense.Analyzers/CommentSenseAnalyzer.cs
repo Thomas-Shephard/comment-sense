@@ -52,10 +52,9 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 SymbolKind.Field,
                 SymbolKind.Event);
 
-            compilationContext.RegisterSyntaxNodeAction(CrefAnalyzer.Analyze, SyntaxKind.XmlCrefAttribute);
-            compilationContext.RegisterSyntaxNodeAction(LangwordAnalyzer.Analyze, SyntaxKind.XmlText);
-        });
-    }
+                        compilationContext.RegisterSyntaxNodeAction(CrefAnalyzer.Analyze, SyntaxKind.XmlCrefAttribute);  
+                        compilationContext.RegisterSyntaxNodeAction(DocumentationTextAnalyzer.Analyze, SyntaxKind.XmlText); 
+                    });    }
 
     private static void AnalyzeSymbol(SymbolAnalysisContext context)
     {
