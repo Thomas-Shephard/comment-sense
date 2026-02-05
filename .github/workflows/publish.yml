@@ -31,7 +31,9 @@ jobs:
       - name: Restore Tools
         run: dotnet tool restore
       - name: Build
-        run: dotnet build CommentSense.slnx --configuration Release -p:VsixPublisherId=${{ vars.VS_MARKETPLACE_PUBLISHER }}
+        run: |
+          dotnet build CommentSense.slnx --configuration Release -p:VsixPublisherId=${{ vars.VS_MARKETPLACE_PUBLISHER }} -p:CreateVsixContainer=true
+          dotnet build src/CommentSense.Vsix/CommentSense.Vsix.csproj --configuration Release -p:VsixPublisherId=${{ vars.VS_MARKETPLACE_PUBLISHER }} -p:CreateVsixContainer=true
       - name: Test
         run: dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings
       - name: Pack

@@ -23,6 +23,8 @@
     <VsixType>v3</VsixType>
     <TargetVsixContainerName>CommentSense.vsix</TargetVsixContainerName>
     <GenerateVsixContainer>true</GenerateVsixContainer>
+    <DeployExtension>false</DeployExtension>
+    <CreateVsixContainer>true</CreateVsixContainer>
     <GeneratePkgDefFile>false</GeneratePkgDefFile>
     <GenerateExtension>true</GenerateExtension>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
@@ -114,8 +116,11 @@
              Value="$(VsixPublisherId)" />
   </Target>
 
-  <Target Name="CopyVsixToArtifacts" AfterTargets="CreateVsixContainer">
-    <MakeDir Directories="$(ArtifactsPath)\vsix\" />
-    <Copy SourceFiles="$(OutDir)$(TargetVsixContainerName)" DestinationFolder="$(ArtifactsPath)\vsix\" />
+  <Target Name="CopyVsixToArtifacts" AfterTargets="CreateVsixContainer" Condition="Exists('$(TargetVsixContainer)')">
+    <PropertyGroup>
+      <VsixArtifactsDir>$(MSBuildThisFileDirectory)..\..\artifacts\vsix\</VsixArtifactsDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(VsixArtifactsDir)" />
+    <Copy SourceFiles="$(TargetVsixContainer)" DestinationFolder="$(VsixArtifactsDir)" />
   </Target>
 </Project>
