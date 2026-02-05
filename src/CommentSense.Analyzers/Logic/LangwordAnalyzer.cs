@@ -11,30 +11,13 @@ internal static class LangwordAnalyzer
 {
     private static readonly ConcurrentDictionary<string, Regex> RegexCache = new();
 
-    public static void Analyze(SyntaxNodeAnalysisContext context)
+    public static void Analyze(SyntaxNodeAnalysisContext context, XmlTextSyntax xmlText, CommentSenseOptions options)
     {
-        var xmlText = (XmlTextSyntax)context.Node;
+        if (options.Langwords.Count == 0)
+            return;
 
         // Skip if inside <code> or <c> tags
         if (IsInsideCodeTag(xmlText))
-            return;
-
-        // Find the member declaration to check visibility
-        var memberDecl = xmlText.FirstAncestorOrSelf<MemberDeclarationSyntax>();
-        if (memberDecl is null)
-            return;
-
-        var symbol = memberDecl is BaseFieldDeclarationSyntax { Declaration.Variables.Count: > 0 } fieldDecl
-            ? context.SemanticModel.GetDeclaredSymbol(fieldDecl.Declaration.Variables[0])
-            : context.SemanticModel.GetDeclaredSymbol(memberDecl);
-
-        var tree = context.Node.SyntaxTree;
-        var options = AnalyzerOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
-
-        if (symbol is null || !symbol.IsEligibleForAnalysis(options.VisibilityLevel))
-            return;
-
-        if (options.Langwords.Count == 0)
             return;
 
         var regex = GetRegex(options.Langwords);
@@ -46,7 +29,7 @@ internal static class LangwordAnalyzer
         foreach (var result in matches)
         {
             var start = result.token.SpanStart + result.match.Index;
-            var location = Location.Create(tree, new Microsoft.CodeAnalysis.Text.TextSpan(start, result.match.Length));
+            var location = Location.Create(xmlText.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, result.match.Length));
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UseLangwordRule, location, result.match.Value));
         }
     }

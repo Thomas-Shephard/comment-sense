@@ -163,6 +163,43 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
     }
 
     [Test]
+    public void AnalyzerOptionsGhostReferenceMode()
+    {
+        var globalOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.ghost_references.mode"] = "Strict"
+        });
+
+        // Test global fallback
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var optionsGlobal = AnalyzerOptions.GetOptions(new CustomProvider(new MapOptions(new Dictionary<string, string>()), globalOptions), null!);
+        Assert.That(optionsGlobal.GhostReferenceMode, Is.EqualTo(GhostReferenceMode.Strict));
+
+        // Test local override
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.ghost_references.mode"] = "Off"
+        });
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var optionsLocal = AnalyzerOptions.GetOptions(new CustomProvider(localOptions, globalOptions), null!);
+        Assert.That(optionsLocal.GhostReferenceMode, Is.EqualTo(GhostReferenceMode.Off));
+
+        // Test invalid fallback (should use global if valid, or default if global also invalid)
+        var invalidLocal = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.ghost_references.mode"] = "InvalidValue"
+        });
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var optionsInvalid = AnalyzerOptions.GetOptions(new CustomProvider(invalidLocal, globalOptions), null!);
+        Assert.That(optionsInvalid.GhostReferenceMode, Is.EqualTo(GhostReferenceMode.Strict));
+
+        // Test default fallback
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var optionsDefault = AnalyzerOptions.GetOptions(new CustomProvider(new MapOptions(new Dictionary<string, string>()), new MapOptions(new Dictionary<string, string>())), null!);
+        Assert.That(optionsDefault.GhostReferenceMode, Is.EqualTo(GhostReferenceMode.Safe));
+    }
+
+    [Test]
     public void VisibilityLevelBackwardCompatibility()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>

@@ -32,18 +32,23 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Configurable:* Customize the list of keywords using `comment_sense.langwords`.
 
 ### Parameters & Type Parameters
-Ensures the `<param>` and `<typeparam>` tags match the method signature exactly.
+Ensures parameters and type parameters are correctly documented and referenced.
 *   **CSENSE002 / CSENSE004**: Flags parameters or type parameters defined in code but missing from documentation.
 *   **CSENSE003 / CSENSE005**: Flags "stray" tags referring to parameters that do not exist.
 *   **CSENSE008 / CSENSE010**: Enforces that the order of parameter tags in documentation matches the method signature.
 *   **CSENSE009 / CSENSE011**: Flags duplicate tags for the same parameter.
+*   **CSENSE020 / CSENSE021**: Flags parameter or type parameter names used in documentation text that are not wrapped in `<paramref />` or `<typeparamref />` tags.
+    *   *Default:* Only flags complex names (camelCase, PascalCase, underscores, or digits).
+    *   *Configurable:* Control the strictness using `comment_sense.ghost_references.mode`.
 
 ### Return Values
 *   **CSENSE006**: Requires a `<returns>` tag for members that return a value (i.e., non-`void`, non-`Task`, non-`ValueTask`).
 *   **CSENSE013**: Flags stray `<returns>` tags on members that do not produce a documented return value (including `void`, `Task`, and `ValueTask` members), as well as on properties and indexers.
 ### Exceptions
 *   **CSENSE012**: Scans the method body for explicitly thrown exceptions (including static guard clauses like `ArgumentNullException.ThrowIfNull`) and ensures they are documented with `<exception>` tags.
-    *   *Configurable:* Ignore exceptions using `comment_sense.ignored_exceptions`, `comment_sense.ignore_system_exceptions`, and `comment_sense.ignored_exception_namespaces`.
+    *   *Configurable:*
+        *   Ignore exceptions using `comment_sense.ignored_exceptions`, `comment_sense.ignore_system_exceptions`, and `comment_sense.ignored_exception_namespaces`.
+        *   Enable scanning of called methods and constructors for their documented exceptions using `comment_sense.scan_called_methods_for_exceptions = true`.
 *   **CSENSE017**: Validates that the `cref` attribute in an `<exception>` tag refers to a valid Exception type.
 
 ### Properties
@@ -106,6 +111,17 @@ Configure which C# keywords should be flagged for replacement with `<see langwor
 comment_sense.langwords = true, false, null, void, async, await
 ```
 
+### Ghost Reference Analysis
+Configure how strictly to detect parameter names mentioned in documentation text without `<paramref />` or `<typeparamref />` tags.
+```ini
+[*.cs]
+# Options: safe, strict, off
+# safe: Only flags complex names (camelCase, PascalCase, underscores, or digits). Ignores simple lowercase words (default).
+# strict: Flags all matching parameter names regardless of casing or length.
+# off: Disables ghost reference detection.
+comment_sense.ghost_references.mode = safe
+```
+
 ### Ignored Exceptions
 Configure which exceptions should be ignored by the missing exception documentation rule (CSENSE012).
 ```ini
@@ -118,6 +134,10 @@ comment_sense.ignore_system_exceptions = true
 
 # Comma-separated list of namespaces. Exceptions in these namespaces (or sub-namespaces) will be ignored.
 comment_sense.ignored_exception_namespaces = MyProject.Internal, System.Data
+
+# Whether to scan called methods and constructors for their documented exceptions (default: false).
+# When enabled, CSENSE012 will also report exceptions documented in the XML comments of called members.
+comment_sense.scan_called_methods_for_exceptions = true
 ```
 
 ### Visibility Level Analysis
