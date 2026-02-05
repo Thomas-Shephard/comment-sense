@@ -97,41 +97,41 @@ internal static class GhostReferenceAnalyzer
     private static (string? TagName, string? NameValue) GetContainingTagInfo(XmlTextSyntax xmlText)
     {
         string? innermostTag = null;
-        var parent = xmlText.Parent;
-        while (parent != null)
+        for (var parent = xmlText.Parent; parent != null; parent = parent.Parent)
         {
-            if (parent is XmlElementSyntax element)
-            {
-                var tagName = element.StartTag.Name.LocalName.ValueText;
-                innermostTag ??= tagName;
+            if (parent is not XmlElementSyntax element)
+                continue;
 
-                string? nameValue = null;
-                foreach (var attribute in element.StartTag.Attributes)
-                {
-                    if (attribute is XmlNameAttributeSyntax { Name.LocalName.ValueText: "name" } nameAttr)
-                    {
-                        nameValue = nameAttr.Identifier.Identifier.ValueText;
-                        break;
-                    }
+            var tagName = element.StartTag.Name.LocalName.ValueText;
+            innermostTag ??= tagName;
 
-                    if (attribute is XmlTextAttributeSyntax { Name.LocalName.ValueText: "name" } textAttr)
-                    {
-                        nameValue = textAttr.TextTokens
-                            .FirstOrDefault(t => t.IsKind(SyntaxKind.XmlTextLiteralToken))
-                            .Text;
-                        break;
-                    }
-                }
+            var nameValue = GetNameAttributeValue(element);
+            if (nameValue != null && tagName is "param" or "typeparam")
+                return (tagName, nameValue);
 
-                if ((tagName == "param" || tagName == "typeparam") && nameValue != null)
-                    return (tagName, nameValue);
-
-                if (IsIgnoredTag(tagName))
-                    return (tagName, null);
-            }
-            parent = parent.Parent;
+            if (IsIgnoredTag(tagName))
+                return (tagName, null);
         }
+
         return (innermostTag, null);
+    }
+
+    private static string? GetNameAttributeValue(XmlElementSyntax element)
+    {
+        foreach (var attribute in element.StartTag.Attributes)
+        {
+            if (attribute is XmlNameAttributeSyntax { Name.LocalName.ValueText: "name" } nameAttr)
+                return nameAttr.Identifier.Identifier.ValueText;
+
+            if (attribute is XmlTextAttributeSyntax { Name.LocalName.ValueText: "name" } textAttr)
+            {
+                return textAttr.TextTokens
+                    .FirstOrDefault(t => t.IsKind(SyntaxKind.XmlTextLiteralToken))
+                    .Text;
+            }
+        }
+
+        return null;
     }
 
     private static ImmutableArray<string> GetParameters(ISymbol symbol)

@@ -32,11 +32,14 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Configurable:* Customize the list of keywords using `comment_sense.langwords`.
 
 ### Parameters & Type Parameters
-Ensures the `<param>` and `<typeparam>` tags match the method signature exactly.
+Ensures parameters and type parameters are correctly documented and referenced.
 *   **CSENSE002 / CSENSE004**: Flags parameters or type parameters defined in code but missing from documentation.
 *   **CSENSE003 / CSENSE005**: Flags "stray" tags referring to parameters that do not exist.
 *   **CSENSE008 / CSENSE010**: Enforces that the order of parameter tags in documentation matches the method signature.
 *   **CSENSE009 / CSENSE011**: Flags duplicate tags for the same parameter.
+*   **CSENSE020 / CSENSE021**: Flags parameter or type parameter names used in documentation text that are not wrapped in `<paramref />` or `<typeparamref />` tags.
+    *   *Default:* Only flags complex names (camelCase, PascalCase, underscores, or digits).
+    *   *Configurable:* Control the strictness using `comment_sense.ghost_references.mode`.
 
 ### Return Values
 *   **CSENSE006**: Requires a `<returns>` tag for members that return a value (i.e., non-`void`, non-`Task`, non-`ValueTask`).
@@ -106,6 +109,17 @@ Configure which C# keywords should be flagged for replacement with `<see langwor
 # Comma-separated list of keywords (case-insensitive)
 # Default: true, false, null, void
 comment_sense.langwords = true, false, null, void, async, await
+```
+
+### Ghost Reference Analysis
+Configure how strictly to detect parameter names mentioned in documentation text without `<paramref />` or `<typeparamref />` tags.
+```ini
+[*.cs]
+# Options: safe, strict, off
+# safe: Only flags complex names (camelCase, PascalCase, underscores, or digits). Ignores simple lowercase words (default).
+# strict: Flags all matching parameter names regardless of casing or length.
+# off: Disables ghost reference detection.
+comment_sense.ghost_references.mode = safe
 ```
 
 ### Ignored Exceptions

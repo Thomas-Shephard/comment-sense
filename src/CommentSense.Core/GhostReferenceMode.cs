@@ -11,7 +11,7 @@ public enum GhostReferenceMode
     Off,
 
     /// <summary>
-    /// Only checks complex names (CamelCase, underscores, or digits) and ignores all-lowercase words entirely.
+    /// Only checks complex names (camelCase, PascalCase, underscores, or digits) and ignores all-lowercase words entirely.
     /// </summary>
     Safe,
 

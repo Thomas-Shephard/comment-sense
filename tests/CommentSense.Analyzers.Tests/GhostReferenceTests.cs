@@ -257,4 +257,38 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
+
+    [Test]
+    public async Task ReferenceInsideSeeTagIsIgnored()
+    {
+        const string testCode = """
+            /// <summary>My class.</summary>
+            public class MyClass
+            {
+                /// <summary>See <see cref="Create(string)">fileName</see> for more info.</summary>
+                /// <param name="fileName">The name.</param>
+                public void Create(string fileName) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task CustomTagWithNameAttributeIsProcessed()
+    {
+        // This test ensures that name attributes on custom tags are handled,
+        // which typically hits the XmlTextAttributeSyntax path in GetNameAttributeValue.
+        const string testCode = """
+            /// <summary>My class.</summary>
+            public class MyClass
+            {
+                /// <summary>The <custom name="fileName">{|CSENSE020:fileName|}</custom> is here.</summary>
+                /// <param name="fileName">The name.</param>
+                public void Create(string fileName) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }
