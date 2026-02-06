@@ -76,8 +76,8 @@ public class PropertyValueDocumentationTests : CommentSenseAnalyzerTestBase<Comm
             {
                 /// <summary>This is a summary for the property.</summary>
                 /// <value>Value of the property.</value>
-                /// <returns>Value of the property.</returns>
-                public int {|CSENSE013:MyProperty|} { get; set; }
+                /// {|CSENSE013:<returns>Value of the property.</returns>|}
+                public int MyProperty { get; set; }
             }
             """;
 
@@ -92,9 +92,9 @@ public class PropertyValueDocumentationTests : CommentSenseAnalyzerTestBase<Comm
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <value>Value of the method.</value>
+                /// {|CSENSE015:<value>Value of the method.</value>|}
                 /// <returns>Value of the method.</returns>
-                public int {|CSENSE015:MyMethod|}() => 0;
+                public int MyMethod() => 0;
             }
             """;
 
@@ -128,8 +128,8 @@ public class PropertyValueDocumentationTests : CommentSenseAnalyzerTestBase<Comm
                 /// <summary>This is a summary for the indexer.</summary>
                 /// <param name="i">The index value.</param>
                 /// <value>Value of the indexer.</value>
-                /// <returns>Value of the indexer.</returns>
-                public int {|CSENSE013:this|}[int i] => 0;
+                /// {|CSENSE013:<returns>Value of the indexer.</returns>|}
+                public int this[int i] => 0;
             }
             """;
 
@@ -144,8 +144,8 @@ public class PropertyValueDocumentationTests : CommentSenseAnalyzerTestBase<Comm
             public class MyClass
             {
                 /// <summary>This is a summary for the property.</summary>
-                /// <value></value>
-                public int {|CSENSE016:MyProperty|} { get; set; }
+                /// {|CSENSE016:<value></value>|}
+                public int MyProperty { get; set; }
             }
             """;
 
@@ -160,8 +160,8 @@ public class PropertyValueDocumentationTests : CommentSenseAnalyzerTestBase<Comm
             public class MyClass
             {
                 /// <summary>This is a summary for the property.</summary>
-                /// <value>MyProperty</value>
-                public int {|CSENSE016:MyProperty|} { get; set; }
+                /// {|CSENSE016:<value>MyProperty</value>|}
+                public int MyProperty { get; set; }
             }
             """;
 
@@ -177,8 +177,8 @@ public class PropertyValueDocumentationTests : CommentSenseAnalyzerTestBase<Comm
             {
                 private int _val;
                 /// <summary>This is a summary for the property.</summary>
-                /// <returns>Stray return documentation.</returns>
-                public int {|CSENSE013:MyProperty|} { set => _val = value; }
+                /// {|CSENSE013:<returns>Stray return documentation.</returns>|}
+                public int MyProperty { set => _val = value; }
             }
             """;
 

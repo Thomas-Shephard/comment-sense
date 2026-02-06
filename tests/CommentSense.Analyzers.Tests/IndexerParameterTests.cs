@@ -84,9 +84,9 @@ public class IndexerParameterTests : CommentSenseAnalyzerTestBase<CommentSenseAn
 
                 /// <summary>This is a summary for the indexer.</summary>
                 /// <param name="index">The index into the array.</param>
-                /// <param name="extra">An extra parameter documentation.</param>
+                /// {|CSENSE003:<param name="extra">An extra parameter documentation.</param>|}
                 /// <value>Value at the index.</value>
-                public int {|CSENSE003:this|}[int index]
+                public int this[int index]
                 {
                     get => _arr[index];
                     set => _arr[index] = value;

@@ -12,8 +12,8 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>Short</summary>
-                public void {|CSENSE016:Method|}() { }
+                /// {|CSENSE016:<summary>Short</summary>|}
+                public void Method() { }
             }
             """;
 
@@ -52,8 +52,8 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>Missing punctuation</summary>
-                public void {|CSENSE016:Method|}() { }
+                /// {|CSENSE016:<summary>Missing punctuation</summary>|}
+                public void Method() { }
             }
             """;
 
@@ -92,8 +92,8 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>Calculate Total</summary>
-                public void {|CSENSE016:CalculateTotal|}() { }
+                /// {|CSENSE016:<summary>Calculate Total</summary>|}
+                public void CalculateTotal() { }
             }
             """;
 
@@ -133,8 +133,8 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             public class MyClass
             {
                 /// <summary>This is a valid method summary.</summary>
-                /// <param name="userId">user Id</param>
-                public void Method(int {|CSENSE016:userId|}) { }
+                /// {|CSENSE016:<param name="userId">user Id</param>|}
+                public void Method(int userId) { }
             }
             """;
 
@@ -151,8 +151,8 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     {
         const string testCode = """
             /// <summary>This is a valid summary.</summary>
-            /// <returns>My Callback</returns>
-            public delegate int {|CSENSE016:MyCallback|}();
+            /// {|CSENSE016:<returns>My Callback</returns>|}
+            public delegate int MyCallback();
             """;
 
         var config = new Dictionary<string, string>
@@ -190,8 +190,8 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>CalculateTotal</summary>
-                public void {|CSENSE016:CalculateTotal|}() { }
+                /// {|CSENSE016:<summary>CalculateTotal</summary>|}
+                public void CalculateTotal() { }
 
                 /// <summary>Calculate Totals</summary>
                 public void CalculateTotals() { }
@@ -229,11 +229,11 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>Short.</summary>
-                public void {|CSENSE016:Method1|}() { }
+                /// {|CSENSE016:<summary>Short.</summary>|}
+                public void Method1() { }
 
-                /// <summary>This is long enough but missing punctuation</summary>
-                public void {|CSENSE016:Method2|}() { }
+                /// {|CSENSE016:<summary>This is long enough but missing punctuation</summary>|}
+                public void Method2() { }
             }
             """;
 
@@ -273,8 +273,8 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>CalculateTotal</summary>
-                public void {|CSENSE016:CalculateTotal|}() { }
+                /// {|CSENSE016:<summary>CalculateTotal</summary>|}
+                public void CalculateTotal() { }
 
                 /// <summary>Calculate Totals</summary>
                 public void CalculateTotals() { }

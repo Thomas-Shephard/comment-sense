@@ -56,8 +56,8 @@ public class SuppressionTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyze
             {
                 /// <summary>This is a summary.</summary>
                 /// <param name="x">First</param>
-                /// <param name="x">Second</param>
-                public void {|CSENSE009:MyMethod|}(int x) { }
+                /// {|CSENSE009:<param name="x">Second</param>|}
+                public void MyMethod(int x) { }
             }
             """;
 
@@ -77,8 +77,8 @@ public class SuppressionTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyze
             public class {|CSENSE001:MyClass|}
             {
                 /// <summary>This is a summary.</summary>
-                /// <param name="y">Stray</param>
-                public void {|CSENSE003:MyMethod|}(int {|CSENSE002:x|}) { }
+                /// {|CSENSE003:<param name="y">Stray</param>|}
+                public void MyMethod(int {|CSENSE002:x|}) { }
             }
             """;
 

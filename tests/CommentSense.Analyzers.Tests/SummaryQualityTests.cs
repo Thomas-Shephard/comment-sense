@@ -12,8 +12,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>Save</summary>
-                public void {|CSENSE016:Save|}() { }
+                /// {|CSENSE016:<summary>Save</summary>|}
+                public void Save() { }
             }
             """;
 
@@ -24,8 +24,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryRepeatingClassNameReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>MyClass</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>MyClass</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -40,9 +40,9 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary />
+                /// {|CSENSE016:<summary />|}
                 /// <param name="x">The param x.</param>
-                public void {|CSENSE016:MyMethod|}(int x) { }
+                public void MyMethod(int x) { }
             }
             """;
 
@@ -56,9 +56,9 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary></summary>
+                /// {|CSENSE016:<summary></summary>|}
                 /// <param name="x">The param x.</param>
-                public void {|CSENSE016:MyMethod|}(int x) { }
+                public void MyMethod(int x) { }
             }
             """;
 
@@ -72,9 +72,9 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>   </summary>
+                /// {|CSENSE016:<summary>   </summary>|}
                 /// <param name="x">The param x.</param>
-                public void {|CSENSE016:MyMethod|}(int x) { }
+                public void MyMethod(int x) { }
             }
             """;
 
@@ -103,8 +103,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>save</summary>
-                public void {|CSENSE016:Save|}() { }
+                /// {|CSENSE016:<summary>save</summary>|}
+                public void Save() { }
             }
             """;
 
@@ -115,8 +115,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryWithOnlySummaryTextReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>summary</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>summary</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -128,8 +128,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryWithOnlySummaryTextAndDotReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>Summary.</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>Summary.</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -141,8 +141,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryWithMultipleTrailingPeriodsReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>MyClass..</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>MyClass..</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -157,10 +157,10 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>this[]</summary>
+                /// {|CSENSE016:<summary>this[]</summary>|}
                 /// <param name="i">The index.</param>
                 /// <value>The value.</value>
-                public int {|CSENSE016:this|}[int i] => 0;
+                public int this[int i] => 0;
             }
             """;
 
@@ -171,8 +171,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryWithOnlyPunctuationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>...</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>...</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -184,8 +184,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryWithTrailingExclamationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>MyClass!</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>MyClass!</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -197,8 +197,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryWithTrailingQuestionMarkReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>MyClass?</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>MyClass?</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -210,8 +210,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryWithTrailingColonReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>MyClass:</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>MyClass:</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -223,8 +223,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryWithMixedTrailingPunctuationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>MyClass! ? : ..</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>MyClass! ? : ..</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -236,8 +236,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryWithTrailingSpaceAfterPunctuationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>MyClass. </summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>MyClass. </summary>|}
+            public class MyClass
             {
             }
             """;
@@ -267,8 +267,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>Class.</summary>
             public class MyClass
             {
-                /// <summary>F</summary>
-                public int {|CSENSE016:F|};
+                /// {|CSENSE016:<summary>F</summary>|}
+                public int F;
             }
             """;
 
@@ -284,8 +284,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>Class.</summary>
             public class MyClass
             {
-                /// <summary>E</summary>
-                public event EventHandler {|CSENSE016:E|};
+                /// {|CSENSE016:<summary>E</summary>|}
+                public event EventHandler E;
             }
             """;
 
@@ -301,8 +301,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>Class.</summary>
             public class MyClass
             {
-                /// <summary>E</summary>
-                public event EventHandler {|CSENSE016:E|}
+                /// {|CSENSE016:<summary>E</summary>|}
+                public event EventHandler E
                 {
                     add { }
                     remove { }
@@ -317,8 +317,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task CustomLowQualityTermWithPunctuationReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>TODO.</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>TODO.</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -335,8 +335,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     public async Task SummaryRepeatingTagKeywordWithCustomTermsReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>summary</summary>
-            public class {|CSENSE016:MyClass|}
+            /// {|CSENSE016:<summary>summary</summary>|}
+            public class MyClass
             {
             }
             """;
@@ -356,8 +356,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>Calculate Total.</summary>
-                public void {|CSENSE016:CalculateTotal|}() { }
+                /// {|CSENSE016:<summary>Calculate Total.</summary>|}
+                public void CalculateTotal() { }
             }
             """;
 
@@ -376,8 +376,8 @@ public class SummaryQualityTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>CALCULATE TOTAL</summary>
-                public void {|CSENSE016:CalculateTotal|}() { }
+                /// {|CSENSE016:<summary>CALCULATE TOTAL</summary>|}
+                public void CalculateTotal() { }
             }
             """;
 

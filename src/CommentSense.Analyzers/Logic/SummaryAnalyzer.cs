@@ -16,10 +16,15 @@ internal static class SummaryAnalyzer
             return;
 
         // Check for low-quality documentation against multiple symbol formats (e.g., friendly name and qualified name)
-        foreach (var _ in summaryElements.Where(summaryElement =>
-                     QualityAnalyzer.IsLowQualityForAnyFormat(summaryElement, symbol, options, SummaryTag)))
+        var summaryLocations = symbol.GetDocumentationLocations(SummaryTag);
+        for (var i = 0; i < summaryElements.Count; i++)
         {
-            QualityAnalyzer.Report(context, symbol, SummaryTag, symbol.GetDisplayName());
+            var summaryElement = summaryElements[i];
+            if (!QualityAnalyzer.IsLowQualityForAnyFormat(summaryElement, symbol, options, SummaryTag))
+                continue;
+
+            var location = summaryLocations.GetLocationOrDefault(i, symbol);
+            QualityAnalyzer.Report(context, location, SummaryTag, symbol.GetDisplayName());
         }
     }
 }

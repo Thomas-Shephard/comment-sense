@@ -13,8 +13,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <param name="p1">p1</param>
-                public void MyMethod(int {|CSENSE016:p1|}) { }
+                /// {|CSENSE016:<param name="p1">p1</param>|}
+                public void MyMethod(int p1) { }
             }
             """;
 
@@ -29,8 +29,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <param name="parameterOne">parameterOne</param>
-                public void MyMethod(int {|CSENSE016:parameterOne|}) { }
+                /// {|CSENSE016:<param name="parameterOne">parameterOne</param>|}
+                public void MyMethod(int parameterOne) { }
             }
             """;
 
@@ -42,8 +42,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
-            /// <typeparam name="T">T</typeparam>
-            public class MyClass<{|CSENSE016:T|}>
+            /// {|CSENSE016:<typeparam name="T">T</typeparam>|}
+            public class MyClass<T>
             {
             }
             """;
@@ -59,8 +59,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <returns>returns</returns>
-                public int {|CSENSE016:MyMethod|}() => 0;
+                /// {|CSENSE016:<returns>returns</returns>|}
+                public int MyMethod() => 0;
             }
             """;
 
@@ -75,8 +75,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <returns>return</returns>
-                public int {|CSENSE016:MyMethod|}() => 0;
+                /// {|CSENSE016:<returns>return</returns>|}
+                public int MyMethod() => 0;
             }
             """;
 
@@ -91,8 +91,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <returns>Int32</returns>
-                public int {|CSENSE016:MyMethod|}() => 0;
+                /// {|CSENSE016:<returns>Int32</returns>|}
+                public int MyMethod() => 0;
             }
             """;
 
@@ -107,8 +107,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the property.</summary>
-                /// <value>value</value>
-                public int {|CSENSE016:MyProperty|} { get; set; }
+                /// {|CSENSE016:<value>value</value>|}
+                public int MyProperty { get; set; }
             }
             """;
 
@@ -123,8 +123,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the property.</summary>
-                /// <value>Int32</value>
-                public int {|CSENSE016:MyProperty|} { get; set; }
+                /// {|CSENSE016:<value>Int32</value>|}
+                public int MyProperty { get; set; }
             }
             """;
 
@@ -139,8 +139,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <exception cref="System.ArgumentNullException">ArgumentNullException</exception>
-                public void {|CSENSE016:MyMethod|}()
+                /// {|CSENSE016:<exception cref="System.ArgumentNullException">ArgumentNullException</exception>|}
+                public void MyMethod()
                 {
                     throw new System.ArgumentNullException();
                 }
@@ -180,8 +180,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <param name="p1"></param>
-                public void MyMethod(int {|CSENSE016:p1|}) { }
+                /// {|CSENSE016:<param name="p1"></param>|}
+                public void MyMethod(int p1) { }
             }
             """;
 
@@ -196,8 +196,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <param name="p1">   </param>
-                public void MyMethod(int {|CSENSE016:p1|}) { }
+                /// {|CSENSE016:<param name="p1">   </param>|}
+                public void MyMethod(int p1) { }
             }
             """;
 
@@ -209,8 +209,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
-            /// <typeparam name="T"></typeparam>
-            public class MyClass<{|CSENSE016:T|}>
+            /// {|CSENSE016:<typeparam name="T"></typeparam>|}
+            public class MyClass<T>
             {
             }
             """;
@@ -226,8 +226,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <returns></returns>
-                public int {|CSENSE016:MyMethod|}() => 0;
+                /// {|CSENSE016:<returns></returns>|}
+                public int MyMethod() => 0;
             }
             """;
 
@@ -242,8 +242,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the property.</summary>
-                /// <value></value>
-                public int {|CSENSE016:MyProperty|} { get; set; }
+                /// {|CSENSE016:<value></value>|}
+                public int MyProperty { get; set; }
             }
             """;
 
@@ -258,8 +258,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <exception cref="System.ArgumentNullException"></exception>
-                public void {|CSENSE016:MyMethod|}()
+                /// {|CSENSE016:<exception cref="System.ArgumentNullException"></exception>|}
+                public void MyMethod()
                 {
                     throw new System.ArgumentNullException();
                 }
@@ -278,8 +278,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>Method summary that is long enough.</summary>
-                /// <returns>List</returns>
-                public List<int> {|CSENSE016:GetItems|}() => null;
+                /// {|CSENSE016:<returns>List</returns>|}
+                public List<int> GetItems() => null;
             }
             """;
 
@@ -295,8 +295,8 @@ public class LowQualityDocumentationTests : CommentSenseAnalyzerTestBase<Comment
             public class MyClass
             {
                 /// <summary>Method summary that is long enough.</summary>
-                /// <returns>List&lt;int&gt;</returns>
-                public List<int> {|CSENSE016:GetItems|}() => null;
+                /// {|CSENSE016:<returns>List&lt;int&gt;</returns>|}
+                public List<int> GetItems() => null;
             }
             """;
 

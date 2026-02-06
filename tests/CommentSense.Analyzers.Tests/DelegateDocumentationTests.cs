@@ -47,8 +47,8 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
         const string testCode = """
             /// <summary>This is a summary for the delegate.</summary>
             /// <param name="p1">The first parameter.</param>
-            /// <param name="extra">An extra parameter.</param>
-            public delegate void {|CSENSE003:MyDelegate|}(int p1);
+            /// {|CSENSE003:<param name="extra">An extra parameter.</param>|}
+            public delegate void MyDelegate(int p1);
             """;
 
         await VerifyCSenseAsync(testCode);
@@ -132,8 +132,8 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     {
         const string testCode = """
             /// <summary>This is a summary for the delegate.</summary>
-            /// <returns>Stray return documentation.</returns>
-            public delegate void {|CSENSE013:MyDelegate|}();
+            /// {|CSENSE013:<returns>Stray return documentation.</returns>|}
+            public delegate void MyDelegate();
             """;
 
         await VerifyCSenseAsync(testCode);
@@ -145,8 +145,8 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
         const string testCode = """
             using System.Threading.Tasks;
             /// <summary>This is a summary for the delegate.</summary>
-            /// <returns>Stray return documentation.</returns>
-            public delegate Task {|CSENSE013:MyDelegate|}();
+            /// {|CSENSE013:<returns>Stray return documentation.</returns>|}
+            public delegate Task MyDelegate();
             """;
 
         await VerifyCSenseAsync(testCode);

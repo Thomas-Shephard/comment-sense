@@ -298,8 +298,8 @@ public class ConfigurationTests : CommentSenseAnalyzerTestBase<CommentSenseAnaly
             /// <summary>This is a summary for the class.</summary>
             public class MyClass
             {
-                /// <summary>TODO</summary>
-                public void {|CSENSE016:Method|}() { }
+                /// {|CSENSE016:<summary>TODO</summary>|}
+                public void Method() { }
             }
             """;
 

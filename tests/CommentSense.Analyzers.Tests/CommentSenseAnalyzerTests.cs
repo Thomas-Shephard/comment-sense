@@ -79,9 +79,9 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             /// <summary>My class</summary>
             public class MyClass
             {
-                /// <summary>MyClass(int)</summary>
+                /// {|#0:<summary>MyClass(int)</summary>|}
                 /// <param name="x">The value.</param>
-                public {|#0:MyClass|}(int x)
+                public MyClass(int x)
                 {
                 }
             }
@@ -102,8 +102,8 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             public class MyClass
             {
                 /// <summary>This is the summary for the constructor.</summary>
-                /// <returns>Stray</returns>
-                public {|#0:MyClass|}()
+                /// {|#0:<returns>Stray</returns>|}
+                public MyClass()
                 {
                 }
             }
@@ -310,5 +310,23 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             """;
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task DiagnosticPointsToTopLevelTagNotNestedOne()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>
+                /// <para>This is a nested <param name="p1">p1</param> tag.</para>
+                /// </summary>
+                /// {|CSENSE016:<param name="p1">p1</param>|}
+                public void MyMethod(int p1) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
     }
 }

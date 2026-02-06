@@ -70,6 +70,13 @@ internal static class AnalyzerExtensions
         return locations[0];
     }
 
+    public static Location GetLocationOrDefault(this ImmutableArray<Location> locations, int index, ISymbol symbol)
+    {
+        return index >= 0 && index < locations.Length
+            ? locations[index]
+            : symbol.Locations.GetPrimaryLocation();
+    }
+
     public static IMethodSymbol? GetPrimaryConstructor(this INamedTypeSymbol type)
     {
         if (type.TypeKind is not (TypeKind.Class or TypeKind.Struct))
@@ -119,6 +126,90 @@ internal static class AnalyzerExtensions
 
     public static bool IsDocumentationModeNone([System.Diagnostics.CodeAnalysis.NotNullWhen(false)] this SyntaxTree? tree)
         => tree?.Options.DocumentationMode is null or DocumentationMode.None;
+
+    public static Location GetDocumentationLocation(this ISymbol symbol, string tagName, string? attributeValue = null, int occurrence = 0, string attributeName = "name")
+    {
+        return symbol.GetDocumentationLocations(tagName, attributeValue, attributeName).GetLocationOrDefault(occurrence, symbol);
+    }
+
+    public static ImmutableArray<Location> GetDocumentationLocations(this ISymbol symbol, string tagName, string? attributeValue = null, string attributeName = "name")
+    {
+        var builder = ImmutableArray.CreateBuilder<Location>();
+
+        var docTrivias = symbol.DeclaringSyntaxReferences
+                               .Select(r => r.GetSyntax())
+                               .Select(GetDocumentationCommentTrivia)
+                               .OfType<DocumentationCommentTriviaSyntax>();
+
+        foreach (var docTrivia in docTrivias)
+        {
+            GetDocumentationLocationsInternal(docTrivia, tagName, attributeValue, attributeName, builder);
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static DocumentationCommentTriviaSyntax? GetDocumentationCommentTrivia(SyntaxNode syntax)
+    {
+        // Documentation trivia might be on the member declaration rather than the specific declarator (e.g. for fields/events)
+        var current = syntax;
+        while (current != null)
+        {
+            var docTrivia = current.GetLeadingTrivia()
+                .Select(t => t.GetStructure())
+                .OfType<DocumentationCommentTriviaSyntax>()
+                .FirstOrDefault();
+
+            if (docTrivia != null)
+                return docTrivia;
+
+            if (current is MemberDeclarationSyntax or CompilationUnitSyntax)
+                break;
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
+    private static void GetDocumentationLocationsInternal(DocumentationCommentTriviaSyntax docTrivia, string tagName, string? attributeValue, string attributeName, ImmutableArray<Location>.Builder builder)
+    {
+        foreach (var node in docTrivia.Content)
+        {
+            bool matches = node switch
+            {
+                XmlElementSyntax element => element.StartTag.Name.LocalName.ValueText == tagName && (attributeValue == null || HasAttribute(element, attributeName, attributeValue)),
+                XmlEmptyElementSyntax emptyElement => emptyElement.Name.LocalName.ValueText == tagName && (attributeValue == null || HasAttribute(emptyElement, attributeName, attributeValue)),
+                _ => false
+            };
+
+            if (matches)
+            {
+                builder.Add(node.GetLocation());
+            }
+        }
+    }
+
+    private static bool HasAttribute(XmlElementSyntax element, string attributeName, string value)
+    {
+        return element.StartTag.Attributes.Any(a => MatchAttribute(a, attributeName, value));
+    }
+
+    private static bool HasAttribute(XmlEmptyElementSyntax element, string attributeName, string value)
+    {
+        return element.Attributes.Any(a => MatchAttribute(a, attributeName, value));
+    }
+
+    public static bool MatchAttribute(XmlAttributeSyntax attribute, string name, string value)
+    {
+        return attribute switch
+        {
+            XmlNameAttributeSyntax nameAttr => nameAttr.Name.LocalName.ValueText == name && nameAttr.Identifier.Identifier.ValueText == value,
+            XmlCrefAttributeSyntax crefAttr => crefAttr.Name.LocalName.ValueText == name && (crefAttr.Cref.ToString() == value || $"T:{crefAttr.Cref}" == value),
+            XmlTextAttributeSyntax textAttr => textAttr.Name.LocalName.ValueText == name && string.Concat(textAttr.TextTokens.Select(t => t.ValueText)) == value,
+            _                               => false
+        };
+    }
 
     public static bool IsInheriting(this ISymbol symbol)
     {

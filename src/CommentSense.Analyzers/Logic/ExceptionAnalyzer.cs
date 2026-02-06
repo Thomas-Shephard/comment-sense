@@ -25,29 +25,44 @@ internal static class ExceptionAnalyzer
         var documentedTypes = GetDocumentedExceptionTypes(context, documentedExceptionElements);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor, options);
 
-        // CSENSE012: Missing Exception Documentation
-        if (!DocumentationExtensions.HasInheritDoc(xml) && !DocumentationExtensions.HasAutoValidTag(xml))
-        {
-            foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) &&
-                                                              !IsIgnored(t, options)))
-            {
-                var location = symbol.Locations.GetPrimaryLocation();
-                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
-            }
-        }
+        ReportMissingExceptions(context, symbol, xml, options, thrownTypes, documentedTypes);
+        ReportLowQualityExceptions(context, symbol, documentedExceptionElements, options);
+    }
 
-        // CSENSE016: Low Quality Exception Documentation
-        foreach (var exceptionElement in documentedExceptionElements)
+    private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, HashSet<ITypeSymbol> documentedTypes)
+    {
+        // CSENSE012: Missing Exception Documentation
+        if (DocumentationExtensions.HasInheritDoc(xml) || DocumentationExtensions.HasAutoValidTag(xml))
+            return;
+
+        foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) && !IsIgnored(t, options)))
         {
+            var location = symbol.Locations.GetPrimaryLocation();
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        }
+    }
+
+    private static void ReportLowQualityExceptions(SymbolAnalysisContext context, ISymbol symbol, List<XElement> documentedExceptionElements, CommentSenseOptions options)
+    {
+        // CSENSE016: Low Quality Exception Documentation
+        if (documentedExceptionElements.Count == 0)
+            return;
+
+        var exceptionLocations = symbol.GetDocumentationLocations(ExceptionTag);
+
+        for (var i = 0; i < documentedExceptionElements.Count; i++)
+        {
+            var exceptionElement = documentedExceptionElements[i];
             var cref = exceptionElement.Attribute("cref")?.Value;
             if (cref is null || string.IsNullOrWhiteSpace(cref))
                 continue;
 
             var resolved = ResolveExceptionType(cref, context.Compilation);
-            if (resolved != null && QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: ExceptionTag))
-            {
-                QualityAnalyzer.Report(context, symbol, ExceptionTag, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
-            }
+            if (resolved == null || !QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: ExceptionTag))
+                continue;
+
+            var location = exceptionLocations.GetLocationOrDefault(i, symbol);
+            QualityAnalyzer.Report(context, location, ExceptionTag, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
         }
     }
 

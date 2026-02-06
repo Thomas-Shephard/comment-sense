@@ -73,8 +73,8 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
             /// <param name="p1">The first parameter.</param>
-            /// <param name="p2">The second parameter.</param>
-            public class {|CSENSE003:MyClass|}(int p1)
+            /// {|CSENSE003:<param name="p2">The second parameter.</param>|}
+            public class MyClass(int p1)
             {
             }
             """;

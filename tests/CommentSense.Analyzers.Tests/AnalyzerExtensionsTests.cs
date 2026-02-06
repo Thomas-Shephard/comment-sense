@@ -757,6 +757,443 @@ public class AnalyzerExtensionsTests
         Assert.That(symbol.GetDisplayName(), Is.EqualTo("M"));
     }
 
+    [Test]
+    public void GetDocumentationLocationReturnsCorrectLocation()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary>Summary.</summary>
+                /// <param name="x">The x.</param>
+                public void M(int x) {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var summaryLocation = symbol.GetDocumentationLocation("summary");
+        var paramLocation = symbol.GetDocumentationLocation("param", "x");
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(summaryLocation, Is.Not.EqualTo(Location.None));
+            Assert.That(paramLocation, Is.Not.EqualTo(Location.None));
+            Assert.That(summaryLocation, Is.Not.EqualTo(paramLocation));
+        }
+    }
+
+    [Test]
+    public void GetDocumentationLocationsHandlesFieldDocumentation()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary>Field summary.</summary>
+                public int f;
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "f");
+        var summaryLocations = symbol.GetDocumentationLocations("summary");
+
+        Assert.That(summaryLocations, Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public void GetDocumentationLocationsHandlesMultiDeclaratorField()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary>Shared summary.</summary>
+                public int f1, f2;
+            }
+            """;
+        var (s1, _) = GetSymbolsFromSource(source, "f1");
+        var (s2, _) = GetSymbolsFromSource(source, "f2");
+
+        var loc1 = s1.GetDocumentationLocations("summary");
+        var loc2 = s2.GetDocumentationLocations("summary");
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(loc1, Has.Length.EqualTo(1));
+            Assert.That(loc2, Has.Length.EqualTo(1));
+            Assert.That(loc1[0].SourceSpan, Is.EqualTo(loc2[0].SourceSpan));
+        }
+    }
+
+    [Test]
+    public void MatchAttributeHandlesCrefWithPrefix()
+    {
+        const string source = """
+            public class C
+            {
+                /// <exception cref="System.ArgumentNullException">Thrown when null.</exception>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        // Roslyn's GetDocumentationCommentXml() often normalizes crefs with prefixes like "T:"
+        var location = symbol.GetDocumentationLocation("exception", "T:System.ArgumentNullException", attributeName: "cref");
+
+        Assert.That(location, Is.Not.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeHandlesMultiTokenText()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary name="A&amp;B">Summary.</summary>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        // "A&B" in XML will be represented as "A&amp;B", which is multiple tokens in Syntax (A, &, B)
+        var location = symbol.GetDocumentationLocation("summary", "A&B", attributeName: "name");
+
+        Assert.That(location, Is.Not.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void GetDocumentationLocationReturnsPrimaryLocationIfNotFound()
+    {
+        const string source = "public class C { public void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("summary");
+
+        Assert.That(location, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void GetDocumentationLocationsHandlesEmptyElement()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary />
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var locations = symbol.GetDocumentationLocations("summary");
+
+        Assert.That(locations, Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public void MatchAttributeHandlesXmlTextAttribute()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary name="Simple">Summary.</summary>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("summary", "Simple", attributeName: "name");
+
+        Assert.That(location, Is.Not.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void GetDocumentationLocationsInternalReturnsFalseForNonElement()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary>Text <![CDATA[cdata]]> more text</summary>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var locations = symbol.GetDocumentationLocations("summary");
+
+        Assert.That(locations, Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public void MatchAttributeReturnsFalseForMismatch()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary name="A">Summary.</summary>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("summary", "B", attributeName: "name");
+
+        Assert.That(location, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeReturnsFalseForWrongAttributeName()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary name="A">Summary.</summary>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("summary", "A", attributeName: "wrong");
+
+        Assert.That(location, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeHandlesXmlNameAttribute()
+    {
+        const string source = """
+            public class C
+            {
+                /// <param name="x">The x.</param>
+                public void M(int x) {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("param", "x", attributeName: "name");
+
+        Assert.That(location, Is.Not.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeHandlesXmlEmptyElementWithAttribute()
+    {
+        const string source = """
+            public class C
+            {
+                /// <see href="https://example.com" />
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("see", "https://example.com", attributeName: "href");
+
+        Assert.That(location, Is.Not.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeHandlesCrefWithoutPrefix()
+    {
+        const string source = """
+            public class C
+            {
+                /// <exception cref="System.ArgumentNullException">Thrown when null.</exception>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("exception", "System.ArgumentNullException", attributeName: "cref");
+
+        Assert.That(location, Is.Not.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeReturnsFalseForNameMismatchInNameAttribute()
+    {
+        const string source = """
+            public class C
+            {
+                /// <param name="x">The x.</param>
+                public void M(int x) {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("param", "y", attributeName: "name");
+
+        Assert.That(location, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeReturnsFalseForNameMismatchInCrefAttribute()
+    {
+        const string source = """
+            public class C
+            {
+                /// <exception cref="System.Exception">Thrown.</exception>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("exception", "System.ArgumentNullException", attributeName: "cref");
+
+        Assert.That(location, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeReturnsFalseForWrongAttributeNameInNameAttribute()
+    {
+        const string source = """
+            public class C
+            {
+                /// <param name="x">The x.</param>
+                public void M(int x) {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("param", "x", attributeName: "wrong");
+
+        Assert.That(location, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeReturnsFalseForWrongAttributeNameInCrefAttribute()
+    {
+        const string source = """
+            public class C
+            {
+                /// <exception cref="System.Exception">Thrown.</exception>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("exception", "System.Exception", attributeName: "wrong");
+
+        Assert.That(location, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeReturnsFalseForWrongAttributeNameInTextAttribute()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary myattr="val">Summary.</summary>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("summary", "val", attributeName: "wrong");
+
+        Assert.That(location, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void GetDocumentationLocationsInternalHandlesNonElementNodes()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary>Summary.</summary>
+                /// This is just text, not an element.
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        // Look for a tag that doesn't exist to ensure we iterate over the non-element nodes
+        var locations = symbol.GetDocumentationLocations("nonexistent");
+
+        Assert.That(locations, Is.Empty);
+    }
+
+    [Test]
+    public void MatchAttributeHandlesMultipleAttributes()
+    {
+        const string source = """
+            public class C
+            {
+                /// <see name="Other" href="https://example.com" />
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("see", "https://example.com", attributeName: "href");
+
+        Assert.That(location, Is.Not.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeHandlesMultipleAttributesInElement()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary attr1="val1" attr2="val2">Summary.</summary>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("summary", "val2", attributeName: "attr2");
+
+        Assert.That(location, Is.Not.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeHandlesEmptyTextAttribute()
+    {
+        const string source = """
+            public class C
+            {
+                /// <summary name="">Summary.</summary>
+                public void M() {}
+            }
+            """;
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = symbol.GetDocumentationLocation("summary", "", attributeName: "name");
+
+        Assert.That(location, Is.Not.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void GetLocationOrDefaultReturnsPrimaryLocationIfIndexOutOfBounds()
+    {
+        const string source = "public class C { public void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var locations = ImmutableArray<Location>.Empty;
+
+        var result = locations.GetLocationOrDefault(0, symbol);
+
+        Assert.That(result, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void GetLocationOrDefaultReturnsLocationAtIndexIfInBounds()
+    {
+        const string source = "public class C { public void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var location = Location.Create("test.cs", default, default);
+        var locations = ImmutableArray.Create(location);
+
+        var result = locations.GetLocationOrDefault(0, symbol);
+
+        Assert.That(result, Is.EqualTo(location));
+    }
+
+    [Test]
+    public void GetLocationOrDefaultReturnsLocationNoneIfOutOfBoundsAndSymbolHasNoLocations()
+    {
+        var compilation = CSharpCompilation.Create("Test");
+        var symbol = compilation.GlobalNamespace;
+        var locations = ImmutableArray<Location>.Empty;
+
+        var result = locations.GetLocationOrDefault(0, symbol);
+
+        Assert.That(result, Is.EqualTo(Location.None));
+    }
+
+    [Test]
+    public void GetLocationOrDefaultReturnsPrimaryLocationIfIndexNegative()
+    {
+        const string source = "public class C { public void M() {} }";
+        var (symbol, _) = GetSymbolsFromSource(source, "M");
+        var locations = ImmutableArray.Create(Location.Create("test.cs", default, default));
+
+        var result = locations.GetLocationOrDefault(-1, symbol);
+
+        Assert.That(result, Is.EqualTo(symbol.Locations.GetPrimaryLocation()));
+    }
+
+    [Test]
+    public void MatchAttributeReturnsFalseForNullAttribute()
+    {
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        Assert.That(AnalyzerExtensions.MatchAttribute(null!, "name", "value"), Is.False);
+    }
+
     private static (ISymbol symbol, Compilation compilation) GetSymbolsFromSource(string source, string symbolName)
     {
         var tree = CSharpSyntaxTree.ParseText(source);
@@ -768,8 +1205,12 @@ public class AnalyzerExtensionsTests
                                                          m is PropertyDeclarationSyntax pd && pd.Identifier.ValueText == symbolName ||
                                                          m is IndexerDeclarationSyntax id && (symbolName == "this[]" || id.ThisKeyword.ValueText == "this") ||
                                                          m is EventDeclarationSyntax ed && ed.Identifier.ValueText == symbolName ||
-                                                         m is BaseTypeDeclarationSyntax td && td.Identifier.ValueText == symbolName));
-        var declaredSymbol = semanticModel.GetDeclaredSymbol(declaration) ?? throw new InvalidOperationException();
+                                                         m is BaseTypeDeclarationSyntax td && td.Identifier.ValueText == symbolName ||
+                                                         m is BaseFieldDeclarationSyntax fd && fd.Declaration.Variables.Any(v => v.Identifier.ValueText == symbolName)));
+        ISymbol declaredSymbol = (declaration is BaseFieldDeclarationSyntax bfd
+            ? semanticModel.GetDeclaredSymbol(bfd.Declaration.Variables.First(v => v.Identifier.ValueText == symbolName))
+            : semanticModel.GetDeclaredSymbol(declaration)) ?? throw new InvalidOperationException();
+
         return (declaredSymbol, compilation);
     }
 }
