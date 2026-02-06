@@ -8,7 +8,30 @@ namespace CommentSense.Analyzers.Tests;
 public class DogfoodTests
 {
     [Test]
-    public async Task Dogfood()
+    public Task DogfoodDefault()
+    {
+        return RunDogfoodAsync([]);
+    }
+
+    [Test]
+    public Task DogfoodStrict()
+    {
+        return RunDogfoodAsync(new Dictionary<string, string>
+        {
+            { "comment_sense.min_summary_length", "10" },
+            { "comment_sense.require_ending_punctuation", "true" },
+            { "comment_sense.similarity_threshold", "0.7" },
+            { "comment_sense.ghost_references.mode", "strict" },
+            { "comment_sense.ignore_system_exceptions", "true" },
+            { "comment_sense.langwords", "true, false, null, void, async, await" },
+            { "comment_sense.allow_implicit_inheritdoc", "false" },
+            { "comment_sense.exclude_constants", "false" },
+            { "comment_sense.exclude_enums", "false" },
+            { "comment_sense.low_quality_terms", "TODO, FIXME, N/A" }
+        });
+    }
+
+    private static async Task RunDogfoodAsync(Dictionary<string, string> options)
     {
         var repoRoot = GetRepositoryRoot();
         var srcDir = Path.Combine(repoRoot, "src");
@@ -27,6 +50,12 @@ public class DogfoodTests
                     ]),
             }
         };
+
+        if (options.Count > 0)
+        {
+            var configText = "is_global = true\n" + string.Join("\n", options.Select(kv => $"{kv.Key} = {kv.Value}"));
+            test.TestState.AnalyzerConfigFiles.Add(("/.editorconfig", configText));
+        }
 
         test.TestState.Sources.Add(("GlobalUsings.cs", """
             global using System;
