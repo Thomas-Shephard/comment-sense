@@ -1,4 +1,5 @@
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -107,19 +108,67 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     }
 
     [Test]
-    public async Task ExactCaseConstraint()
+    public async Task CaseInsensitiveConstraint()
     {
         const string testCode = """
             /// <summary>My class.</summary>
             public class MyClass
             {
-                /// <summary>The unique Id of the user.</summary>
+                /// <summary>The unique {|#0:Id|} of the user.</summary>
                 /// <param name="id">The ID.</param>
                 public void Get(int id) { }
             }
             """;
 
-        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+        var expected = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(0)
+            .WithArguments("Id", "id");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
+    }
+
+    [Test]
+    public async Task CaseInsensitiveMatchForParameterInSafeMode()
+    {
+        const string testCode = """
+            /// <summary>My class.</summary>
+            public class MyClass
+            {
+                /// <summary>The {|#0:myparam|} value.</summary>
+                /// <param name="MyParam">The parameter.</param>
+                public void Get(int MyParam) { }
+            }
+            """;
+
+        var expected = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(0)
+            .WithArguments("myparam", "MyParam");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
+    }
+
+    [Test]
+    public async Task PreferExactMatchWhenMultipleParametersDifferByCase()
+    {
+        const string testCode = """
+            /// <summary>My class.</summary>
+            public class MyClass
+            {
+                /// <summary>The {|#0:ID1|} and the {|#1:id1|}.</summary>
+                /// <param name="id1">The id.</param>
+                /// <param name="ID1">The ID.</param>
+                public void Get(int id1, int ID1) { }
+            }
+            """;
+
+        var expected1 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(0)
+            .WithArguments("ID1", "ID1");
+        var expected2 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(1)
+            .WithArguments("id1", "id1");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected1, expected2]);
     }
 
     [Test]
@@ -211,6 +260,43 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     }
 
     [Test]
+    public async Task SelfReferenceInParamTagWithDifferentCasingIsIgnored()
+    {
+        const string testCode = """
+            /// <summary>My class.</summary>
+            public class MyClass
+            {
+                /// <summary>My method.</summary>
+                /// <param name="id">The ID of the user.</param>
+                public void Get(int id) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task GhostReferenceToOtherParameterWithSameNameDifferentCase()
+    {
+        const string testCode = """
+            /// <summary>My class.</summary>
+            public class MyClass
+            {
+                /// <summary>The method.</summary>
+                /// <param name="id1">The {|#0:ID1|} value.</param>
+                /// <param name="ID1">The ID.</param>
+                public void Get(int id1, int ID1) { }
+            }
+            """;
+
+        var expected = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(0)
+            .WithArguments("ID1", "ID1");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
+    }
+
+    [Test]
     public async Task SelfReferenceInTypeParamTagIsIgnored()
     {
         const string testCode = """
@@ -290,5 +376,25 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             """;
 
         await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task GhostTypeParameterWithDifferentCasingIsFlagged()
+    {
+        const string testCode = """
+            /// <summary>My class.</summary>
+            public class MyClass
+            {
+                /// <summary>The type of {|#0:tvalue|} to process.</summary>
+                /// <typeparam name="TValue">The value type.</typeparam>
+                public void Process<TValue>() { }
+            }
+            """;
+
+        var expected = new DiagnosticResult(CommentSenseRules.GhostTypeParameterReferenceRule)
+            .WithLocation(0)
+            .WithArguments("tvalue", "TValue");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
     }
 }

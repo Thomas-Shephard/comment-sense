@@ -610,7 +610,7 @@ namespace CommentSense.Analyzers {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The word &apos;{0}&apos; matches a parameter name and should be wrapped in &lt;paramref name=&quot;{0}&quot;/&gt;.
+        ///   Looks up a localized string similar to The word &apos;{0}&apos; matches a parameter name and should be wrapped in &lt;paramref name=&quot;{1}&quot;/&gt;.
         /// </summary>
         internal static string GhostParameterReferenceMessage {
             get {
@@ -637,7 +637,7 @@ namespace CommentSense.Analyzers {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The word &apos;{0}&apos; matches a type parameter name and should be wrapped in &lt;typeparamref name=&quot;{0}&quot;/&gt;.
+        ///   Looks up a localized string similar to The word &apos;{0}&apos; matches a type parameter name and should be wrapped in &lt;typeparamref name=&quot;{1}&quot;/&gt;.
         /// </summary>
         internal static string GhostTypeParameterReferenceMessage {
             get {
