@@ -77,8 +77,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             public class MyClass
             {
                 /// <summary>This is a summary for the constructor.</summary>
-                /// <value>A stray value tag.</value>
-                public {|CSENSE015:MyClass|}() { }
+                /// {|CSENSE015:<value>A stray value tag.</value>|}
+                public MyClass() { }
             }
             """;
 
@@ -91,8 +91,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
             /// <param name="x">The input value.</param>
-            /// <value>A stray value tag.</value>
-            public class {|CSENSE015:MyClass|}(int x)
+            /// {|CSENSE015:<value>A stray value tag.</value>|}
+            public class MyClass(int x)
             {
             }
             """;
@@ -124,8 +124,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <returns>A stray returns tag.</returns>
-                public void {|CSENSE013:MyMethod|}() { }
+                /// {|CSENSE013:<returns>A stray returns tag.</returns>|}
+                public void MyMethod() { }
             }
             """;
 
@@ -141,8 +141,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <returns>A stray returns tag.</returns>
-                public Task {|CSENSE013:MyMethod|}() => Task.CompletedTask;
+                /// {|CSENSE013:<returns>A stray returns tag.</returns>|}
+                public Task MyMethod() => Task.CompletedTask;
             }
             """;
 
@@ -158,8 +158,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <returns>A stray returns tag.</returns>
-                public ValueTask {|CSENSE013:MyMethod|}() => default;
+                /// {|CSENSE013:<returns>A stray returns tag.</returns>|}
+                public ValueTask MyMethod() => default;
             }
             """;
 
@@ -376,8 +376,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <returns></returns>
-                public int {|CSENSE016:MyMethod|}() => 0;
+                /// {|CSENSE016:<returns></returns>|}
+                public int MyMethod() => 0;
             }
             """;
 
@@ -392,8 +392,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <returns>A stray returns tag.</returns>
-                public async void {|CSENSE013:MyMethod|}() { }
+                /// {|CSENSE013:<returns>A stray returns tag.</returns>|}
+                public async void MyMethod() { }
             }
             """;
 
@@ -469,8 +469,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             {
                 /// <summary>This is a valid property summary.</summary>
                 /// <value>This is a valid value summary.</value>
-                /// <returns>Stray returns tag.</returns>
-                public int {|CSENSE013:Property|} { get; set; }
+                /// {|CSENSE013:<returns>Stray returns tag.</returns>|}
+                public int Property { get; set; }
             }
             """;
 
@@ -485,8 +485,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             public class MyClass
             {
                 /// <summary>This is a valid method summary.</summary>
-                /// <value>Stray value tag.</value>
-                public void {|CSENSE015:Method|}() { }
+                /// {|CSENSE015:<value>Stray value tag.</value>|}
+                public void Method() { }
             }
             """;
 
@@ -498,8 +498,8 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     {
         const string testCode = """
             /// <summary>This is a valid delegate summary.</summary>
-            /// <returns>DelegateName</returns>
-            public delegate int {|CSENSE016:DelegateName|}();
+            /// {|CSENSE016:<returns>DelegateName</returns>|}
+            public delegate int DelegateName();
             """;
 
         await VerifyCSenseAsync(testCode);
@@ -512,9 +512,9 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>This is a valid property summary.</summary>
-                /// <value>MyProperty</value>
-                public int {|CSENSE016:MyProperty|} { get; set; }
+                /// <summary>This is a summary for the property.</summary>
+                /// {|CSENSE016:<value>MyProperty</value>|}
+                public int MyProperty { get; set; }
             }
             """;
 
@@ -528,9 +528,9 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             /// <summary>This is a valid class summary.</summary>
             public class MyClass
             {
-                /// <summary>This is a valid property summary.</summary>
-                /// <value>Int32</value>
-                public int {|CSENSE016:MyProperty|} { get; set; }
+                /// <summary>This is a summary for the property.</summary>
+                /// {|CSENSE016:<value>Int32</value>|}
+                public int MyProperty { get; set; }
             }
             """;
 

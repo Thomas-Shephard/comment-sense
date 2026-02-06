@@ -53,8 +53,8 @@ public class TypeParameterDocumentationTests : CommentSenseAnalyzerTestBase<Comm
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
-            /// <typeparam name="T">The type parameter T.</typeparam>
-            public class {|CSENSE005:MyClass|}
+            /// {|CSENSE005:<typeparam name="T">The type parameter T.</typeparam>|}
+            public class MyClass
             {
             }
             """;
@@ -94,8 +94,8 @@ public class TypeParameterDocumentationTests : CommentSenseAnalyzerTestBase<Comm
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
-            /// <typeparam name="T"></typeparam>
-            public class MyClass<{|CSENSE016:T|}>
+            /// {|CSENSE016:<typeparam name="T"></typeparam>|}
+            public class MyClass<T>
             {
             }
             """;
@@ -184,8 +184,8 @@ public class TypeParameterDocumentationTests : CommentSenseAnalyzerTestBase<Comm
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
             /// <typeparam name="T2">The second type parameter.</typeparam>
-            /// <typeparam name="T1">The first type parameter.</typeparam>
-            public class {|CSENSE010:MyClass|}<T1, T2>
+            /// {|CSENSE010:<typeparam name="T1">The first type parameter.</typeparam>|}
+            public class MyClass<T1, T2>
             {
             }
             """;
@@ -199,8 +199,8 @@ public class TypeParameterDocumentationTests : CommentSenseAnalyzerTestBase<Comm
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
             /// <typeparam name="T1">The first type parameter.</typeparam>
-            /// <typeparam name="T1">The duplicated first type parameter.</typeparam>
-            public class {|CSENSE011:MyClass|}<T1>
+            /// {|CSENSE011:<typeparam name="T1">The duplicated first type parameter.</typeparam>|}
+            public class MyClass<T1>
             {
             }
             """;

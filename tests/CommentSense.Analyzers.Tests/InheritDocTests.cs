@@ -249,9 +249,9 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>A derived class.</summary>
             public class MyClass : BaseClass
             {
-                /// <summary>M</summary>
+                /// {|CSENSE016:<summary>M</summary>|}
                 /// <inheritdoc/>
-                public override void {|CSENSE016:M|}() { }
+                public override void M() { }
             }
             """;
         await VerifyCSenseAsync(testCode);

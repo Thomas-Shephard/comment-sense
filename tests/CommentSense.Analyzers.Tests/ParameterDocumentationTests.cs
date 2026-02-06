@@ -46,8 +46,8 @@ public class ParameterDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             {
                 /// <summary>This is a summary for the method.</summary>
                 /// <param name="param1">The first parameter.</param>
-                /// <param name="param2">The second parameter.</param>
-                public void {|CSENSE003:MyMethod|}(int param1) { }
+                /// {|CSENSE003:<param name="param2">The second parameter.</param>|}
+                public void MyMethod(int param1) { }
             }
             """;
 
@@ -123,8 +123,8 @@ public class ParameterDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <param name="p1"></param>
-                public void MyMethod(int {|CSENSE016:p1|}) { }
+                /// {|CSENSE016:<param name="p1"></param>|}
+                public void MyMethod(int p1) { }
             }
             """;
 
@@ -178,8 +178,8 @@ public class ParameterDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             {
                 /// <summary>This is a summary for the method.</summary>
                 /// <param name="p2">The second parameter.</param>
-                /// <param name="p1">The first parameter.</param>
-                public void {|CSENSE008:MyMethod|}(int p1, int p2) { }
+                /// {|CSENSE008:<param name="p1">The first parameter.</param>|}
+                public void MyMethod(int p1, int p2) { }
             }
             """;
 
@@ -195,8 +195,8 @@ public class ParameterDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             {
                 /// <summary>This is a summary for the method.</summary>
                 /// <param name="p1">The first parameter.</param>
-                /// <param name="p1">The duplicated first parameter.</param>
-                public void {|CSENSE009:MyMethod|}(int p1) { }
+                /// {|CSENSE009:<param name="p1">The duplicated first parameter.</param>|}
+                public void MyMethod(int p1) { }
             }
             """;
 

@@ -152,12 +152,6 @@ internal static class QualityAnalyzer
         return previousRow[m];
     }
 
-    public static void Report(SymbolAnalysisContext context, ISymbol symbol, string tagName, string targetName)
-    {
-        var location = symbol.Locations.GetPrimaryLocation();
-        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.LowQualityDocumentationRule, location, tagName, targetName));
-    }
-
     public static void Report(SymbolAnalysisContext context, Location location, string tagName, string targetName)
     {
         context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.LowQualityDocumentationRule, location, tagName, targetName));

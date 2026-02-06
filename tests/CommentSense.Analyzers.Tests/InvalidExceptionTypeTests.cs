@@ -77,8 +77,8 @@ public class InvalidExceptionTypeTests : CommentSenseAnalyzerTestBase<CommentSen
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// <exception cref="{|CSENSE017:string|}"/>
-                public void {|CSENSE012:{|CSENSE016:MyMethod|}|}()
+                /// {|CSENSE016:<exception cref="{|CSENSE017:string|}"/>|}
+                public void {|CSENSE012:MyMethod|}()
                 {
                     throw new ArgumentNullException();
                 }
