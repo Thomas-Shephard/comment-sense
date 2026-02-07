@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using CommentSense.Core;
 
 namespace CommentSense.Analyzers.Logic;
 
@@ -10,7 +11,7 @@ internal static class CrefAnalyzer
     {
         var crefAttribute = (XmlCrefAttributeSyntax)context.Node;
 
-        var memberDecl = crefAttribute.FirstAncestorOrSelf<MemberDeclarationSyntax>();
+        var memberDecl = crefAttribute.GetMemberDeclaration();
         if (memberDecl is null)
             return;
 
@@ -19,7 +20,7 @@ internal static class CrefAnalyzer
             : context.SemanticModel.GetDeclaredSymbol(memberDecl);
 
         var tree = context.Node.SyntaxTree;
-        var options = AnalyzerOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
+        var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
 
         if (symbol is null || !symbol.IsEligibleForAnalysis(options.VisibilityLevel))
             return;

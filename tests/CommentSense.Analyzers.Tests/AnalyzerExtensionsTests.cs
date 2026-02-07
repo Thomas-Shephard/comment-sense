@@ -1194,6 +1194,60 @@ public class AnalyzerExtensionsTests
         Assert.That(AnalyzerExtensions.MatchAttribute(null!, "name", "value"), Is.False);
     }
 
+    [Test]
+    public void GetMemberDeclarationReturnsMemberForNodeInDocumentation()
+    {
+        const string source = """
+            /// <summary>Summary.</summary>
+            public class C {}
+            """;
+        var tree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(documentationMode: DocumentationMode.Parse));
+        var xmlText = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+
+        var member = xmlText.GetMemberDeclaration();
+
+        Assert.That(member, Is.InstanceOf<ClassDeclarationSyntax>());
+    }
+
+    [Test]
+    public void GetMemberDeclarationReturnsMemberForMemberNodeItself()
+    {
+        const string source = "public class C {}";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var classDecl = tree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().First();
+
+        var member = classDecl.GetMemberDeclaration();
+
+        Assert.That(member, Is.EqualTo(classDecl));
+    }
+
+    [Test]
+    public void GetMemberDeclarationReturnsNullForNodeWithoutMember()
+    {
+        const string source = "using System;";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var usingDirective = tree.GetRoot().DescendantNodes().OfType<UsingDirectiveSyntax>().First();
+
+        var member = usingDirective.GetMemberDeclaration();
+
+        Assert.That(member, Is.Null);
+    }
+
+    [Test]
+    public void GetMemberDeclarationReturnsNullForNullNode()
+    {
+        SyntaxNode? node = null;
+        Assert.That(node.GetMemberDeclaration(), Is.Null);
+    }
+
+    [Test]
+    public void GetMemberDeclarationReturnsNullForOrphanDocumentation()
+    {
+        var docTrivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia);
+        var result = docTrivia.GetMemberDeclaration();
+        Assert.That(result, Is.Null);
+    }
+
     private static (ISymbol symbol, Compilation compilation) GetSymbolsFromSource(string source, string symbolName)
     {
         var tree = CSharpSyntaxTree.ParseText(source);

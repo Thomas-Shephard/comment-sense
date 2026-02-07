@@ -1,5 +1,6 @@
 using System.Xml.Linq;
 using CommentSense.Analyzers.Logic;
+using CommentSense.Core;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using NUnit.Framework;

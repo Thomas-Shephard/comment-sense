@@ -46,6 +46,7 @@ public class DogfoodTests
                 ReferenceAssemblies = ReferenceAssemblies.NetStandard.NetStandard20
                     .AddPackages([
                         new PackageIdentity("Microsoft.CodeAnalysis.CSharp", "5.0.0"),
+                        new PackageIdentity("Microsoft.CodeAnalysis.CSharp.Workspaces", "5.0.0"),
                         new PackageIdentity("System.Collections.Immutable", "8.0.0")
                     ]),
             }
