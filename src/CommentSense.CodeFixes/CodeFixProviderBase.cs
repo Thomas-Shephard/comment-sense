@@ -12,7 +12,7 @@ namespace CommentSense.CodeFixes;
 public abstract class CodeFixProviderBase : CodeFixProvider
 {
     /// <inheritdoc />
-    public sealed override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
+    public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
     /// <summary>
     /// Finds the <see cref="XmlTextSyntax"/> at the specified <paramref name="span"/>, with robustness for <paramref name="span"/> shifts.

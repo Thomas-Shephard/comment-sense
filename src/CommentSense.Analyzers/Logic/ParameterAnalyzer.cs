@@ -51,8 +51,8 @@ internal static class ParameterAnalyzer
         var seenParams = new Dictionary<string, int>(StringComparer.Ordinal);
         var lastActualIndex = -1;
 
-        var paramElements = DocumentationExtensions.GetTargetElements(xml, ParamTag).ToList();
-        var paramLocations = symbol.GetDocumentationLocations(ParamTag);
+        var paramElements = DocumentationExtensions.GetTopLevelElements(xml, ParamTag).ToList();
+        var paramLocations = symbol.GetDocumentationLocations(ParamTag, topLevelOnly: true);
 
         for (int i = 0; i < paramElements.Count; i++)
         {

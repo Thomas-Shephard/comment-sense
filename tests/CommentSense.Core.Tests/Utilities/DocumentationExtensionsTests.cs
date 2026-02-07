@@ -2,6 +2,8 @@ using System.Xml.Linq;
 using CommentSense.Core.Utilities;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using NUnit.Framework;
 
 namespace CommentSense.Core.Tests.Utilities;
@@ -606,5 +608,355 @@ public class DocumentationExtensionsTests
             Assert.That(result, Has.Count.EqualTo(1));
             Assert.That(result[0].Name.LocalName, Is.EqualTo("summary"));
         }
+    }
+
+    [Test]
+    public void GetTagNameReturnsCorrectNameForElement()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary>Summary</summary>
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlElementSyntax>().First();
+        Assert.That(node.GetTagName(), Is.EqualTo("summary"));
+    }
+
+    [Test]
+    public void GetTagNameReturnsCorrectNameForEmptyElement()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <inheritdoc />
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+        Assert.That(node.GetTagName(), Is.EqualTo("inheritdoc"));
+    }
+
+    [Test]
+    public void GetTagNameReturnsEmptyForNonXmlNode()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// Summary
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        // XmlTextSyntax is a XmlNodeSyntax but not XmlElement/XmlEmptyElement
+        Assert.That(node.GetTagName(), Is.Empty);
+    }
+
+    [Test]
+    public void GetNameAttributeReturnsCorrectValueForElement()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <param name="x">P</param>
+            public void M(int x) {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlElementSyntax>().First();
+        Assert.That(node.GetNameAttribute(), Is.EqualTo("x"));
+    }
+
+    [Test]
+    public void GetNameAttributeReturnsCorrectValueForEmptyElement()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <param name="y" />
+            public void M(int y) {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+        Assert.That(node.GetNameAttribute(), Is.EqualTo("y"));
+    }
+
+    [Test]
+    public void GetNameAttributeReturnsNullWhenMissing()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary>S</summary>
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlElementSyntax>().First();
+        Assert.That(node.GetNameAttribute(), Is.Null);
+    }
+
+    [Test]
+    public void GetNameAttributeReturnsNullForNonXmlNode()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// Summary
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        Assert.That(node.GetNameAttribute(), Is.Null);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixReturnsTrueForWhitespace()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            ///
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        Assert.That(node.IsPureWhitespaceOrPrefix(), Is.True);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixReturnsTrueForPrefix()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary/>
+            ///
+            public class C {}
+            """);
+        var nodes = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().ToList();
+        // nodes[0] is "/// "
+        // nodes[1] is "\n/// "
+        Assert.That(nodes, Has.Count.GreaterThanOrEqualTo(2));
+        Assert.That(nodes[1].IsPureWhitespaceOrPrefix(), Is.True);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixReturnsFalseForText()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// Some text
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        Assert.That(node.IsPureWhitespaceOrPrefix(), Is.False);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixReturnsFalseForNull()
+    {
+        Assert.That(((XmlTextSyntax?)null).IsPureWhitespaceOrPrefix(), Is.False);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixReturnsTrueForEmptyString()
+    {
+        var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral(string.Empty)));
+        Assert.That(node.IsPureWhitespaceOrPrefix(), Is.True);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixReturnsFalseForOnlySlash()
+    {
+        var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("/")));
+        Assert.That(node.IsPureWhitespaceOrPrefix(), Is.False);
+    }
+
+    [Test]
+    public void GetElementAttributeValuesWithTopLevelOnlyFalse()
+    {
+        var xml = """<member><summary><param name="inner">Inner</param></summary><param name="outer">Outer</param></member>""";
+        var root = XElement.Parse(xml);
+        var result = DocumentationExtensions.GetElementAttributeValues(root, "param", "name", topLevelOnly: false).ToList();
+        var expected = new[] { "inner", "outer" };
+        Assert.That(result, Is.EquivalentTo(expected));
+    }
+
+    [Test]
+    public void GetElementAttributeValuesWithTopLevelOnlyTrue()
+    {
+        var xml = """<member><summary><param name="inner">Inner</param></summary><param name="outer">Outer</param></member>""";
+        var root = XElement.Parse(xml);
+        var result = DocumentationExtensions.GetElementAttributeValues(root, "param", "name", topLevelOnly: true).ToList();
+        var expected = new[] { "outer" };
+        Assert.That(result, Is.EquivalentTo(expected));
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsTrailingWhenAtStart()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <param name="x" />
+            /// <summary>S</summary>
+            public void M(int x) {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+        var result = node.GetAssociatedWhitespaceToRemove();
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ToString(), Does.Contain("\n"));
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsLeadingWhenNotAtStart()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary>S</summary>
+            /// <param name="x" />
+            public void M(int x) {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+        var result = node.GetAssociatedWhitespaceToRemove();
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ToString(), Does.Contain("\n"));
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsTrailingWhenNotAtEnd()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary>S</summary> <param name="x" /> <returns>R</returns>
+            public int M(int x) => 0;
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+        var result = node.GetAssociatedWhitespaceToRemove();
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ToString(), Is.EqualTo(" "));
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsNullWhenNoWhitespace()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary>S</summary><param name="x"/><returns>R</returns>
+            public int M(int x) => 0;
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+        var result = node.GetAssociatedWhitespaceToRemove();
+        Assert.That(result, Is.Null);
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsTrailingWhenAtStartWithPrefix()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <param name="x" />
+            public void M(int x) {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+
+        var trivia = node.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>() ?? throw new InvalidOperationException();
+        var index = trivia.Content.IndexOf(node);
+        Assert.That(index, Is.EqualTo(1));
+
+        var result = node.GetAssociatedWhitespaceToRemove();
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ToString(), Does.Contain("\n"));
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsLeadingWhenInMiddle()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary>S</summary>
+            /// <param name="x" />
+            /// <returns>R</returns>
+            public int M(int x) => 0;
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+
+        var result = node.GetAssociatedWhitespaceToRemove();
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ToString(), Does.Contain("\n"));
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsNullForUnsupportedParent()
+    {
+        var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("test")));
+        Assert.That(node.GetAssociatedWhitespaceToRemove(), Is.Null);
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsNullWhenTrailingIsNull()
+    {
+        var summary = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("summary"));
+        var element = SyntaxFactory.XmlElement(
+            SyntaxFactory.XmlName("root"),
+            SyntaxFactory.List(new XmlNodeSyntax[] {
+                SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("Text"))),
+                summary
+            }));
+
+        var node = element.Content[1];
+        Assert.That(node.GetAssociatedWhitespaceToRemove(), Is.Null);
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsNullWhenLeadingIsNull()
+    {
+        var element = SyntaxFactory.XmlElement(
+            SyntaxFactory.XmlName("summary"),
+            SyntaxFactory.SingletonList<XmlNodeSyntax>(SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("S")))));
+        var node = element.Content[0];
+        Assert.That(node.GetAssociatedWhitespaceToRemove(), Is.Null);
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveWithIndexOneAndLeadingNotXmlText()
+    {
+        var param = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("param"));
+        var summary = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("summary"));
+        var root = SyntaxFactory.XmlElement(
+            SyntaxFactory.XmlName("root"),
+            SyntaxFactory.List(new XmlNodeSyntax[] { summary, param }));
+
+        var node = root.Content[1]; // <param/>
+        Assert.That(node.GetAssociatedWhitespaceToRemove(), Is.Null);
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveWithIndexOneAndLeadingNotPureWhitespace()
+    {
+        var param = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("param"));
+        var summary = SyntaxFactory.XmlElement(
+            SyntaxFactory.XmlName("summary"),
+            SyntaxFactory.List(new XmlNodeSyntax[] {
+                SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("Text"))),
+                param
+            }));
+
+        var node = summary.Content[1];
+        Assert.That(node.GetAssociatedWhitespaceToRemove(), Is.Null);
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsTrailingWhenNotAtEndAndLeadingNotPure()
+    {
+        var param = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("param"));
+        var returns = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("returns"));
+        var element = SyntaxFactory.XmlElement(
+            SyntaxFactory.XmlName("summary"),
+            SyntaxFactory.List(new XmlNodeSyntax[] {
+                SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("Text "))),
+                param,
+                SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral(" "))),
+                returns
+            }));
+
+        var node = element.Content[1]; // <param/>
+        var result = node.GetAssociatedWhitespaceToRemove();
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ToString(), Is.EqualTo(" "));
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveWithIndexZeroAndTrailingPure()
+    {
+        var param = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("param"));
+        var element = SyntaxFactory.XmlElement(
+            SyntaxFactory.XmlName("summary"),
+            SyntaxFactory.List(new XmlNodeSyntax[] {
+                param,
+                SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral(" ")))
+            }));
+
+        var node = element.Content[0];
+        var result = node.GetAssociatedWhitespaceToRemove();
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ToString(), Is.EqualTo(" "));
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveReturnsNullWhenIndexIsMinusOne()
+    {
+        var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("test")));
+        var emptyList = SyntaxFactory.List<XmlNodeSyntax>();
+
+        var result = DocumentationExtensions.GetAssociatedWhitespaceToRemove(node, emptyList);
+        Assert.That(result, Is.Null);
     }
 }

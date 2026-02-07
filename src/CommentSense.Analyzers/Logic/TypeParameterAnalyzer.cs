@@ -52,7 +52,7 @@ internal static class TypeParameterAnalyzer
         var lastActualIndex = -1;
 
         var typeParamElements = DocumentationExtensions.GetTargetElements(xml, TypeParamTag).ToList();
-        var typeParamLocations = symbol.GetDocumentationLocations(TypeParamTag);
+        var typeParamLocations = symbol.GetDocumentationLocations(TypeParamTag, topLevelOnly: false);
 
         for (int i = 0; i < typeParamElements.Count; i++)
         {

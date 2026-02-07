@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.Testing;
 
 namespace CommentSense.TestHelpers;
 
-internal static class CommentSenseTestExtensions
+public static class CommentSenseTestExtensions
 {
     private static readonly string[] EditorConfigHeader = ["is_global = true", "end_of_line = crlf"];
 

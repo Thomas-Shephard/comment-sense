@@ -85,5 +85,32 @@ namespace CommentSense.CodeFixes {
                 return ResourceManager.GetString("WrapInTypeparamrefTitle", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove all redundant documentation.
+        /// </summary>
+        internal static string RemoveAllRedundantTitle {
+            get {
+                return ResourceManager.GetString("RemoveAllRedundantTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove redundant &lt;{0} name="{1}" /&gt;.
+        /// </summary>
+        internal static string RemoveRedundantNamedTagTitle {
+            get {
+                return ResourceManager.GetString("RemoveRedundantNamedTagTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove redundant &lt;{0} /&gt;.
+        /// </summary>
+        internal static string RemoveRedundantTagTitle {
+            get {
+                return ResourceManager.GetString("RemoveRedundantTagTitle", resourceCulture);
+            }
+        }
     }
 }
