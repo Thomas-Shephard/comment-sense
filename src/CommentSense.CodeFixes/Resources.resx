@@ -76,4 +76,7 @@
   <data name="RemoveAllRedundantTitle" xml:space="preserve">
     <value>Remove all redundant documentation</value>
   </data>
+  <data name="SortTagsTitle" xml:space="preserve">
+    <value>Sort &lt;{0}&gt; tags</value>
+  </data>
 </root>

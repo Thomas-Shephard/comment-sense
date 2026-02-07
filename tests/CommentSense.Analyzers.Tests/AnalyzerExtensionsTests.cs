@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using CommentSense.Core;
+using CommentSense.Core.Utilities;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
