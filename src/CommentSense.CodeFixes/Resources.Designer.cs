@@ -67,5 +67,23 @@ namespace CommentSense.CodeFixes {
                 return ResourceManager.GetString("UseLangwordTitle", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wrap in &lt;paramref name="{0}" /&gt;.
+        /// </summary>
+        internal static string WrapInParamrefTitle {
+            get {
+                return ResourceManager.GetString("WrapInParamrefTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wrap in &lt;typeparamref name="{0}" /&gt;.
+        /// </summary>
+        internal static string WrapInTypeparamrefTitle {
+            get {
+                return ResourceManager.GetString("WrapInTypeparamrefTitle", resourceCulture);
+            }
+        }
     }
 }

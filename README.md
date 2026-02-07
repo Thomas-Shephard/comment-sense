@@ -39,6 +39,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
 *   **CSENSE008 / CSENSE010**: Enforces that the order of parameter tags in documentation matches the method signature.
 *   **CSENSE009 / CSENSE011**: Flags duplicate tags for the same parameter.
 *   **CSENSE020 / CSENSE021**: Flags parameter or type parameter names used in documentation text that are not wrapped in `<paramref />` or `<typeparamref />` tags.
+    *   **Code Fix:** An automatic code fix is available to wrap these references in the appropriate tag. This fix supports **Fix All** in document, project, or solution.
     *   *Default:* Only flags complex names (camelCase, PascalCase, underscores, or digits).
     *   *Configurable:* Control the strictness using `comment_sense.ghost_references.mode`.
 

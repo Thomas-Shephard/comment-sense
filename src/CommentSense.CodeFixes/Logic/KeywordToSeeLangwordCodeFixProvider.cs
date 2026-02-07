@@ -49,59 +49,19 @@ public class KeywordToSeeLangwordCodeFixProvider : CodeFixProviderBase
         }
     }
 
-    private static XmlTextSyntax? FindXmlText(SyntaxNode root, TextSpan span)
-    {
-        return root.FindNode(span, findInsideTrivia: true, getInnermostNodeForTie: true).FirstAncestorOrSelf<XmlTextSyntax>();
-    }
-
     private static async Task<Document> ConvertKeywordToSeeLangwordAsync(Document document, TextSpan diagnosticSpan, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root == null) return document;
-
-        var xmlText = FindXmlText(root, diagnosticSpan);
-        if (xmlText == null) return document;
-
-        var docTrivia = xmlText.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>();
-        if (docTrivia == null) return document;
-
-        var sourceText = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
-        var keyword = sourceText.ToString(diagnosticSpan);
-
-        var optionsProvider = document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider;
-        var commentSenseOptions = CommentSenseOptions.GetOptions(optionsProvider, root.SyntaxTree);
-
-        var canonicalKeyword = GetCanonicalKeyword(commentSenseOptions.Langwords, keyword);
-        var seeLangword = CreateSeeLangwordElement(canonicalKeyword);
-        var replacementNodes = CreateReplacementNodes(xmlText, diagnosticSpan, seeLangword);
-
-        var parent = xmlText.Parent;
-        if (parent == null) return document;
-
-        SyntaxNode? updatedParent = parent switch
+        return await ReplaceTextWithNodesAsync(document, diagnosticSpan, (xmlText, tokenIndex, relativeStart, relativeEnd) =>
         {
-            XmlElementSyntax xmlElement => xmlElement.WithContent(xmlElement.Content.ReplaceRange(xmlText, replacementNodes)),
-            DocumentationCommentTriviaSyntax docTriviaContent => docTriviaContent.WithContent(docTriviaContent.Content.ReplaceRange(xmlText, replacementNodes)),
-            _ => null
-        };
+            var tokenToSplit = xmlText.TextTokens[tokenIndex];
+            var keyword = tokenToSplit.Text.Substring(relativeStart, relativeEnd - relativeStart);
 
-        if (updatedParent == null) return document;
-
-        var newDocTrivia = parent == docTrivia
-            ? (DocumentationCommentTriviaSyntax)updatedParent
-            : docTrivia.ReplaceNode(parent, updatedParent);
-        var oldTrivia = docTrivia.ParentTrivia;
-        var token = oldTrivia.Token;
-
-        // If the trivia is not attached to a token, try to find it via root
-        if (token == default)
-            token = root.FindToken(oldTrivia.SpanStart);
-
-        if (token == default)
-            return document;
-
-        var newToken = token.ReplaceTrivia(oldTrivia, SyntaxFactory.Trivia(newDocTrivia));
-        return document.WithSyntaxRoot(root.ReplaceToken(token, newToken));
+            var optionsProvider = document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider;
+            var commentSenseOptions = CommentSenseOptions.GetOptions(optionsProvider, xmlText.SyntaxTree);
+            var canonicalKeyword = GetCanonicalKeyword(commentSenseOptions.Langwords, keyword);
+            var seeLangword = CreateSeeLangwordElement(canonicalKeyword);
+            return CreateReplacementNodes(xmlText, tokenIndex, relativeStart, relativeEnd, seeLangword);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     internal static string GetCanonicalKeyword(IEnumerable<string> langwords, string keyword)
@@ -121,52 +81,5 @@ public class KeywordToSeeLangwordCodeFixProvider : CodeFixProviderBase
                     SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken))
             ])
             .WithSlashGreaterThanToken(SyntaxFactory.Token(SyntaxTriviaList.Create(SyntaxFactory.Space), SyntaxKind.SlashGreaterThanToken, SyntaxTriviaList.Empty));
-    }
-
-    private static List<XmlNodeSyntax> CreateReplacementNodes(XmlTextSyntax xmlText, TextSpan diagnosticSpan, XmlEmptyElementSyntax seeLangword)
-    {
-        var tokenToSplit = xmlText.TextTokens.First(t => t.Span.Contains(diagnosticSpan));
-        var tokenIndex = xmlText.TextTokens.IndexOf(tokenToSplit);
-
-        var prefixText = tokenToSplit.Text.Substring(0, diagnosticSpan.Start - tokenToSplit.SpanStart);
-        var suffixText = tokenToSplit.Text.Substring(diagnosticSpan.End - tokenToSplit.SpanStart);
-
-        var replacementNodes = new List<XmlNodeSyntax>();
-
-        // Prefix: Includes all tokens before tokenIndex, plus the prefixText of tokenIndex.
-        var prefixTokens = new List<SyntaxToken>(xmlText.TextTokens.Take(tokenIndex));
-        var finalSeeLangword = seeLangword;
-
-        if (!string.IsNullOrEmpty(prefixText))
-        {
-            prefixTokens.Add(SyntaxFactory.XmlTextLiteral(tokenToSplit.LeadingTrivia, prefixText, prefixText, SyntaxTriviaList.Empty));
-        }
-        else
-        {
-            finalSeeLangword = finalSeeLangword.WithLeadingTrivia(tokenToSplit.LeadingTrivia);
-        }
-
-        if (prefixTokens.Count > 0)
-            replacementNodes.Add(SyntaxFactory.XmlText(SyntaxFactory.TokenList(prefixTokens)));
-
-        // Suffix: Includes the suffixText of tokenIndex, plus all tokens after tokenIndex.
-        var suffixTokens = new List<SyntaxToken>();
-        if (!string.IsNullOrEmpty(suffixText))
-        {
-            suffixTokens.Add(SyntaxFactory.XmlTextLiteral(SyntaxTriviaList.Empty, suffixText, suffixText, tokenToSplit.TrailingTrivia));
-        }
-        else
-        {
-            finalSeeLangword = finalSeeLangword.WithTrailingTrivia(tokenToSplit.TrailingTrivia);
-        }
-
-        replacementNodes.Add(finalSeeLangword);
-
-        suffixTokens.AddRange(xmlText.TextTokens.Skip(tokenIndex + 1));
-
-        if (suffixTokens.Count > 0)
-            replacementNodes.Add(SyntaxFactory.XmlText(SyntaxFactory.TokenList(suffixTokens)));
-
-        return replacementNodes;
     }
 }

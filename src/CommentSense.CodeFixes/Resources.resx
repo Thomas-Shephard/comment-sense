@@ -59,6 +59,12 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="UseLangwordTitle" xml:space="preserve">
-    <value>Use &lt;see langword="{0}" /&gt;</value>
+    <value>Wrap in &lt;see langword="{0}" /&gt;</value>
+  </data>
+  <data name="WrapInParamrefTitle" xml:space="preserve">
+    <value>Wrap in &lt;paramref name="{0}" /&gt;</value>
+  </data>
+  <data name="WrapInTypeparamrefTitle" xml:space="preserve">
+    <value>Wrap in &lt;typeparamref name="{0}" /&gt;</value>
   </data>
 </root>
