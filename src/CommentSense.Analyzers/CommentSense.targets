@@ -1,0 +1,5 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Condition="'$(BuildingInsideVisualStudio)' == 'true' or '$(BuildingInsideOmniSharp)' == 'true' or '$(LanguageServerPresent)' == 'true'">
+    <Analyzer Include="$(MSBuildThisFileDirectory)..\analyzers\dotnet\cs\codefixes\CommentSense.CodeFixes.dll" />
+  </ItemGroup>
+</Project>

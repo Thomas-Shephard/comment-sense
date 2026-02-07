@@ -127,6 +127,16 @@ internal static class AnalyzerExtensions
     public static bool IsDocumentationModeNone([System.Diagnostics.CodeAnalysis.NotNullWhen(false)] this SyntaxTree? tree)
         => tree?.Options.DocumentationMode is null or DocumentationMode.None;
 
+    public static MemberDeclarationSyntax? GetMemberDeclaration(this SyntaxNode? node)
+    {
+        if (node == null)
+            return null;
+
+        var docTrivia = node.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>();
+        var targetNode = docTrivia != null ? docTrivia.ParentTrivia.Token.Parent : node;
+        return targetNode?.FirstAncestorOrSelf<MemberDeclarationSyntax>();
+    }
+
     public static Location GetDocumentationLocation(this ISymbol symbol, string tagName, string? attributeValue = null, int occurrence = 0, string attributeName = "name")
     {
         return symbol.GetDocumentationLocations(tagName, attributeValue, attributeName).GetLocationOrDefault(occurrence, symbol);

@@ -22,10 +22,12 @@ Always verify changes using these commands.
 ## 3. Project Layout
 *   **`src/CommentSense.Analyzers/`**: The main analyzer project. Contains the diagnostic analyzer implementations, rule definitions, and specialized analyzer logic.
     *   **`CommentSenseSuppressor.cs`**: Automatically silences overlapping built-in compiler diagnostics.
+*   **`src/CommentSense.CodeFixes/`**: The code fix provider project. Contains implementations for automatically fixing diagnostics.
 *   **`src/CommentSense.Core/`**: Shared core logic. Contains common utilities for accessibility checks and XML documentation parsing.
 *   **`tests/CommentSense.Analyzers.Tests/`**: Integration tests for the diagnostic rules.
+*   **`tests/CommentSense.CodeFixes.Tests/`**: Integration tests for the code fix providers.
 *   **`tests/CommentSense.Core.Tests/`**: Unit tests for the core utilities.
-*   **`tests/CommentSense.TestHelpers/`**: Shared testing infrastructure, including `CommentSenseAnalyzerTestBase<T>` and `RoslynTestUtils`.
+*   **`tests/CommentSense.TestHelpers/`**: Shared testing infrastructure, including `CommentSenseAnalyzerTestBase<T>`, `CommentSenseCodeFixTestBase<T1, T2>`, and `RoslynTestUtils`.
 *   **`artifacts/`**: Unified build output location (bin, obj, package) configured via `Directory.Build.props`.
 *   **`.github/workflows/`**: CI/CD pipelines for building, testing, linting, and publishing.
 
@@ -36,8 +38,8 @@ Always verify changes using these commands.
     *   Avoid state in the analyzer class itself (use the `AnalysisContext`).
     *   Use `DiagnosticSuppressor` to handle overlapping compiler diagnostics.
 *   **Testing:**
-    *   Use `Microsoft.CodeAnalysis.CSharp.Analyzer.Testing` with `NUnit`.
-    *   Inherit from `CommentSenseAnalyzerTestBase<T>` for analyzer tests.
+    *   Use `Microsoft.CodeAnalysis.CSharp.Analyzer.Testing` and `Microsoft.CodeAnalysis.CSharp.CodeFix.Testing` with `NUnit`.
+    *   Inherit from `CommentSenseAnalyzerTestBase<T>` for analyzer tests and `CommentSenseCodeFixTestBase<TAnalyzer, TCodeFix>` for code fix tests.
     *   Tests should verify both positive (diagnostic reported) and negative (no diagnostic) cases.
     *   Use `[| ... |]` markup in test strings to indicate expected diagnostic locations.
 *   **XML Parsing:**

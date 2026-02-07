@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using CommentSense.Analyzers.Logic;
+using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -65,7 +66,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (tree is null)
             return;
 
-        var options = AnalyzerOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
+        var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
         AnalyzeSymbolCore(context, symbol, options);
     }
 

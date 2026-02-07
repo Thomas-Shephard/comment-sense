@@ -29,7 +29,8 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Configurable:* Add custom terms, minimum length, punctuation requirements, and similarity thresholds.
 *   **CSENSE007**: Validates that `cref` attributes in documentation point to valid symbols.
 *   **CSENSE019**: Recommends using the `<see langword="..." />` tag for C# keywords (e.g., `true`, `false`, `null`, `void`) instead of plain text.
-    *   *Configurable:* Customize the list of keywords using `comment_sense.langwords`.
+    *   **Code Fix:** An automatic code fix is available to wrap plain text keywords in `<see langword="..." />`. This fix supports **Fix All** in document, project, or solution.
+    *   *Configurable:* Customize the list of keywords using `comment_sense.langwords`. Defaults to `true, false, null, void`. Specifying this option replaces the defaults.
 
 ### Parameters & Type Parameters
 Ensures parameters and type parameters are correctly documented and referenced.
@@ -106,8 +107,9 @@ comment_sense.similarity_threshold = 0.8
 Configure which C# keywords should be flagged for replacement with `<see langword="..." />`.
 ```ini
 [*.cs]
-# Comma-separated list of keywords (case-insensitive)
+# Comma-separated list of keywords (case-insensitive).
 # Default: true, false, null, void
+# Note: Specifying this option replaces the default list.
 comment_sense.langwords = true, false, null, void, async, await
 ```
 

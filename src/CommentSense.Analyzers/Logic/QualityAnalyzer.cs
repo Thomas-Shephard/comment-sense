@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using CommentSense.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 

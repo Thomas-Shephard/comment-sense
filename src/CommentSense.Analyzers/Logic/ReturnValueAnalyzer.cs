@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Xml.Linq;
+using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;

@@ -30,6 +30,8 @@
     <ItemGroup>
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"/>
         <None Include="$(OutputPath)\CommentSense.Core.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false"/>
+        <None Include="$(OutputPath)\CommentSense.CodeFixes.dll" Pack="true" PackagePath="analyzers/dotnet/cs/codefixes" Visible="false"/>
+        <None Include="CommentSense.targets" Pack="true" PackagePath="build" Visible="false"/>
         <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
         <AdditionalFiles Include="..\..\AnalyzerReleases.Shipped.md"/>
         <AdditionalFiles Include="..\..\AnalyzerReleases.Unshipped.md"/>
@@ -37,6 +39,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\CommentSense.Core\CommentSense.Core.csproj"/>
+        <ProjectReference Include="..\CommentSense.CodeFixes\CommentSense.CodeFixes.csproj" PrivateAssets="all" ExcludeAssets="compile" />
     </ItemGroup>
 
 </Project>

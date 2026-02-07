@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using CommentSense.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -32,7 +33,7 @@ public class CommentSenseSuppressor : DiagnosticSuppressor
         if (tree == null)
             return true;
 
-        var options = AnalyzerOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
+        var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
         if (!options.EnableConditionalSuppression)
             return true;
 
