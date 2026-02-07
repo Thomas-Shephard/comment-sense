@@ -137,12 +137,12 @@ internal static class AnalyzerExtensions
         return targetNode?.FirstAncestorOrSelf<MemberDeclarationSyntax>();
     }
 
-    public static Location GetDocumentationLocation(this ISymbol symbol, string tagName, string? attributeValue = null, int occurrence = 0, string attributeName = "name")
+    public static Location GetDocumentationLocation(this ISymbol symbol, string tagName, string? attributeValue = null, int occurrence = 0, string attributeName = "name", bool topLevelOnly = true)
     {
-        return symbol.GetDocumentationLocations(tagName, attributeValue, attributeName).GetLocationOrDefault(occurrence, symbol);
+        return symbol.GetDocumentationLocations(tagName, attributeValue, attributeName, topLevelOnly).GetLocationOrDefault(occurrence, symbol);
     }
 
-    public static ImmutableArray<Location> GetDocumentationLocations(this ISymbol symbol, string tagName, string? attributeValue = null, string attributeName = "name")
+    public static ImmutableArray<Location> GetDocumentationLocations(this ISymbol symbol, string tagName, string? attributeValue = null, string attributeName = "name", bool topLevelOnly = true)
     {
         var builder = ImmutableArray.CreateBuilder<Location>();
 
@@ -153,7 +153,7 @@ internal static class AnalyzerExtensions
 
         foreach (var docTrivia in docTrivias)
         {
-            GetDocumentationLocationsInternal(docTrivia, tagName, attributeValue, attributeName, builder);
+            GetDocumentationLocationsInternal(docTrivia, tagName, attributeValue, attributeName, builder, topLevelOnly);
         }
 
         return builder.ToImmutable();
@@ -182,9 +182,10 @@ internal static class AnalyzerExtensions
         return null;
     }
 
-    private static void GetDocumentationLocationsInternal(DocumentationCommentTriviaSyntax docTrivia, string tagName, string? attributeValue, string attributeName, ImmutableArray<Location>.Builder builder)
+    private static void GetDocumentationLocationsInternal(DocumentationCommentTriviaSyntax docTrivia, string tagName, string? attributeValue, string attributeName, ImmutableArray<Location>.Builder builder, bool topLevelOnly)
     {
-        foreach (var node in docTrivia.Content)
+        var nodes = topLevelOnly ? docTrivia.Content : docTrivia.DescendantNodes();
+        foreach (var node in nodes)
         {
             bool matches = node switch
             {

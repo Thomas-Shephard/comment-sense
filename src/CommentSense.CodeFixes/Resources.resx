@@ -67,4 +67,13 @@
   <data name="WrapInTypeparamrefTitle" xml:space="preserve">
     <value>Wrap in &lt;typeparamref name="{0}" /&gt;</value>
   </data>
+  <data name="RemoveRedundantNamedTagTitle" xml:space="preserve">
+    <value>Remove redundant &lt;{0} name="{1}" /&gt;</value>
+  </data>
+  <data name="RemoveRedundantTagTitle" xml:space="preserve">
+    <value>Remove redundant &lt;{0} /&gt;</value>
+  </data>
+  <data name="RemoveAllRedundantTitle" xml:space="preserve">
+    <value>Remove all redundant documentation</value>
+  </data>
 </root>

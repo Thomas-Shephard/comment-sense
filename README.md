@@ -36,8 +36,10 @@ For CommentSense to analyze your documentation, your project must have XML docum
 Ensures parameters and type parameters are correctly documented and referenced.
 *   **CSENSE002 / CSENSE004**: Flags parameters or type parameters defined in code but missing from documentation.
 *   **CSENSE003 / CSENSE005**: Flags "stray" tags referring to parameters that do not exist.
+    *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE008 / CSENSE010**: Enforces that the order of parameter tags in documentation matches the method signature.
 *   **CSENSE009 / CSENSE011**: Flags duplicate tags for the same parameter.
+    *   **Code Fix:** An automatic code fix is available to remove duplicate tags. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE020 / CSENSE021**: Flags parameter or type parameter names used in documentation text that are not wrapped in `<paramref />` or `<typeparamref />` tags.
     *   **Code Fix:** An automatic code fix is available to wrap these references in the appropriate tag. This fix supports **Fix All** in document, project, or solution.
     *   *Default:* Only flags complex names (camelCase, PascalCase, underscores, or digits).
@@ -46,6 +48,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
 ### Return Values
 *   **CSENSE006**: Requires a `<returns>` tag for members that return a value (i.e., non-`void`, non-`Task`, non-`ValueTask`).
 *   **CSENSE013**: Flags stray `<returns>` tags on members that do not produce a documented return value (including `void`, `Task`, and `ValueTask` members), as well as on properties and indexers.
+    *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 ### Exceptions
 *   **CSENSE012**: Scans the method body for explicitly thrown exceptions (including static guard clauses like `ArgumentNullException.ThrowIfNull`) and ensures they are documented with `<exception>` tags.
     *   *Configurable:*
@@ -57,6 +60,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
 *   **CSENSE014**: Requires a `<value>` tag for properties.
     *   *Default:* Disabled.
 *   **CSENSE015**: Flags stray `<value>` tags.
+    *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 
 ## Automatic Suppression
 CommentSense automatically suppresses several built-in C# compiler diagnostics that overlap with its own rules. This prevents duplicate warnings and ensures a cleaner "Error List" experience.

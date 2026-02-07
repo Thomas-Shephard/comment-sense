@@ -1,11 +1,14 @@
 using System.Xml;
 using System.Xml.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CommentSense.Core.Utilities;
 
 internal static class DocumentationExtensions
 {
+    private const string MemberTagName = "member";
+
     private static readonly HashSet<string> AutoValidTags = [
         "inheritdoc", "include"
     ];
@@ -79,7 +82,7 @@ internal static class DocumentationExtensions
 
     public static IEnumerable<string> GetParamNames(XElement root)
     {
-        return GetElementAttributeValues(root, "param", "name");
+        return GetElementAttributeValues(root, "param", "name", topLevelOnly: true);
     }
 
     public static IEnumerable<string> GetParamNames(string? xml)
@@ -92,7 +95,7 @@ internal static class DocumentationExtensions
 
     public static IEnumerable<string> GetTypeParamNames(XElement root)
     {
-        return GetElementAttributeValues(root, "typeparam", "name");
+        return GetElementAttributeValues(root, "typeparam", "name", topLevelOnly: true);
     }
 
     public static IEnumerable<string> GetTypeParamNames(string? xml)
@@ -105,7 +108,7 @@ internal static class DocumentationExtensions
 
     public static bool HasReturnsTag(XElement root)
     {
-        return GetValidElements(root, "returns").Any();
+        return GetTopLevelElements(root, "returns").Any();
     }
 
     public static bool HasReturnsTag(string? xml)
@@ -115,12 +118,12 @@ internal static class DocumentationExtensions
 
     public static bool HasValueTag(XElement root)
     {
-        return GetValidElements(root, "value").Any();
+        return GetTopLevelElements(root, "value").Any();
     }
 
     public static IEnumerable<string> GetExceptionCrefs(XElement root)
     {
-        return GetElementAttributeValues(root, "exception", "cref");
+        return GetElementAttributeValues(root, "exception", "cref", topLevelOnly: true);
     }
 
     public static IEnumerable<string> GetExceptionCrefs(string? xml)
@@ -133,20 +136,101 @@ internal static class DocumentationExtensions
 
     public static IEnumerable<XElement> GetTargetElements(XElement root, string? tagName = null)
     {
-        var target = root.Name.LocalName == "member" ? root : root.Element("member") ?? root;
-        return tagName == null ? target.Elements() : target.Elements(tagName);
+        var target = root.Name.LocalName == MemberTagName ? root : root.Element(MemberTagName) ?? root;
+
+        if (tagName == null)
+            return target.Elements();
+
+        if (tagName is "param" or "typeparam" or "returns" or "value")
+            return target.Descendants(tagName);
+
+        return target.Elements(tagName);
     }
 
-    private static IEnumerable<XElement> GetValidElements(XElement root, string tagName)
+    public static IEnumerable<XElement> GetTopLevelElements(XElement root, string tagName)
     {
-        return GetTargetElements(root, tagName);
+        var target = root.Name.LocalName == MemberTagName ? root : root.Element(MemberTagName) ?? root;
+        return target.Elements(tagName);
     }
 
-    private static IEnumerable<string> GetElementAttributeValues(XElement root, string tagName, string attributeName)
+    public static IEnumerable<string> GetElementAttributeValues(XElement root, string tagName, string attributeName, bool topLevelOnly = false)
     {
-        return GetTargetElements(root, tagName)
+        var elements = topLevelOnly
+            ? GetTopLevelElements(root, tagName)
+            : GetTargetElements(root, tagName);
+
+        return elements
                .Select(d => d.Attribute(attributeName)?.Value)
                .Where(v => !string.IsNullOrWhiteSpace(v))
                .OfType<string>();
+    }
+
+    public static string GetTagName(this XmlNodeSyntax xmlNode)
+    {
+        return xmlNode switch
+        {
+            XmlElementSyntax element           => element.StartTag.Name.LocalName.ValueText,
+            XmlEmptyElementSyntax emptyElement => emptyElement.Name.LocalName.ValueText,
+            _                                  => string.Empty
+        };
+    }
+
+    public static string? GetNameAttribute(this XmlNodeSyntax xmlNode)
+    {
+        var attributes = xmlNode switch
+        {
+            XmlElementSyntax element           => element.StartTag.Attributes,
+            XmlEmptyElementSyntax emptyElement => emptyElement.Attributes,
+            _                                  => default
+        };
+
+        return attributes.OfType<XmlNameAttributeSyntax>().FirstOrDefault(a => a.Name.LocalName.ValueText == "name")?.Identifier.Identifier.ValueText;
+    }
+
+    public static XmlTextSyntax? GetAssociatedWhitespaceToRemove(this XmlNodeSyntax xmlNode)
+    {
+        var content = xmlNode.Parent switch
+        {
+            DocumentationCommentTriviaSyntax doc => doc.Content,
+            XmlElementSyntax element             => element.Content,
+            _                                    => default
+        };
+
+        if (content == default)
+            return null;
+
+        return GetAssociatedWhitespaceToRemove(xmlNode, content);
+    }
+
+    public static XmlTextSyntax? GetAssociatedWhitespaceToRemove(XmlNodeSyntax xmlNode, SyntaxList<XmlNodeSyntax> content)
+    {
+        var index = content.IndexOf(xmlNode);
+        if (index == -1)
+            return null;
+
+        var trailing = index + 1 < content.Count ? content[index + 1] as XmlTextSyntax : null;
+        var leading = index > 0 ? content[index - 1] as XmlTextSyntax : null;
+
+        bool isAtStart = index == 0 || (index == 1 && leading != null && !leading.ToString().Contains("\n") && leading.IsPureWhitespaceOrPrefix());
+        if (isAtStart && trailing.IsPureWhitespaceOrPrefix())
+            return trailing;
+
+        if (leading.IsPureWhitespaceOrPrefix())
+            return leading;
+
+        if (index + 1 < content.Count - 1 && trailing.IsPureWhitespaceOrPrefix())
+            return trailing;
+
+        return null;
+    }
+
+    public static bool IsPureWhitespaceOrPrefix(this XmlTextSyntax? xmlText)
+    {
+        if (xmlText == null)
+            return false;
+
+        var text = xmlText.ToString();
+        var allValidChars = text.All(c => char.IsWhiteSpace(c) || c == '/');
+        return string.IsNullOrEmpty(text) || (allValidChars && (text.Contains("///") || text.All(char.IsWhiteSpace)));
     }
 }
