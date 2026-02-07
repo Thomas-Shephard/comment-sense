@@ -416,7 +416,7 @@ public class KeywordToSeeLangwordTests : CommentSenseCodeFixTestBase<CommentSens
             }
             """;
 
-        await VerifyCodeFixTitleAsync(source, fixedSource, "Use <see langword=\"Null\" />", customOptions);
+        await VerifyCodeFixTitleAsync(source, fixedSource, "Wrap in <see langword=\"Null\" />", customOptions);
     }
 
     [Test]
@@ -433,5 +433,32 @@ public class KeywordToSeeLangwordTests : CommentSenseCodeFixTestBase<CommentSens
         string[] langwords = ["null"];
         var result = KeywordToSeeLangwordCodeFixProvider.GetCanonicalKeyword(langwords, "void");
         Assert.That(result, Is.EqualTo("void"));
+    }
+
+    [Test]
+    public async Task FixAllInDocumentHandlesShiftingSpans()
+    {
+        // Each "null" (4 chars) becomes "<see langword="null" />" (~24 chars).
+        // Shifting is +20 chars per replacement.
+        const string source = """
+            public class Test
+            {
+                /// <summary>
+                /// {|CSENSE019:null|} {|CSENSE019:null|} {|CSENSE019:null|} {|CSENSE019:null|} {|CSENSE019:null|}
+                /// </summary>
+                public object GetItem() => null;
+            }
+            """;
+        const string fixedSource = """
+            public class Test
+            {
+                /// <summary>
+                /// <see langword="null" /> <see langword="null" /> <see langword="null" /> <see langword="null" /> <see langword="null" />
+                /// </summary>
+                public object GetItem() => null;
+            }
+            """;
+
+        await VerifyFixAllAsync(source, fixedSource, DisableUnrelatedRules);
     }
 }

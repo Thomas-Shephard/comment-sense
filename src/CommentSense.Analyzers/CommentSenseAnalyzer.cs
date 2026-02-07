@@ -1,9 +1,11 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using CommentSense.Analyzers.Logic;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace CommentSense.Analyzers;
@@ -46,6 +48,8 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             if (!hasEnabled)
                 return;
 
+            var analyzedNodes = new ConcurrentDictionary<XmlTextSyntax, bool>();
+
             compilationContext.RegisterSymbolAction(AnalyzeSymbol,
                 SymbolKind.NamedType,
                 SymbolKind.Method,
@@ -54,7 +58,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 SymbolKind.Event);
 
             compilationContext.RegisterSyntaxNodeAction(CrefAnalyzer.Analyze, SyntaxKind.XmlCrefAttribute);
-            compilationContext.RegisterSyntaxNodeAction(DocumentationTextAnalyzer.Analyze, SyntaxKind.XmlText);
+            compilationContext.RegisterSyntaxNodeAction(c => DocumentationTextAnalyzer.Analyze(c, analyzedNodes), SyntaxKind.XmlText);
         });
     }
 

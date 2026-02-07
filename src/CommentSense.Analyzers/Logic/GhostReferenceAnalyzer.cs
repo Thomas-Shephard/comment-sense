@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
 
 namespace CommentSense.Analyzers.Logic;
 
@@ -29,36 +30,49 @@ internal static class GhostReferenceAnalyzer
         if (parameters.IsEmpty && typeParameters.IsEmpty)
             return;
 
-        AnalyzeReferences(context, xmlText, parameters, CommentSenseRules.GhostParameterReferenceRule, options, containingTag, nameValue);
-        AnalyzeReferences(context, xmlText, typeParameters, CommentSenseRules.GhostTypeParameterReferenceRule, options, containingTag, nameValue);
+        var reportedSpans = new HashSet<TextSpan>();
+        var analysisContext = new GhostReferenceContext(context, xmlText, options, containingTag, nameValue, reportedSpans);
+
+        AnalyzeReferences(analysisContext, parameters, CommentSenseRules.GhostParameterReferenceRule);
+        AnalyzeReferences(analysisContext, typeParameters, CommentSenseRules.GhostTypeParameterReferenceRule);
     }
 
+    private readonly record struct GhostReferenceContext(
+        SyntaxNodeAnalysisContext AnalysisContext,
+        XmlTextSyntax XmlText,
+        CommentSenseOptions Options,
+        string? ContainingTag,
+        string? NameValue,
+        HashSet<TextSpan> ReportedSpans);
+
     private static void AnalyzeReferences(
-        SyntaxNodeAnalysisContext context,
-        XmlTextSyntax xmlText,
+        GhostReferenceContext context,
         ImmutableArray<string> names,
-        DiagnosticDescriptor rule,
-        CommentSenseOptions options,
-        string? containingTag,
-        string? nameValue)
+        DiagnosticDescriptor rule)
     {
         if (names.IsEmpty)
             return;
 
         var regex = GetRegex(names);
-        foreach (var token in xmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
+        foreach (var token in context.XmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
         {
             foreach (Match match in regex.Matches(token.Text))
             {
                 var matchedText = match.Value;
                 var originalName = ResolveOriginalName(matchedText, names);
 
-                if (originalName == null || !IsGhostReference(matchedText, originalName, options, containingTag, nameValue))
+                if (originalName == null || !IsGhostReference(matchedText, originalName, context.Options, context.ContainingTag, context.NameValue))
                     continue;
 
                 var start = token.SpanStart + match.Index;
-                var location = Location.Create(context.Node.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, match.Length));
-                context.ReportDiagnostic(Diagnostic.Create(rule, location, matchedText, originalName));
+                var span = new TextSpan(start, match.Length);
+
+                if (!context.ReportedSpans.Add(span))
+                    continue;
+
+                var location = Location.Create(context.AnalysisContext.Node.SyntaxTree, span);
+                var properties = ImmutableDictionary<string, string?>.Empty.Add("originalName", originalName);
+                context.AnalysisContext.ReportDiagnostic(Diagnostic.Create(rule, location, properties, matchedText, originalName));
             }
         }
     }
@@ -156,6 +170,7 @@ internal static class GhostReferenceAnalyzer
             IMethodSymbol m => [.. m.Parameters.Select(p => p.Name)],
             IPropertySymbol { IsIndexer: true } p => [.. p.Parameters.Select(param => param.Name)],
             INamedTypeSymbol { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null } n => [.. n.DelegateInvokeMethod.Parameters.Select(p => p.Name)],
+            INamedTypeSymbol n when n.GetPrimaryConstructor() is { } ctor => [.. ctor.Parameters.Select(p => p.Name)],
             _ => []
         };
     }
