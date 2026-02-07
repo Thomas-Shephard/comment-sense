@@ -959,4 +959,64 @@ public class DocumentationExtensionsTests
         var result = DocumentationExtensions.GetAssociatedWhitespaceToRemove(node, emptyList);
         Assert.That(result, Is.Null);
     }
+
+    [Test]
+    public void GetParentContentReturnsDocTriviaForTopLevelNode()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary>S</summary>
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlElementSyntax>().First();
+        var (parent, content) = node.GetParentContent();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(parent, Is.InstanceOf<DocumentationCommentTriviaSyntax>());
+            Assert.That(content, Is.Not.Empty);
+        }
+    }
+
+    [Test]
+    public void GetParentContentReturnsElementForNestedNode()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary><see cref="T"/></summary>
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+        var (parent, content) = node.GetParentContent();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(parent, Is.InstanceOf<XmlElementSyntax>());
+            Assert.That(content, Is.Not.Empty);
+        }
+    }
+
+    [Test]
+    public void GetParentContentWalksUpToElement()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <summary>Text</summary>
+            public class C {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First(t => t.ToString() == "Text");
+        var (parent, content) = node.GetParentContent();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(parent, Is.InstanceOf<XmlElementSyntax>());
+            Assert.That(content, Is.Not.Empty);
+        }
+    }
+
+    [Test]
+    public void GetParentContentReturnsNullForDetachedNode()
+    {
+        var node = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("summary"));
+        var (parent, content) = node.GetParentContent();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(parent, Is.Null);
+            Assert.That(content, Is.Default);
+        }
+    }
 }

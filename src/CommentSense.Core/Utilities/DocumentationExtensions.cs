@@ -233,4 +233,15 @@ internal static class DocumentationExtensions
         var allValidChars = text.All(c => char.IsWhiteSpace(c) || c == '/');
         return string.IsNullOrEmpty(text) || (allValidChars && (text.Contains("///") || text.All(char.IsWhiteSpace)));
     }
+
+    public static (SyntaxNode? Parent, SyntaxList<XmlNodeSyntax> Content) GetParentContent(this XmlNodeSyntax xmlNode)
+    {
+        if (xmlNode.Parent is DocumentationCommentTriviaSyntax d)
+            return (d, d.Content);
+
+        if (xmlNode.Parent is XmlElementSyntax e)
+            return (e, e.Content);
+
+        return (null, default);
+    }
 }

@@ -38,6 +38,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
 *   **CSENSE003 / CSENSE005**: Flags "stray" tags referring to parameters that do not exist.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE008 / CSENSE010**: Enforces that the order of parameter tags in documentation matches the method signature.
+    *   **Code Fix:** An automatic code fix is available to reorder tags to match the signature. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE009 / CSENSE011**: Flags duplicate tags for the same parameter.
     *   **Code Fix:** An automatic code fix is available to remove duplicate tags. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE020 / CSENSE021**: Flags parameter or type parameter names used in documentation text that are not wrapped in `<paramref />` or `<typeparamref />` tags.

@@ -112,5 +112,14 @@ namespace CommentSense.CodeFixes {
                 return ResourceManager.GetString("RemoveRedundantTagTitle", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Sort &lt;{0}&gt; tags.
+        /// </summary>
+        internal static string SortTagsTitle {
+            get {
+                return ResourceManager.GetString("SortTagsTitle", resourceCulture);
+            }
+        }
     }
 }
