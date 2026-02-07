@@ -1,0 +1,65 @@
+name: Performance Benchmarks
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'tests/CommentSense.PerformanceTests/**'
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          cache: true
+          cache-dependency-path: |
+            CommentSense.slnx
+            global.json
+            .config/dotnet-tools.json
+            **/Directory.Build.props
+            **/Directory.Packages.props
+            **/*.csproj
+
+      - name: Restore Tools
+        run: dotnet tool restore
+
+      - name: Run Benchmarks
+        run: |
+          dotnet run -c Release --project tests/CommentSense.PerformanceTests/CommentSense.PerformanceTests.csproj -- --filter '*' --exporters JSON
+
+      - name: Locate and Rename Result
+        run: |
+          # Find the first JSON report and rename it to combined-report.json
+          REPORT_FILE=$(find BenchmarkDotNet.Artifacts/results/ -name "*report.json" | head -n 1)
+          if [ -z "$REPORT_FILE" ]; then
+            echo "No benchmark report found!"
+            exit 1
+          fi
+          cp "$REPORT_FILE" BenchmarkDotNet.Artifacts/results/combined-report.json
+
+      - name: Store Benchmark Result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: CommentSense Performance
+          tool: 'benchmarkdotnet'
+          output-file-path: BenchmarkDotNet.Artifacts/results/combined-report.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # Show alert in the PR comment if there is a regression
+          alert-threshold: '120%'
+          comment-on-alert: true
+          fail-on-alert: true
