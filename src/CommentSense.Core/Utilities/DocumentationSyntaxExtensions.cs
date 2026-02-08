@@ -1,5 +1,4 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CommentSense.Core.Utilities;
@@ -31,9 +30,7 @@ internal static class DocumentationSyntaxExtensions
                 return nameAttr.Identifier.Identifier.ValueText;
 
             if (attribute is XmlTextAttributeSyntax { Name.LocalName.ValueText: DocumentationAttributes.Name } textAttr)
-            {
                 return string.Concat(textAttr.TextTokens.Select(t => t.ValueText));
-            }
         }
 
         return null;
