@@ -304,7 +304,7 @@ public class CommentSenseOptionsTests
     [Test]
     public void ParseSetEdgeCasesReturnsCorrectSet()
     {
-        var set = CommentSenseOptions.ParseSet("  term1  ,  ,  term2  ");
+        var set = CommentSenseOptionsLoader.ParseSet("  term1  ,  ,  term2  ");
         using (Assert.EnterMultipleScope())
         {
             Assert.That(set, Has.Count.EqualTo(2));
@@ -318,7 +318,7 @@ public class CommentSenseOptionsTests
     {
         var options = new MapOptions(new Dictionary<string, string>());
         var global = new MapOptions(new Dictionary<string, string>());
-        var val = CommentSenseOptions.GetDoubleOption(options, global, "nonexistent", 0.5);
+        var val = CommentSenseOptionsLoader.GetDoubleOption(options, global, "nonexistent", 0.5);
         Assert.That(val, Is.EqualTo(0.5));
     }
 
@@ -327,7 +327,7 @@ public class CommentSenseOptionsTests
     {
         var options = new MapOptions(new Dictionary<string, string>());
         var global = new MapOptions(new Dictionary<string, string>());
-        var val = CommentSenseOptions.GetIntOption(options, global, "nonexistent", 42);
+        var val = CommentSenseOptionsLoader.GetIntOption(options, global, "nonexistent", 42);
         Assert.That(val, Is.EqualTo(42));
     }
 
@@ -336,7 +336,7 @@ public class CommentSenseOptionsTests
     {
         var options = new MapOptions(new Dictionary<string, string>());
         var global = new MapOptions(new Dictionary<string, string>());
-        var val = CommentSenseOptions.GetBoolOption(options, global, "nonexistent", true);
+        var val = CommentSenseOptionsLoader.GetBoolOption(options, global, "nonexistent", true);
         Assert.That(val, Is.True);
     }
 
@@ -345,7 +345,7 @@ public class CommentSenseOptionsTests
     {
         var options = new MapOptions(new Dictionary<string, string>());
         var global = new MapOptions(new Dictionary<string, string> { ["comment_sense.test"] = "true" });
-        var val = CommentSenseOptions.GetBoolOption(options, global, "test");
+        var val = CommentSenseOptionsLoader.GetBoolOption(options, global, "test");
         Assert.That(val, Is.True);
     }
 
@@ -354,7 +354,7 @@ public class CommentSenseOptionsTests
     {
         var options = new MapOptions(new Dictionary<string, string>());
         var global = new MapOptions(new Dictionary<string, string> { ["comment_sense.visibility_level"] = "Internal" });
-        var val = CommentSenseOptions.GetEnumOption(options, global, "visibility_level", VisibilityLevel.Public);
+        var val = CommentSenseOptionsLoader.GetEnumOption(options, global, "visibility_level", VisibilityLevel.Public);
         Assert.That(val, Is.EqualTo(VisibilityLevel.Internal));
     }
 
@@ -363,7 +363,7 @@ public class CommentSenseOptionsTests
     {
         var options = new MapOptions(new Dictionary<string, string>());
         var global = new MapOptions(new Dictionary<string, string> { ["comment_sense.terms"] = "a,b" });
-        var val = CommentSenseOptions.GetSetOption(options, global, "terms", ImmutableHashSet<string>.Empty);
+        var val = CommentSenseOptionsLoader.GetSetOption(options, global, "terms", ImmutableHashSet<string>.Empty);
         Assert.That(val, Contains.Item("a"));
     }
 
@@ -376,9 +376,9 @@ public class CommentSenseOptionsTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(CommentSenseOptions.HasOption(options, empty, "local"), Is.True);
-            Assert.That(CommentSenseOptions.HasOption(empty, global, "global"), Is.True);
-            Assert.That(CommentSenseOptions.HasOption(empty, empty, "none"), Is.False);
+            Assert.That(CommentSenseOptionsLoader.HasOption(options, empty, "local"), Is.True);
+            Assert.That(CommentSenseOptionsLoader.HasOption(empty, global, "global"), Is.True);
+            Assert.That(CommentSenseOptionsLoader.HasOption(empty, empty, "none"), Is.False);
         }
     }
 
