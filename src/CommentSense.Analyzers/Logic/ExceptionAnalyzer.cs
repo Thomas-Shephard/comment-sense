@@ -12,8 +12,6 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class ExceptionAnalyzer
 {
-    private const string ExceptionTag = "exception";
-
     private static readonly SymbolDisplayFormat FullNameFormat = new(
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
         genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
@@ -22,18 +20,18 @@ internal static class ExceptionAnalyzer
 
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
-        var documentedExceptionElements = DocumentationExtensions.GetTargetElements(xml, ExceptionTag).ToList();
+        var documentedExceptionElements = DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception);
         var documentedTypes = GetDocumentedExceptionTypes(context, documentedExceptionElements);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor, options);
 
         ReportMissingExceptions(context, symbol, xml, options, thrownTypes, documentedTypes);
-        ReportLowQualityExceptions(context, symbol, documentedExceptionElements, options);
+        ReportLowQualityExceptions(context, symbol, xml, options);
     }
 
     private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, HashSet<ITypeSymbol> documentedTypes)
     {
         // CSENSE012: Missing Exception Documentation
-        if (DocumentationExtensions.HasInheritDoc(xml) || DocumentationExtensions.HasAutoValidTag(xml))
+        if (DocumentationXmlExtensions.HasInheritDoc(xml) || DocumentationXmlExtensions.HasAutoValidTag(xml))
             return;
 
         foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) && !IsIgnored(t, options)))
@@ -43,27 +41,20 @@ internal static class ExceptionAnalyzer
         }
     }
 
-    private static void ReportLowQualityExceptions(SymbolAnalysisContext context, ISymbol symbol, List<XElement> documentedExceptionElements, CommentSenseOptions options)
+    private static void ReportLowQualityExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
     {
         // CSENSE016: Low Quality Exception Documentation
-        if (documentedExceptionElements.Count == 0)
-            return;
-
-        var exceptionLocations = symbol.GetDocumentationLocations(ExceptionTag);
-
-        for (var i = 0; i < documentedExceptionElements.Count; i++)
+        foreach (var (exceptionElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Exception, topLevelOnly: true))
         {
-            var exceptionElement = documentedExceptionElements[i];
-            var cref = exceptionElement.Attribute("cref")?.Value;
+            var cref = exceptionElement.Attribute(DocumentationAttributes.Cref)?.Value;
             if (cref is null || string.IsNullOrWhiteSpace(cref))
                 continue;
 
             var resolved = ResolveExceptionType(cref, context.Compilation);
-            if (resolved == null || !QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: ExceptionTag))
+            if (resolved == null || !QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: DocumentationTags.Exception))
                 continue;
 
-            var location = exceptionLocations.GetLocationOrDefault(i, symbol);
-            QualityAnalyzer.Report(context, location, ExceptionTag, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+            QualityAnalyzer.Report(context, location, DocumentationTags.Exception, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
         }
     }
 
@@ -90,7 +81,7 @@ internal static class ExceptionAnalyzer
     {
         return new HashSet<ITypeSymbol>(
             exceptionElements
-                .Select(e => e.Attribute("cref")?.Value)
+                .Select(e => e.Attribute(DocumentationAttributes.Cref)?.Value)
                 .Where(cref => !string.IsNullOrWhiteSpace(cref))
                 .OfType<string>()
                 .Select(cref => ResolveExceptionType(cref, context.Compilation))
@@ -322,7 +313,7 @@ internal static class ExceptionAnalyzer
             symbol = delegateMethod.ContainingType;
         }
 
-        return DocumentationExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml())
+        return DocumentationXmlExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml())
                                       .Select(cref => ResolveExceptionType(cref, compilation))
                                       .OfType<ITypeSymbol>();
     }

@@ -1,5 +1,4 @@
 using CommentSense.TestHelpers;
-using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -174,5 +173,23 @@ public class LangwordTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
         };
 
         await VerifyCSenseAsync(testCode, configOptions: config, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task HandlesUnfoundCanonicalGracefully()
+    {
+        // Kelvin sign (U+212A) matches 'k' in case-insensitive regex but not in OrdinalIgnoreCase.
+        const char kelvinSign = '\u212A';
+        var testCode = $$"""
+            /// <summary>This is a {|CSENSE019:{{kelvinSign}}|} test.</summary>
+            public class MyClass { }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            { "comment_sense.langwords", "k" }
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
     }
 }

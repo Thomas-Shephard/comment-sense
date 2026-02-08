@@ -88,7 +88,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         var isInheriting = symbol.IsInheriting();
         var xml = symbol.GetDocumentationCommentXml();
 
-        if (!DocumentationExtensions.TryParseDocumentation(xml, out var element) || !DocumentationExtensions.HasValidDocumentation(element))
+        if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element) || !DocumentationXmlExtensions.HasValidDocumentation(element))
         {
             if (options.AllowImplicitInheritDoc && isInheriting && symbol.Kind != SymbolKind.NamedType)
                 return;
@@ -103,8 +103,8 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (DocumentationExtensions.HasInheritDoc(element) &&
-            !DocumentationExtensions.HasInheritDocWithCref(element) &&
+        if (DocumentationXmlExtensions.HasInheritDoc(element) &&
+            !DocumentationXmlExtensions.HasInheritDocWithCref(element) &&
             !isInheriting)
         {
             ReportMissingDocs(context, symbol);

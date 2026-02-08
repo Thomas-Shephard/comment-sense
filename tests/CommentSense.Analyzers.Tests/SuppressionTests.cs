@@ -1,10 +1,11 @@
-using System.Collections.Immutable;
-using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Testing;
+using CommentSense.TestHelpers;
 using NUnit.Framework;
+using System.Collections.Immutable;
 
 namespace CommentSense.Analyzers.Tests;
 
@@ -250,7 +251,50 @@ public class SuppressionTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyze
         await VerifySuppressionAsync(testCode, expected, config, additionalAnalyzers: [new ReportDiagnosticOnStatementAnalyzer()]);
     }
 
+    [Test]
+    public async Task DiagnosticOnUsingDirectiveIsSuppressed()
+    {
+        // 1. CS1591 reported on a 'using' directive.
+        // 2. GetAssociatedSymbol returns null because 'using' is not a member and not in one.
+        // 3. ShouldSuppress returns true (fallback to suppress).
+        const string testCode = """
+            using System;
+            public class C {}
+            """;
+
+        var expected = new[]
+        {
+            DiagnosticResult.CompilerWarning("CS1591").WithSpan(2, 14, 2, 15).WithArguments("C").WithIsSuppressed(true),
+            new DiagnosticResult(CommentSenseRules.MissingDocumentationRule).WithSpan(2, 14, 2, 15).WithArguments("C"),
+            new DiagnosticResult("CS1591", DiagnosticSeverity.Warning).WithSpan(1, 1, 1, 14).WithIsSuppressed(true),
+        };
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.enable_conditional_suppression"] = "true"
+        };
+
+        await VerifySuppressionAsync(testCode, expected, config, additionalAnalyzers: [new ReportDiagnosticOnUsingAnalyzer()]);
+    }
+
 #pragma warning disable RS1038, RS1041, RS1036
+    [DiagnosticAnalyzer(LanguageNames.CSharp)]
+    private sealed class ReportDiagnosticOnUsingAnalyzer : DiagnosticAnalyzer
+    {
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
+            [new("CS1591", "Title", "Message", "Category", DiagnosticSeverity.Warning, true)];
+
+        public override void Initialize(AnalysisContext context)
+        {
+            context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+            context.EnableConcurrentExecution();
+            context.RegisterSyntaxNodeAction(ctx =>
+            {
+                ctx.ReportDiagnostic(Diagnostic.Create(SupportedDiagnostics[0], ctx.Node.GetLocation()));
+            }, SyntaxKind.UsingDirective);
+        }
+    }
+
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     private sealed class ReportDiagnosticAtNoneAnalyzer : DiagnosticAnalyzer
     {

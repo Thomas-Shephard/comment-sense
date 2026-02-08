@@ -73,6 +73,49 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
+    public async Task PublicFieldWithoutDocumentationReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                public int {|CSENSE001:MyField|};
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task PublicPropertyWithoutDocumentationReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                public int {|CSENSE001:MyProperty|} { get; set; }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task PublicEventWithoutDocumentationReportsDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                public event EventHandler {|CSENSE001:MyEvent|};
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
     public async Task ConstructorWithLowQualitySummaryReportsFriendlyName()
     {
         const string testCode = """
@@ -117,7 +160,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PrivateClassWithoutDocumentationDoesNotReportDiagnostic()
+    public async Task PrivateOrInternalMemberWithoutDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
             internal class MyClass
@@ -130,7 +173,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task DocumentedPublicClassDoesNotReportDiagnostic()
+    public async Task DocumentedPublicClassWithValidSummaryDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -143,50 +186,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PublicFieldWithoutDocumentationReportsDiagnostic()
-    {
-        const string testCode = """
-            /// <summary>This is a summary for the class.</summary>
-            public class MyClass
-            {
-                public int {|CSENSE001:MyField|};
-            }
-            """;
-
-        await VerifyCSenseAsync(testCode);
-    }
-
-    [Test]
-    public async Task PublicPropertyWithoutDocumentationReportsDiagnostic()
-    {
-        const string testCode = """
-            /// <summary>This is a summary for the class.</summary>
-            public class MyClass
-            {
-                public int {|CSENSE001:MyProperty|} { get; set; }
-            }
-            """;
-
-        await VerifyCSenseAsync(testCode);
-    }
-
-    [Test]
-    public async Task PublicEventWithoutDocumentationReportsDiagnostic()
-    {
-        const string testCode = """
-            using System;
-            /// <summary>This is a summary for the class.</summary>
-            public class MyClass
-            {
-                public event EventHandler {|CSENSE001:MyEvent|};
-            }
-            """;
-
-        await VerifyCSenseAsync(testCode);
-    }
-
-    [Test]
-    public async Task DocumentedPublicPropertyDoesNotReportDiagnostic()
+    public async Task DocumentedPublicPropertyWithValidSummaryAndValueDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -225,19 +225,6 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PublicClassWithInvalidDocumentationTagsReportsDiagnostic()
-    {
-        const string testCode = """
-            /// <para>This tag alone is not considered valid documentation by our rules</para>
-            public class {|CSENSE001:MyClass|}
-            {
-            }
-            """;
-
-        await VerifyCSenseAsync(testCode);
-    }
-
-    [Test]
     public async Task FieldWithDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
@@ -269,7 +256,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task StaticConstructorDoesNotReportDiagnostic()
+    public async Task StaticConstructorWithoutDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -283,7 +270,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task DestructorDoesNotReportDiagnostic()
+    public async Task DestructorWithoutDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -297,23 +284,20 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PropertyWithDocumentationDoesNotReportDiagnostic()
+    public async Task PublicClassWithInvalidDocumentationTagsReportsDiagnostic()
     {
         const string testCode = """
-            /// <summary>This is a summary for the class.</summary>
-            public class C
+            /// <para>This tag alone is not considered valid documentation by our rules</para>
+            public class {|CSENSE001:MyClass|}
             {
-                /// <summary>This is a summary for the property.</summary>
-                /// <value>Value of the property.</value>
-                public int P { get; set; }
             }
             """;
 
-        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+        await VerifyCSenseAsync(testCode);
     }
 
     [Test]
-    public async Task DiagnosticPointsToTopLevelTagNotNestedOne()
+    public async Task NestedParamInsideSummaryDoesNotCountAsPrimaryParamDocumentation()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>

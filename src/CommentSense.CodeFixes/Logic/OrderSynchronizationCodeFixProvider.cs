@@ -34,8 +34,7 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
 
         foreach (var diagnostic in context.Diagnostics)
         {
-            var node = root.FindNode(diagnostic.Location.SourceSpan, findInsideTrivia: true, getInnermostNodeForTie: true);
-            var xmlNode = node.FirstAncestorOrSelf<XmlNodeSyntax>(n => n is XmlElementSyntax or XmlEmptyElementSyntax);
+            var xmlNode = FindXmlNode(root, diagnostic.Location.SourceSpan);
             if (xmlNode is null)
                 continue;
 
@@ -63,8 +62,7 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root == null) return document;
 
-        var node = root.FindNode(diagnostic.Location.SourceSpan, findInsideTrivia: true, getInnermostNodeForTie: true);
-        var xmlNode = node.FirstAncestorOrSelf<XmlNodeSyntax>(n => n is XmlElementSyntax or XmlEmptyElementSyntax);
+        var xmlNode = FindXmlNode(root, diagnostic.Location.SourceSpan);
         if (xmlNode == null) return document;
 
         var docTrivia = xmlNode.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>();
@@ -87,12 +85,12 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
 
     internal static ImmutableArray<string> GetExpectedOrder(ISymbol symbol, string tagName)
     {
-        if (tagName == "param")
+        if (tagName == DocumentationTags.Param)
         {
             var parameters = symbol.GetParameters();
             if (!parameters.IsEmpty) return [.. parameters.Select(p => p.Name)];
         }
-        else if (tagName == "typeparam")
+        else if (tagName == DocumentationTags.TypeParam)
         {
             var typeParameters = symbol.GetTypeParameters();
             if (!typeParameters.IsEmpty) return [.. typeParameters.Select(p => p.Name)];
@@ -131,7 +129,10 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
                 continue;
 
             var (parent, content) = xmlNode.GetParentContent();
-            if (parent is null || content.Count == 0)
+
+            // Only consider tags that are direct children of the documentation comment
+            // to avoid reordering nested tags (e.g., inside <remarks> or <summary>).
+            if (parent is not DocumentationCommentTriviaSyntax)
                 continue;
 
             var index = content.IndexOf(xmlNode);
@@ -148,11 +149,10 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
         return parentToTagNodes;
     }
 
-    private static SyntaxNode ReorderContent(SyntaxNode parent, List<(XmlNodeSyntax Node, string Name, int Index)> tagNodes, ImmutableArray<string> expectedOrder)
+    private static DocumentationCommentTriviaSyntax ReorderContent(SyntaxNode parent, List<(XmlNodeSyntax Node, string Name, int Index)> tagNodes, ImmutableArray<string> expectedOrder)
     {
-        SyntaxList<XmlNodeSyntax> content = parent is XmlElementSyntax e
-            ? e.Content
-            : ((DocumentationCommentTriviaSyntax)parent).Content;
+        var docTrivia = (DocumentationCommentTriviaSyntax)parent;
+        var content = docTrivia.Content;
 
         var nodesByName = tagNodes
             .GroupBy(x => x.Name, StringComparer.Ordinal)
@@ -189,10 +189,6 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
             newContentList[targetIndex] = nodesByName[targetName].Dequeue();
         }
 
-        var newContent = SyntaxFactory.List(newContentList);
-        if (parent is XmlElementSyntax e2)
-            return e2.WithContent(newContent);
-
-        return ((DocumentationCommentTriviaSyntax)parent).WithContent(newContent);
+        return docTrivia.WithContent(SyntaxFactory.List(newContentList));
     }
 }

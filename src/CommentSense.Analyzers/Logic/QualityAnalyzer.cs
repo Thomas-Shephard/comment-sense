@@ -10,16 +10,13 @@ internal static class QualityAnalyzer
     private static readonly char[] PunctuationChars = ['.', '!', '?'];
     private static readonly char[] TrimChars = [.. PunctuationChars, ':', ' '];
 
-    private const string ReturnsTag = "returns";
-    private const string ValueTag = "value";
-
     public static bool IsLowQuality(XElement element, ISymbol symbol, ISymbol targetSymbol, CommentSenseOptions options)
     {
         var type = (symbol as IMethodSymbol)?.ReturnType ?? (symbol as IPropertySymbol)?.Type;
 
         // Properties use <value>, while methods and delegates use <returns>.
         // For delegates, symbol is the DelegateInvokeMethod (IMethodSymbol).
-        var tagName = symbol is IPropertySymbol ? ValueTag : ReturnsTag;
+        var tagName = symbol is IPropertySymbol ? DocumentationTags.Value : DocumentationTags.Returns;
 
         if (IsLowQualityForAnyFormat(element, symbol, options, tagName))
             return true;
@@ -110,7 +107,7 @@ internal static class QualityAnalyzer
             return true;
 
         // The word "return" is treated as low-quality only when documenting the <returns> tag
-        return tagName == ReturnsTag && string.Equals(normalized, "return", StringComparison.OrdinalIgnoreCase);
+        return tagName == DocumentationTags.Returns && string.Equals(normalized, "return", StringComparison.OrdinalIgnoreCase);
     }
 
     private static int ComputeLevenshteinDistance(ReadOnlySpan<char> s, ReadOnlySpan<char> t)

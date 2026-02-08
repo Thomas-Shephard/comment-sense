@@ -1189,13 +1189,6 @@ public class AnalyzerExtensionsTests
     }
 
     [Test]
-    public void MatchAttributeReturnsFalseForNullAttribute()
-    {
-        // ReSharper disable once NullableWarningSuppressionIsUsed
-        Assert.That(AnalyzerExtensions.MatchAttribute(null!, "name", "value"), Is.False);
-    }
-
-    [Test]
     public void GetMemberDeclarationReturnsMemberForNodeInDocumentation()
     {
         const string source = """
@@ -1247,6 +1240,25 @@ public class AnalyzerExtensionsTests
         var docTrivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia);
         var result = docTrivia.GetMemberDeclaration();
         Assert.That(result, Is.Null);
+    }
+
+    [Test]
+    public void GetAssociatedSymbolReturnsCorrectSymbolForMultiVariableField()
+    {
+        const string source = "public class Test { public int x, y; }";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var compilation = CSharpCompilation.Create("Test", [tree], CachedReferences);
+        var semanticModel = compilation.GetSemanticModel(tree);
+
+        var variables = tree.GetRoot().DescendantNodes().OfType<VariableDeclaratorSyntax>().ToList();
+        var xVar = variables.First(v => v.Identifier.Text == "x");
+        var yVar = variables.First(v => v.Identifier.Text == "y");
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(xVar.GetAssociatedSymbol(semanticModel)?.Name, Is.EqualTo("x"));
+            Assert.That(yVar.GetAssociatedSymbol(semanticModel)?.Name, Is.EqualTo("y"));
+        }
     }
 
     private static (ISymbol symbol, Compilation compilation) GetSymbolsFromSource(string source, string symbolName)

@@ -125,4 +125,132 @@ public class DiagnosticLocationTests : CommentSenseAnalyzerTestBase<CommentSense
             """;
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task ExceptionLocationMatchesWhenNestedTagsExist()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>
+                /// Summary.
+                /// <exception cref="T:System.ArgumentException">Nested exception tag (should be ignored).</exception>
+                /// </summary>
+                /// {|CSENSE016:<exception cref="T:System.ArgumentNullException">ArgumentNullException</exception>|}
+                public void MyMethod()
+                {
+                    throw new ArgumentNullException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task SummaryLocationMatchesWhenNestedTagsExist()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <remarks>
+                /// <summary>Nested summary (should be ignored).</summary>
+                /// </remarks>
+                /// {|CSENSE016:<summary>MyMethod</summary>|}
+                public void MyMethod()
+                {
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task ParamLocationMatchesWhenNestedTagsExist()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>
+                /// Summary.
+                /// <param name="p1">Nested param (should be ignored).</param>
+                /// </summary>
+                /// {|CSENSE016:<param name="p1">p1</param>|}
+                public void MyMethod(int p1)
+                {
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task TypeParamLocationMatchesWhenNestedTagsExist()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>
+                /// Summary.
+                /// <typeparam name="T">Nested typeparam (should be ignored).</typeparam>
+                /// </summary>
+                /// {|CSENSE016:<typeparam name="T">T</typeparam>|}
+                public void MyMethod<T>()
+                {
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task ReturnsLocationMatchesWhenNestedTagsExist()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>
+                /// Summary.
+                /// <returns>Nested returns (should be ignored).</returns>
+                /// </summary>
+                /// {|CSENSE016:<returns>return</returns>|}
+                public int MyMethod() => 0;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task ValueLocationMatchesWhenNestedTagsExist()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>
+                /// Summary.
+                /// <value>Nested value (should be ignored).</value>
+                /// </summary>
+                /// {|CSENSE016:<value>P</value>|}
+                public int P { get; set; }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }

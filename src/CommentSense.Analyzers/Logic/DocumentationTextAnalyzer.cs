@@ -1,7 +1,7 @@
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using CommentSense.Core;
+using CommentSense.Core.Utilities;
 using System.Collections.Concurrent;
 
 namespace CommentSense.Analyzers.Logic;
@@ -17,18 +17,14 @@ internal static class DocumentationTextAnalyzer
         if (!analyzedNodes.TryAdd(xmlText, true))
             return;
 
-        var memberDecl = xmlText.GetMemberDeclaration();
-        if (memberDecl is null)
+        var symbol = xmlText.GetAssociatedSymbol(context.SemanticModel);
+        if (symbol is null)
             return;
 
         var tree = context.Node.SyntaxTree;
         var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
 
-        var symbol = memberDecl is BaseFieldDeclarationSyntax { Declaration.Variables.Count: > 0 } fieldDecl
-            ? context.SemanticModel.GetDeclaredSymbol(fieldDecl.Declaration.Variables[0])
-            : context.SemanticModel.GetDeclaredSymbol(memberDecl);
-
-        if (symbol is null || !symbol.IsEligibleForAnalysis(options.VisibilityLevel))
+        if (!symbol.IsEligibleForAnalysis(options.VisibilityLevel))
             return;
 
         LangwordAnalyzer.Analyze(context, xmlText, options);

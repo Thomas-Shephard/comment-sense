@@ -382,36 +382,98 @@ public class OrderSynchronizationTests : CommentSenseCodeFixTestBase<CommentSens
     }
 
     [Test]
-    public async Task ReorderNestedTypeParameters()
+    public async Task ReorderTagsReturnsDocumentIfOnlyOneNamedTag()
     {
         const string source = """
-            /// <summary>Summary</summary>
-            /// <remarks>
-            /// <typeparam name="T2">Second</typeparam>
-            /// {|CSENSE010:<typeparam name="T1">First</typeparam>|}
-            /// </remarks>
-            public class Test<T1, T2>
+            public class Test
             {
-                public void Method() { }
+                /// <summary>Summary</summary>
+                /// <param name="p1">First</param>
+                public void Method(int p1) { }
+            }
+            """;
+
+        var syntaxTree = CSharpSyntaxTree.ParseText(source);
+        var root = await syntaxTree.GetRootAsync();
+        var docTrivia = root.DescendantNodes(descendIntoTrivia: true).OfType<DocumentationCommentTriviaSyntax>().First();
+
+        using var workspace = new AdhocWorkspace();
+        var doc = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("Test.cs", source);
+
+        var result = OrderSynchronizationCodeFixProvider.ReorderTags(doc, root, docTrivia, "param", ["p1"]);
+        Assert.That(result, Is.EqualTo(doc));
+    }
+
+    [Test]
+    public async Task NestedTagsAreIgnored()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary>Summary <param name="p1">Nested</param></summary>
+                /// <param name="p2">Second</param>
+                /// {|CSENSE008:<param name="p1">First</param>|}
+                public void Method(int p1, int p2) { }
             }
             """;
         const string fixedSource = """
-            /// <summary>Summary</summary>
-            /// <remarks>
-            /// <typeparam name="T1">First</typeparam>
-            /// <typeparam name="T2">Second</typeparam>
-            /// </remarks>
-            public class Test<T1, T2>
+            public class Test
             {
-                public void Method() { }
+                /// <summary>Summary <param name="p1">Nested</param></summary>
+                /// <param name="p1">First</param>
+                /// <param name="p2">Second</param>
+                public void Method(int p1, int p2) { }
             }
             """;
 
-        var options = new Dictionary<string, string>(DisableUnrelatedRules)
-        {
-            { "dotnet_diagnostic.CSENSE004.severity", "none" }
-        };
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
 
-        await VerifyCodeFixAsync(source, fixedSource, options);
+    [Test]
+    public async Task TagWithoutNameIsIgnored()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                /// <param name="p2">Second</param>
+                /// <param>Unnamed</param>
+                /// {|CSENSE008:<param name="p1">First</param>|}
+                public void Method(int p1, int p2) { }
+            }
+            """;
+        const string fixedSource = """
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                /// <param name="p1">First</param>
+                /// <param>Unnamed</param>
+                /// <param name="p2">Second</param>
+                public void Method(int p1, int p2) { }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task FixOrderAsyncReturnsDocumentWhenNoMemberDeclaration()
+    {
+        const string source = """
+            /// <param name="p1">Docs</param>
+            namespace N { }
+            """;
+
+        using var workspace = new AdhocWorkspace();
+        var doc = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("Test.cs", source);
+        var tree = await doc.GetSyntaxTreeAsync() ?? throw new InvalidOperationException();
+        var root = await tree.GetRootAsync();
+        var xmlNode = root.DescendantNodes(descendIntoTrivia: true).OfType<XmlNodeSyntax>().First();
+
+        var diagnostic = Diagnostic.Create("ID", "Category", "Message", DiagnosticSeverity.Warning, DiagnosticSeverity.Warning, true, 1, location: xmlNode.GetLocation());
+
+        var result = await OrderSynchronizationCodeFixProvider.FixOrderAsync(doc, diagnostic, CancellationToken.None);
+
+        Assert.That(result, Is.EqualTo(doc));
     }
 }

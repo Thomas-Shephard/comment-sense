@@ -420,22 +420,6 @@ public class KeywordToSeeLangwordTests : CommentSenseCodeFixTestBase<CommentSens
     }
 
     [Test]
-    public void GetCanonicalKeywordReturnsMatchWhenFound()
-    {
-        string[] langwords = ["null", "true", "void"];
-        var result = KeywordToSeeLangwordCodeFixProvider.GetCanonicalKeyword(langwords, "NULL");
-        Assert.That(result, Is.EqualTo("null"));
-    }
-
-    [Test]
-    public void GetCanonicalKeywordReturnsKeywordWhenNotFound()
-    {
-        string[] langwords = ["null"];
-        var result = KeywordToSeeLangwordCodeFixProvider.GetCanonicalKeyword(langwords, "void");
-        Assert.That(result, Is.EqualTo("void"));
-    }
-
-    [Test]
     public async Task FixAllInDocumentHandlesShiftingSpans()
     {
         // Each "null" (4 chars) becomes "<see langword="null" />" (~24 chars).
