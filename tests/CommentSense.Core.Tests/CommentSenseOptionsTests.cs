@@ -395,7 +395,7 @@ public class CommentSenseOptionsTests
             Assert.That(o1, Is.EqualTo(o3));
             Assert.That(o1.GetHashCode(), Is.EqualTo(o3.GetHashCode()));
             Assert.That(o1.ToString(), Is.Not.Null);
-            var (_, _, _, _, _, _, _, minSummaryLength, _, _, _, _, _, _, _) = o1;
+            var (_, _, _, _, _, _, _, minSummaryLength, _, _, _, _, _, _, _, _) = o1;
             Assert.That(minSummaryLength, Is.EqualTo(o1.MinSummaryLength));
         }
     }

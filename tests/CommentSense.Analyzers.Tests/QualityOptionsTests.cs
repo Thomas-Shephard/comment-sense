@@ -290,6 +290,84 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     }
 
     [Test]
+    public async Task RequireCapitalizationReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// {|CSENSE016:<summary>lowercase summary.</summary>|}
+                public void Method() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.require_capitalization"] = "true"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
+
+    [Test]
+    public async Task RequireCapitalizationDoesNotReportDiagnosticWhenCapitalized()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>Capitalized summary.</summary>
+                public void Method() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.require_capitalization"] = "true"
+        };
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, configOptions: config);
+    }
+
+    [Test]
+    public async Task RequireCapitalizationDoesNotReportDiagnosticWhenStartingWithNonLetter()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>123 summary.</summary>
+                public void Method1() { }
+
+                /// <summary>_underscore summary.</summary>
+                public void Method2() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.require_capitalization"] = "true"
+        };
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, configOptions: config);
+    }
+
+    [Test]
+    public async Task RequireCapitalizationDisabledByDefault()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>lowercase summary.</summary>
+                public void Method() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
     public async Task LongDocumentationStressTest()
     {
         var longSummary = new string('a', 1000);
