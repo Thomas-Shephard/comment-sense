@@ -15,10 +15,8 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
         { "dotnet_diagnostic.CSENSE006.severity", "none" }
     };
 
-    #region Parameter References (CSENSE020)
-
     [Test]
-    public async Task Parameter_InSummary_WrapsInParamRef()
+    public async Task ParameterInSummaryWrapsInParamRef()
     {
         const string source = """
             public class Test
@@ -43,7 +41,7 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
-    public async Task Parameter_WithDifferentCasing_WrapsInCorrectCasedParamRef()
+    public async Task ParameterWithDifferentCasingWrapsInCorrectCasedParamRef()
     {
         const string source = """
             public class Test
@@ -68,7 +66,7 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
-    public async Task ConstructorParameter_InSummary_WrapsInParamRef()
+    public async Task ConstructorParameterInSummaryWrapsInParamRef()
     {
         const string source = """
             public class Test
@@ -97,7 +95,7 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
-    public async Task PrimaryConstructorParameter_InSummary_WrapsInParamRef()
+    public async Task PrimaryConstructorParameterInSummaryWrapsInParamRef()
     {
         const string source = """
             /// <summary>
@@ -119,12 +117,8 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
         await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
     }
 
-    #endregion
-
-    #region Type Parameter References (CSENSE021)
-
     [Test]
-    public async Task TypeParameter_InSummary_WrapsInTypeParamRef()
+    public async Task TypeParameterInSummaryWrapsInTypeParamRef()
     {
         const string source = """
             /// <summary>
@@ -146,12 +140,8 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
         await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
     }
 
-    #endregion
-
-    #region Code Action Metadata
-
     [Test]
-    public async Task CodeAction_Title_UsesOriginalSymbolName()
+    public async Task CodeActionTitleUsesOriginalSymbolName()
     {
         const string source = """
             public class Test
@@ -175,12 +165,8 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
         await VerifyCodeFixTitleAsync(source, fixedSource, "Wrap in <paramref name=\"inputData\" />", DisableUnrelatedRules);
     }
 
-    #endregion
-
-    #region Batch and FixAll
-
     [Test]
-    public async Task MultipleReferences_InSameSummary_WrapsAllInBatch()
+    public async Task MultipleReferencesInSameSummaryWrapsAllInBatch()
     {
         const string source = """
             public class Test
@@ -205,7 +191,7 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
-    public async Task MultipleReferences_FixAll_WrapsAllOccurrences()
+    public async Task MultipleReferencesFixAllWrapsAllOccurrences()
     {
         const string source = """
             public class Test
@@ -230,7 +216,7 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
-    public async Task MixedGhostReferences_FixAll_WrapsBothParameterAndTypeParameter()
+    public async Task MixedGhostReferencesFixAllWrapsBothParameterAndTypeParameter()
     {
         const string source = """
             /// <summary>
@@ -247,6 +233,4 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
 
         await VerifyFixAllAsync(source, fixedSource, DisableUnrelatedRules);
     }
-
-    #endregion
 }

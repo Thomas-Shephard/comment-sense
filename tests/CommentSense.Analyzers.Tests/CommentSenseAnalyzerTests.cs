@@ -6,10 +6,8 @@ namespace CommentSense.Analyzers.Tests;
 
 public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
-    #region Missing Documentation (CSENSE001)
-
     [Test]
-    public async Task PublicClass_WithoutDocumentation_ReportsDiagnostic()
+    public async Task PublicClassWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
             public class {|CSENSE001:MyClass|}
@@ -21,7 +19,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PublicMethod_WithoutDocumentation_ReportsDiagnostic()
+    public async Task PublicMethodWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -35,7 +33,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PublicConstructor_WithoutDocumentation_ReportsFriendlyName()
+    public async Task PublicConstructorWithoutDocumentationReportsFriendlyName()
     {
         const string testCode = """
             /// <summary>My class</summary>
@@ -55,7 +53,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PublicParameterlessConstructor_WithoutDocumentation_ReportsFriendlyName()
+    public async Task PublicParameterlessConstructorWithoutDocumentationReportsFriendlyName()
     {
         const string testCode = """
             /// <summary>My class</summary>
@@ -75,7 +73,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PublicField_WithoutDocumentation_ReportsDiagnostic()
+    public async Task PublicFieldWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -89,7 +87,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PublicProperty_WithoutDocumentation_ReportsDiagnostic()
+    public async Task PublicPropertyWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -103,7 +101,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PublicEvent_WithoutDocumentation_ReportsDiagnostic()
+    public async Task PublicEventWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
             using System;
@@ -117,12 +115,8 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
         await VerifyCSenseAsync(testCode);
     }
 
-    #endregion
-
-    #region Quality and Stray Documentation
-
     [Test]
-    public async Task Constructor_WithLowQualitySummary_ReportsFriendlyName()
+    public async Task ConstructorWithLowQualitySummaryReportsFriendlyName()
     {
         const string testCode = """
             /// <summary>My class</summary>
@@ -144,7 +138,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task Constructor_WithStrayReturns_ReportsFriendlyName()
+    public async Task ConstructorWithStrayReturnsReportsFriendlyName()
     {
         const string testCode = """
             /// <summary>My class</summary>
@@ -165,12 +159,8 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
         await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
     }
 
-    #endregion
-
-    #region Exclusions (No Diagnostics)
-
     [Test]
-    public async Task PrivateOrInternalMember_WithoutDocumentation_DoesNotReportDiagnostic()
+    public async Task PrivateOrInternalMemberWithoutDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
             internal class MyClass
@@ -183,7 +173,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task DocumentedPublicClass_WithValidSummary_DoesNotReportDiagnostic()
+    public async Task DocumentedPublicClassWithValidSummaryDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -196,7 +186,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task DocumentedPublicProperty_WithValidSummaryAndValue_DoesNotReportDiagnostic()
+    public async Task DocumentedPublicPropertyWithValidSummaryAndValueDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -212,7 +202,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task PublicEvent_WithInheritdoc_DoesNotReportDiagnostic()
+    public async Task PublicEventWithInheritdocDoesNotReportDiagnostic()
     {
         const string testCode = """
             using System;
@@ -235,7 +225,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task Field_WithDocumentation_DoesNotReportDiagnostic()
+    public async Task FieldWithDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -250,7 +240,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task Event_WithDocumentation_DoesNotReportDiagnostic()
+    public async Task EventWithDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
             using System;
@@ -266,7 +256,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task StaticConstructor_WithoutDocumentation_DoesNotReportDiagnostic()
+    public async Task StaticConstructorWithoutDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -280,7 +270,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task Destructor_WithoutDocumentation_DoesNotReportDiagnostic()
+    public async Task DestructorWithoutDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -293,12 +283,8 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 
-    #endregion
-
-    #region Edge Cases
-
     [Test]
-    public async Task PublicClass_WithInvalidDocumentationTags_ReportsDiagnostic()
+    public async Task PublicClassWithInvalidDocumentationTagsReportsDiagnostic()
     {
         const string testCode = """
             /// <para>This tag alone is not considered valid documentation by our rules</para>
@@ -311,7 +297,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task NestedParam_InsideSummary_DoesNotCountAsPrimaryParamDocumentation()
+    public async Task NestedParamInsideSummaryDoesNotCountAsPrimaryParamDocumentation()
     {
         const string testCode = """
             /// <summary>This is a summary for the class.</summary>
@@ -327,6 +313,4 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
 
         await VerifyCSenseAsync(testCode);
     }
-
-    #endregion
 }

@@ -23,18 +23,9 @@ internal static class DocumentationXmlExtensions
 
     public static bool HasValidDocumentation(XElement root)
     {
-        foreach (var element in GetTargetElements(root))
-        {
-            var name = element.Name.LocalName;
-
-            if (AutoValidTags.Contains(name))
-                return true;
-
-            if (ContentRequiredTags.Contains(name))
-                return true;
-        }
-
-        return false;
+        return GetTargetElements(root)
+            .Select(element => element.Name.LocalName)
+            .Any(name => AutoValidTags.Contains(name) || ContentRequiredTags.Contains(name));
     }
 
     public static bool TryParseDocumentation(string? xml, out XElement element)
