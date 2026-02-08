@@ -13,18 +13,14 @@
 
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" PrivateAssets="all" />
     </ItemGroup>
 
     <ItemGroup>
         <EmbeddedResource Update="Resources.resx">
-            <Generator>ResXFileCodeGenerator</Generator>
-            <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+            <GenerateSource>true</GenerateSource>
+            <Namespace>CommentSense.Analyzers</Namespace>
         </EmbeddedResource>
-        <Compile Update="Resources.Designer.cs">
-            <DesignTime>True</DesignTime>
-            <AutoGen>True</AutoGen>
-            <DependentUpon>Resources.resx</DependentUpon>
-        </Compile>
     </ItemGroup>
 
     <ItemGroup>

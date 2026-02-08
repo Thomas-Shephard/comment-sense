@@ -143,4 +143,28 @@ public class DocumentationXmlExtensionsTests
         Assert.That(result, Contains.Item("p1"));
         Assert.That(result, Does.Not.Contain("p2"));
     }
+
+    [Test]
+    public void IsTopLevelWithDirectChildReturnsTrue()
+    {
+        var root = XElement.Parse("<root><summary/></root>");
+        var element = root.Element("summary") ?? throw new InvalidOperationException();
+        Assert.That(DocumentationXmlExtensions.IsTopLevel(root, element), Is.True);
+    }
+
+    [Test]
+    public void IsTopLevelWithNestedChildReturnsFalse()
+    {
+        var root = XElement.Parse("<root><remarks><summary/></remarks></root>");
+        var element = root.Element("remarks")?.Element("summary") ?? throw new InvalidOperationException();
+        Assert.That(DocumentationXmlExtensions.IsTopLevel(root, element), Is.False);
+    }
+
+    [Test]
+    public void IsTopLevelWithDetachedElementReturnsFalse()
+    {
+        var root = XElement.Parse("<root><summary/></root>");
+        var element = new XElement("summary");
+        Assert.That(DocumentationXmlExtensions.IsTopLevel(root, element), Is.False);
+    }
 }

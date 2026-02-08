@@ -41,19 +41,30 @@ internal static class ReturnValueAnalyzer
         }
 
         // CSENSE013: Stray <returns> tag on property
-        if (DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Returns, recursive: true).Any())
+        foreach (var (_, location) in targetSymbol.GetTargetElementsWithLocations(xml, DocumentationTags.Returns, topLevelOnly: false))
         {
-            var location = targetSymbol.GetDocumentationLocation(DocumentationTags.Returns, topLevelOnly: false);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, targetSymbol.GetDisplayName()));
         }
 
-        // CSENSE016: Low quality <value> documentation
+        // CSENSE015: Stray <value> tag on property (and quality check)
+        var seenValue = false;
+        var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
         foreach (var (element, location) in targetSymbol.GetTargetElementsWithLocations(xml, DocumentationTags.Value, topLevelOnly: false))
         {
-            if (!QualityAnalyzer.IsLowQuality(element, property, targetSymbol, options))
-                continue;
+            bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, element, effectiveTarget);
 
-            QualityAnalyzer.Report(context, location, DocumentationTags.Value, targetSymbol.GetDisplayName());
+            if (!isTopLevel || seenValue)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayValueDocumentationRule, location, targetSymbol.GetDisplayName()));
+                continue;
+            }
+
+            seenValue = true;
+
+            if (QualityAnalyzer.IsLowQuality(element, property, targetSymbol, options))
+            {
+                QualityAnalyzer.Report(context, location, DocumentationTags.Value, targetSymbol.GetDisplayName());
+            }
         }
     }
 
@@ -71,27 +82,32 @@ internal static class ReturnValueAnalyzer
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
         }
 
-        // CSENSE013: Stray <returns> tag on void or Task method
-        if (isVoid && DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Returns, recursive: true).Any())
+        // CSENSE013: Stray <returns> tag (on void/Task, nested, or duplicate)
+        // CSENSE016: Low quality <returns> documentation
+        var seenReturns = false;
+        var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
+        foreach (var (element, location) in targetSymbol.GetTargetElementsWithLocations(xml, DocumentationTags.Returns, topLevelOnly: false))
         {
-            var location = targetSymbol.GetDocumentationLocation(DocumentationTags.Returns, topLevelOnly: false);
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, targetSymbol.GetDisplayName()));
+            bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, element, effectiveTarget);
+
+            if (!isTopLevel || isVoid || seenReturns)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, targetSymbol.GetDisplayName()));
+                continue;
+            }
+
+            seenReturns = true;
+
+            if (QualityAnalyzer.IsLowQuality(element, methodSymbol, targetSymbol, options))
+            {
+                QualityAnalyzer.Report(context, location, DocumentationTags.Returns, targetSymbol.GetDisplayName());
+            }
         }
 
         // CSENSE015: Stray <value> tag on method
-        if (DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Value, recursive: true).Any())
+        foreach (var (_, location) in targetSymbol.GetTargetElementsWithLocations(xml, DocumentationTags.Value, topLevelOnly: false))
         {
-            var location = targetSymbol.GetDocumentationLocation(DocumentationTags.Value, topLevelOnly: false);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayValueDocumentationRule, location, targetSymbol.GetDisplayName()));
-        }
-
-        // CSENSE016: Low quality <returns> documentation
-        foreach (var (element, location) in targetSymbol.GetTargetElementsWithLocations(xml, DocumentationTags.Returns, topLevelOnly: false))
-        {
-            if (!QualityAnalyzer.IsLowQuality(element, methodSymbol, targetSymbol, options))
-                continue;
-
-            QualityAnalyzer.Report(context, location, DocumentationTags.Returns, targetSymbol.GetDisplayName());
         }
     }
 }

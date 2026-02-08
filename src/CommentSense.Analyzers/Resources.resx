@@ -80,10 +80,10 @@
     <value>Stray parameter documentation</value>
   </data>
   <data name="StrayParameterDocumentationMessage" xml:space="preserve">
-    <value>The parameter '{0}' in the documentation does not exist in the signature</value>
+    <value>The parameter '{0}' is misplaced or does not exist in the signature</value>
   </data>
   <data name="StrayParameterDocumentationDescription" xml:space="preserve">
-    <value>Documentation should not contain &lt;param&gt; tags for parameters that do not exist.</value>
+    <value>Documentation should not contain &lt;param&gt; tags for parameters that do not exist or are misplaced.</value>
   </data>
   <data name="MissingTypeParameterDocumentationTitle" xml:space="preserve">
     <value>Missing type parameter documentation</value>
@@ -98,10 +98,10 @@
     <value>Stray type parameter documentation</value>
   </data>
   <data name="StrayTypeParameterDocumentationMessage" xml:space="preserve">
-    <value>The type parameter '{0}' in the documentation does not exist in the signature</value>
+    <value>The type parameter '{0}' is misplaced or does not exist in the signature</value>
   </data>
   <data name="StrayTypeParameterDocumentationDescription" xml:space="preserve">
-    <value>Documentation should not contain &lt;typeparam&gt; tags for type parameters that do not exist.</value>
+    <value>Documentation should not contain &lt;typeparam&gt; tags for type parameters that do not exist or are misplaced.</value>
   </data>
   <data name="MissingReturnValueDocumentationTitle" xml:space="preserve">
     <value>Missing return value documentation</value>
@@ -170,10 +170,10 @@
     <value>Stray return value documentation</value>
   </data>
   <data name="StrayReturnValueDocumentationMessage" xml:space="preserve">
-    <value>The symbol '{0}' should not have return value documentation</value>
+    <value>The &lt;returns&gt; tag for '{0}' is misplaced, duplicated, or invalid</value>
   </data>
   <data name="StrayReturnValueDocumentationDescription" xml:space="preserve">
-    <value>Documentation should not contain &lt;returns&gt; tags for members that do not return a value or for properties/indexers.</value>
+    <value>Documentation should not contain &lt;returns&gt; tags for members that do not return a value, for properties/indexers, or if duplicated.</value>
   </data>
   <data name="MissingValueDocumentationTitle" xml:space="preserve">
     <value>Missing value documentation</value>
@@ -188,10 +188,28 @@
     <value>Stray value documentation</value>
   </data>
   <data name="StrayValueDocumentationMessage" xml:space="preserve">
-    <value>The symbol '{0}' should not have value documentation</value>
+    <value>The &lt;value&gt; tag for '{0}' is misplaced, duplicated, or invalid</value>
   </data>
   <data name="StrayValueDocumentationDescription" xml:space="preserve">
-    <value>Documentation should not contain &lt;value&gt; tags for methods.</value>
+    <value>Documentation should not contain &lt;value&gt; tags for methods, or if duplicated.</value>
+  </data>
+  <data name="StraySummaryDocumentationTitle" xml:space="preserve">
+    <value>Stray summary documentation</value>
+  </data>
+  <data name="StraySummaryDocumentationMessage" xml:space="preserve">
+      <value>The &lt;summary&gt; tag for '{0}' is misplaced, duplicated, or invalid</value>
+    </data>
+  <data name="StraySummaryDocumentationDescription" xml:space="preserve">
+      <value>Documentation should only contain a single top-level &lt;summary&gt; tag.</value>
+    </data>
+  <data name="StrayExceptionDocumentationTitle" xml:space="preserve">
+      <value>Stray exception documentation</value>
+    </data>
+  <data name="StrayExceptionDocumentationMessage" xml:space="preserve">
+      <value>The &lt;exception&gt; tag for '{0}' is misplaced, duplicated, or invalid</value>
+    </data>
+  <data name="StrayExceptionDocumentationDescription" xml:space="preserve">
+    <value>Documentation should only contain top-level &lt;exception&gt; tags, and each exception type should be documented only once.</value>
   </data>
   <data name="LowQualityDocumentationTitle" xml:space="preserve">
     <value>Low-quality documentation</value>

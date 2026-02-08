@@ -46,6 +46,9 @@ Always verify changes using these commands.
     *   Use `DocumentationXmlExtensions` for parsing XML comments to ensure resilience against malformed XML.
     *   Always use `DocumentationSyntaxExtensions.GetNameAttribute()` to extract name attributes from XML nodes, as it handles both `XmlNameAttributeSyntax` and `XmlTextAttributeSyntax`.
     *   Handle `inheritdoc` and `include` tags gracefully (currently treated as "valid" without deep validation).
+    *   **Scan Strategy**: Differentiate between documentation *presence/quality* and *redundancy/strays*:
+        *   **Recursive Scan**: Use `recursive: true` or `topLevelOnly: false` to identify ALL occurrences of a tag. Flag nested or extra tags as **Stray** or **Duplicate**.
+        *   **Top-Level Only Scan**: Use `recursive: false` or `topLevelOnly: true` to determine if a symbol is properly documented. Nested tags do NOT count towards fulfilling documentation requirements and should NOT undergo quality analysis (they are already flagged as stray).
 *   **Deduplication:**
     *   Use `SymbolExtensions.GetParameters()` and `SymbolExtensions.GetTypeParameters()` for extracting parameter names from symbols. Do not re-implement this logic in analyzers.
     *   Use `node.GetAssociatedSymbol(semanticModel)` to find the symbol associated with an XML documentation node or member declaration (it correctly handles fields).

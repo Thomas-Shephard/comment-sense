@@ -22,13 +22,13 @@ internal static class CollectionDocumentationAnalyzer
         ISymbol parentSymbol,
         XElement xml,
         CommentSenseOptions options,
-        CollectionRuleSet rules,
-        bool topLevelOnly = true) where TSymbol : ISymbol
+        CollectionRuleSet rules) where TSymbol : ISymbol
     {
-        if (symbols.IsEmpty && !DocumentationXmlExtensions.GetTargetElements(xml, rules.TagName, recursive: !topLevelOnly).Any())
+        if (symbols.IsEmpty && !DocumentationXmlExtensions.GetTargetElements(xml, rules.TagName, recursive: true).Any())
             return;
 
-        var documentedNames = GetDocumentedNames(xml, rules.TagName, topLevelOnly);
+        // Presence/Missing: Only top-level tags count as documenting a symbol.
+        var documentedNames = DocumentationXmlExtensions.GetNames(xml, rules.TagName, topLevelOnly: true);
         var documentedSet = new HashSet<string>(documentedNames, StringComparer.Ordinal);
 
         if (!DocumentationXmlExtensions.HasInheritDoc(xml) && !DocumentationXmlExtensions.HasAutoValidTag(xml))
@@ -40,12 +40,7 @@ internal static class CollectionDocumentationAnalyzer
             actualIndexMap[symbols[i].Name] = i;
         }
 
-        ValidateDocumented(context, parentSymbol, xml, actualIndexMap, options, rules, topLevelOnly);
-    }
-
-    private static IEnumerable<string> GetDocumentedNames(XElement xml, string tagName, bool topLevelOnly)
-    {
-        return DocumentationXmlExtensions.GetNames(xml, tagName, attributeName: DocumentationAttributes.Name, topLevelOnly: topLevelOnly);
+        ValidateDocumented(context, parentSymbol, xml, actualIndexMap, options, rules);
     }
 
     private static void ReportMissing<TSymbol>(
@@ -68,18 +63,32 @@ internal static class CollectionDocumentationAnalyzer
         XElement xml,
         Dictionary<string, int> actualIndexMap,
         CommentSenseOptions options,
-        CollectionRuleSet rules,
-        bool topLevelOnly)
+        CollectionRuleSet rules)
     {
         var seen = new Dictionary<string, int>(StringComparer.Ordinal);
         var lastActualIndex = -1;
+        var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
 
-        foreach (var (element, location) in symbol.GetTargetElementsWithLocations(xml, rules.TagName, topLevelOnly: topLevelOnly))
+        // Scan all tags recursively.
+        foreach (var (element, location) in symbol.GetTargetElementsWithLocations(xml, rules.TagName, topLevelOnly: false))
         {
             var name = element.Attribute(DocumentationAttributes.Name)?.Value;
+            bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, element, effectiveTarget);
+
+            if (!isTopLevel)
+            {
+                // Nested tags are always stray and do not count towards fulfilling documentation or tracking duplicates.
+                var cleanName = string.IsNullOrWhiteSpace(name) ? string.Empty : name;
+                var displayName = string.IsNullOrWhiteSpace(name) ? "<unknown>" : name;
+                var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, cleanName);
+                context.ReportDiagnostic(Diagnostic.Create(rules.StrayRule, location, properties, displayName));
+                continue;
+            }
+
             if (name == null || string.IsNullOrWhiteSpace(name))
                 continue;
 
+            // Process top-level tags for Duplicates, Order, and Quality.
             if (!seen.TryGetValue(name, out var occurrence))
                 occurrence = 0;
 

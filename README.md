@@ -28,6 +28,8 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Default:* Flags empty content or content that just repeats the symbol name.
     *   *Configurable:* Add custom terms, minimum length, punctuation requirements, and similarity thresholds.
 *   **CSENSE007**: Validates that `cref` attributes in documentation point to valid symbols.
+*   **CSENSE022**: Flags stray `<summary>` tags that are nested within other tags or duplicated.
+    *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE019**: Recommends using the `<see langword="..." />` tag for C# keywords (e.g., `true`, `false`, `null`, `void`) instead of plain text.
     *   **Code Fix:** An automatic code fix is available to wrap plain text keywords in `<see langword="..." />`. This fix supports **Fix All** in document, project, or solution.
     *   *Configurable:* Customize the list of keywords using `comment_sense.langwords`. Defaults to `true, false, null, void`. Specifying this option replaces the defaults.
@@ -48,7 +50,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
 
 ### Return Values
 *   **CSENSE006**: Requires a `<returns>` tag for members that return a value (i.e., non-`void`, non-`Task`, non-`ValueTask`).
-*   **CSENSE013**: Flags stray `<returns>` tags on members that do not produce a documented return value (including `void`, `Task`, and `ValueTask` members), as well as on properties and indexers.
+*   **CSENSE013**: Flags stray or duplicate `<returns>` tags on members that do not produce a documented return value (including `void`, `Task`, and `ValueTask` members), as well as on properties and indexers.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 ### Exceptions
 *   **CSENSE012**: Scans the method body for explicitly thrown exceptions (including static guard clauses like `ArgumentNullException.ThrowIfNull`) and ensures they are documented with `<exception>` tags.
@@ -56,11 +58,13 @@ Ensures parameters and type parameters are correctly documented and referenced.
         *   Ignore exceptions using `comment_sense.ignored_exceptions`, `comment_sense.ignore_system_exceptions`, and `comment_sense.ignored_exception_namespaces`.
         *   Enable scanning of called methods and constructors for their documented exceptions using `comment_sense.scan_called_methods_for_exceptions = true`.
 *   **CSENSE017**: Validates that the `cref` attribute in an `<exception>` tag refers to a valid Exception type.
+*   **CSENSE023**: Flags stray `<exception>` tags that are nested within other tags or duplicated for the same exception type.
+    *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 
 ### Properties
 *   **CSENSE014**: Requires a `<value>` tag for properties.
     *   *Default:* Disabled.
-*   **CSENSE015**: Flags stray `<value>` tags.
+*   **CSENSE015**: Flags stray or duplicate `<value>` tags.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 
 ## Automatic Suppression

@@ -17,6 +17,6 @@ internal static class TypeParameterAnalyzer
 
     public static void Analyze(SymbolAnalysisContext context, ImmutableArray<ITypeParameterSymbol> typeParameters, ISymbol symbol, XElement xml, CommentSenseOptions options)
     {
-        CollectionDocumentationAnalyzer.Analyze(context, typeParameters, symbol, xml, options, Rules, topLevelOnly: true);
+        CollectionDocumentationAnalyzer.Analyze(context, typeParameters, symbol, xml, options, Rules);
     }
 }
