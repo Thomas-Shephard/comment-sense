@@ -43,13 +43,12 @@ Always verify changes using these commands.
     *   Tests should verify both positive (diagnostic reported) and negative (no diagnostic) cases.
     *   Use `[| ... |]` markup in test strings to indicate expected diagnostic locations.
 *   **XML Parsing:**
-    *   Use `DocumentationExtensions` for parsing XML comments to ensure resilience against malformed XML.
-    *   Always use `DocumentationExtensions.GetNameAttribute()` to extract name attributes from XML nodes, as it handles both `XmlNameAttributeSyntax` and `XmlTextAttributeSyntax`.
+    *   Use `DocumentationXmlExtensions` for parsing XML comments to ensure resilience against malformed XML.
+    *   Always use `DocumentationSyntaxExtensions.GetNameAttribute()` to extract name attributes from XML nodes, as it handles both `XmlNameAttributeSyntax` and `XmlTextAttributeSyntax`.
     *   Handle `inheritdoc` and `include` tags gracefully (currently treated as "valid" without deep validation).
 *   **Deduplication:**
     *   Use `SymbolExtensions.GetParameters()` and `SymbolExtensions.GetTypeParameters()` for extracting parameter names from symbols. Do not re-implement this logic in analyzers.
-    *   Use `semanticModel.GetDeclaredMemberSymbol(memberDecl)` to safely retrieve symbols from member declarations, especially for fields.
-    *   Use `node.GetAssociatedSymbol(semanticModel)` to find the symbol associated with an XML documentation node.
+    *   Use `node.GetAssociatedSymbol(semanticModel)` to find the symbol associated with an XML documentation node or member declaration (it correctly handles fields).
     *   Use `symbol.GetTargetElementsWithLocations(xml, tagName)` to iterate over XML elements and their source locations simultaneously.
     *   Use `CodeFixProviderBase.FindXmlNode()` and `CodeFixProviderBase.FindXmlText()` in code fix providers to locate target nodes.
     *   Pass necessary metadata (like original names or canonical keywords) from Analyzers to CodeFixers via `Diagnostic.Properties` to avoid redundant calculations or option fetching in the code fix layer.
@@ -58,10 +57,10 @@ Always verify changes using these commands.
 *   **Style:**
     *   **Namespaces:** Use file-scoped namespaces (e.g., `namespace CommentSense.Analyzers;`).
     *   **Formatting:** 4 spaces indentation, CRLF line endings.
-    *   **Naming:** PascalCase for types and members.
+    *   **Naming:** PascalCase for types and members. Do not use underscores in test method names.
 
 ## 5. Security Guidelines
-*   **XML Processing:** Be cautious when expanding XML parsing logic. Use safe parsing settings (handled in `DocumentationExtensions`) to prevent XXE.
+*   **XML Processing:** Be cautious when expanding XML parsing logic. Use safe parsing settings (handled in `DocumentationXmlExtensions`) to prevent XXE.
 *   **Dependencies:** Check `Directory.Packages.props` for versions. Do not introduce vulnerable dependencies.
 
 ## 6. Review Checklist
