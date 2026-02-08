@@ -65,13 +65,13 @@ internal static class DocumentationLocationExtensions
     {
         var builder = ImmutableArray.CreateBuilder<Location>();
 
-        foreach (var reference in symbol.DeclaringSyntaxReferences)
-        {
-            var syntax = reference.GetSyntax();
-            var docTrivia = GetDocumentationCommentTrivia(syntax);
+        var trivias = symbol.DeclaringSyntaxReferences
+            .Select(r => GetDocumentationCommentTrivia(r.GetSyntax()))
+            .OfType<DocumentationCommentTriviaSyntax>();
 
-            if (docTrivia != null)
-                GetDocumentationLocationsInternal(docTrivia, tagName, attributeValue, attributeName, builder, topLevelOnly);
+        foreach (var docTrivia in trivias)
+        {
+            GetDocumentationLocationsInternal(docTrivia, tagName, attributeValue, attributeName, builder, topLevelOnly);
         }
 
         return builder.ToImmutable();

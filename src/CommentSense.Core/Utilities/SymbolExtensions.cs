@@ -31,12 +31,7 @@ internal static class SymbolExtensions
 
     public static IMethodSymbol? GetPrimaryConstructor(this INamedTypeSymbol type)
     {
-        if (type.TypeKind == TypeKind.Class)
-        {
-            return type.InstanceConstructors.FirstOrDefault(constructor => constructor.IsPrimaryConstructor());
-        }
-
-        if (type.TypeKind == TypeKind.Struct)
+        if (type.TypeKind is TypeKind.Class or TypeKind.Struct)
         {
             return type.InstanceConstructors.FirstOrDefault(constructor => constructor.IsPrimaryConstructor());
         }

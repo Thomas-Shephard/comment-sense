@@ -25,7 +25,7 @@ internal static class CollectionDocumentationAnalyzer
         CollectionRuleSet rules,
         bool topLevelOnly = true) where TSymbol : ISymbol
     {
-        if (symbols.IsEmpty && !xml.Descendants(rules.TagName).Any())
+        if (symbols.IsEmpty && !DocumentationXmlExtensions.GetTargetElements(xml, rules.TagName, recursive: !topLevelOnly).Any())
             return;
 
         var documentedNames = GetDocumentedNames(xml, rules.TagName, topLevelOnly);
