@@ -31,7 +31,7 @@ internal static class CollectionDocumentationAnalyzer
         var documentedNames = GetDocumentedNames(xml, rules.TagName, topLevelOnly);
         var documentedSet = new HashSet<string>(documentedNames, StringComparer.Ordinal);
 
-        if (!DocumentationExtensions.HasInheritDoc(xml) && !DocumentationExtensions.HasAutoValidTag(xml))
+        if (!DocumentationXmlExtensions.HasInheritDoc(xml) && !DocumentationXmlExtensions.HasAutoValidTag(xml))
             ReportMissing(context, symbols, documentedSet, rules.MissingRule);
 
         var actualIndexMap = new Dictionary<string, int>(symbols.Length, StringComparer.Ordinal);
@@ -45,7 +45,7 @@ internal static class CollectionDocumentationAnalyzer
 
     private static IEnumerable<string> GetDocumentedNames(XElement xml, string tagName, bool topLevelOnly)
     {
-        return DocumentationExtensions.GetNames(xml, tagName, attributeName: DocumentationAttributes.Name, topLevelOnly: topLevelOnly);
+        return DocumentationXmlExtensions.GetNames(xml, tagName, attributeName: DocumentationAttributes.Name, topLevelOnly: topLevelOnly);
     }
 
     private static void ReportMissing<TSymbol>(

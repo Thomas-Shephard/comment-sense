@@ -28,11 +28,11 @@ internal static class ReturnValueAnalyzer
 
     private static void AnalyzeProperty(SymbolAnalysisContext context, IPropertySymbol property, ISymbol targetSymbol, XElement xml, CommentSenseOptions options)
     {
-        var hasInheritDoc = DocumentationExtensions.HasInheritDoc(xml);
-        var hasAutoValidTag = DocumentationExtensions.HasAutoValidTag(xml);
+        var hasInheritDoc = DocumentationXmlExtensions.HasInheritDoc(xml);
+        var hasAutoValidTag = DocumentationXmlExtensions.HasAutoValidTag(xml);
 
         // CSENSE014: Missing <value> documentation
-        if (property.GetMethod is not null && !DocumentationExtensions.HasValueTag(xml) && !hasInheritDoc && !hasAutoValidTag)
+        if (property.GetMethod is not null && !DocumentationXmlExtensions.HasValueTag(xml) && !hasInheritDoc && !hasAutoValidTag)
         {
             var location = targetSymbol.Locations.GetPrimaryLocation();
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, DocumentationTags.Value);
@@ -41,7 +41,7 @@ internal static class ReturnValueAnalyzer
         }
 
         // CSENSE013: Stray <returns> tag on property
-        if (DocumentationExtensions.GetTargetElements(xml, DocumentationTags.Returns, recursive: true).Any())
+        if (DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Returns, recursive: true).Any())
         {
             var location = targetSymbol.GetDocumentationLocation(DocumentationTags.Returns, topLevelOnly: false);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, targetSymbol.GetDisplayName()));
@@ -59,11 +59,11 @@ internal static class ReturnValueAnalyzer
 
     private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol, ISymbol targetSymbol, XElement xml, CommentSenseOptions options, bool isVoid)
     {
-        var hasInheritDoc = DocumentationExtensions.HasInheritDoc(xml);
-        var hasAutoValidTag = DocumentationExtensions.HasAutoValidTag(xml);
+        var hasInheritDoc = DocumentationXmlExtensions.HasInheritDoc(xml);
+        var hasAutoValidTag = DocumentationXmlExtensions.HasAutoValidTag(xml);
 
         // CSENSE006: Missing <returns> documentation
-        if (!isVoid && !DocumentationExtensions.HasReturnsTag(xml) && !hasInheritDoc && !hasAutoValidTag)
+        if (!isVoid && !DocumentationXmlExtensions.HasReturnsTag(xml) && !hasInheritDoc && !hasAutoValidTag)
         {
             var location = targetSymbol.Locations.GetPrimaryLocation();
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, DocumentationTags.Returns);
@@ -72,14 +72,14 @@ internal static class ReturnValueAnalyzer
         }
 
         // CSENSE013: Stray <returns> tag on void or Task method
-        if (isVoid && DocumentationExtensions.GetTargetElements(xml, DocumentationTags.Returns, recursive: true).Any())
+        if (isVoid && DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Returns, recursive: true).Any())
         {
             var location = targetSymbol.GetDocumentationLocation(DocumentationTags.Returns, topLevelOnly: false);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, targetSymbol.GetDisplayName()));
         }
 
         // CSENSE015: Stray <value> tag on method
-        if (DocumentationExtensions.GetTargetElements(xml, DocumentationTags.Value, recursive: true).Any())
+        if (DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Value, recursive: true).Any())
         {
             var location = targetSymbol.GetDocumentationLocation(DocumentationTags.Value, topLevelOnly: false);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayValueDocumentationRule, location, targetSymbol.GetDisplayName()));

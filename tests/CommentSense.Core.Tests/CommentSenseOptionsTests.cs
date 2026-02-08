@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using NUnit.Framework;
@@ -7,7 +8,35 @@ namespace CommentSense.Core.Tests;
 public class CommentSenseOptionsTests
 {
     [Test]
-    public void AnalyzerOptionsGlobalFallback()
+    public void GetOptionsAllPropertiesPresentReturnsCorrectOptions()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.langwords"] = "word1, word2",
+            ["comment_sense.exclude_enums"] = "true",
+            ["comment_sense.enable_conditional_suppression"] = "true",
+            ["comment_sense.scan_called_methods_for_exceptions"] = "true",
+            ["comment_sense.low_quality_terms"] = "LocalTerm"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>());
+
+        var provider = new CustomProvider(localOptions, globalOptions);
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var options = CommentSenseOptions.GetOptions(provider, null!);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(options.Langwords, Contains.Item("word1"));
+            Assert.That(options.Langwords, Contains.Item("word2"));
+            Assert.That(options.ExcludeEnums, Is.True);
+            Assert.That(options.EnableConditionalSuppression, Is.True);
+            Assert.That(options.ScanCalledMethodsForExceptions, Is.True);
+            Assert.That(options.LowQualityTerms, Contains.Item("LocalTerm"));
+        }
+    }
+
+    [Test]
+    public void GetOptionsGlobalFallbackReturnsGlobalValues()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>());
         var globalOptions = new MapOptions(new Dictionary<string, string>
@@ -44,7 +73,7 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void AnalyzerOptionsLocalOverGlobal()
+    public void GetOptionsLocalOverGlobalReturnsLocalValues()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>
         {
@@ -69,7 +98,7 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void AnalyzerOptionsFallbackOnInvalidLocal()
+    public void GetOptionsInvalidLocalFallbackReturnsGlobalValues()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>
         {
@@ -97,7 +126,7 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void AnalyzerOptionsEmptyAndWhiteSpace()
+    public void GetOptionsEmptyAndWhiteSpaceReturnsGlobalValues()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>
         {
@@ -122,7 +151,7 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void AnalyzerOptionsSimilarityThresholdEdgeCases()
+    public void GetOptionsSimilarityThresholdEdgeCasesClampsToValidRange()
     {
         var configLow = new Dictionary<string, string> { ["comment_sense.similarity_threshold"] = "-0.5" };
         // ReSharper disable once NullableWarningSuppressionIsUsed
@@ -140,7 +169,7 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void AnalyzerOptionsGlobalInvalidFallback()
+    public void GetOptionsGlobalInvalidFallbackReturnsDefaultValues()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>());
         var globalOptions = new MapOptions(new Dictionary<string, string>
@@ -161,19 +190,17 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void AnalyzerOptionsGhostReferenceMode()
+    public void GetOptionsGhostReferenceModeFollowsPrecedenceAndFallback()
     {
         var globalOptions = new MapOptions(new Dictionary<string, string>
         {
             ["comment_sense.ghost_references.mode"] = "Strict"
         });
 
-        // Test global fallback
         // ReSharper disable once NullableWarningSuppressionIsUsed
         var optionsGlobal = CommentSenseOptions.GetOptions(new CustomProvider(new MapOptions(new Dictionary<string, string>()), globalOptions), null!);
         Assert.That(optionsGlobal.GhostReferenceMode, Is.EqualTo(GhostReferenceMode.Strict));
 
-        // Test local override
         var localOptions = new MapOptions(new Dictionary<string, string>
         {
             ["comment_sense.ghost_references.mode"] = "Off"
@@ -182,7 +209,6 @@ public class CommentSenseOptionsTests
         var optionsLocal = CommentSenseOptions.GetOptions(new CustomProvider(localOptions, globalOptions), null!);
         Assert.That(optionsLocal.GhostReferenceMode, Is.EqualTo(GhostReferenceMode.Off));
 
-        // Test invalid fallback (should use global if valid, or default if global also invalid)
         var invalidLocal = new MapOptions(new Dictionary<string, string>
         {
             ["comment_sense.ghost_references.mode"] = "InvalidValue"
@@ -191,14 +217,13 @@ public class CommentSenseOptionsTests
         var optionsInvalid = CommentSenseOptions.GetOptions(new CustomProvider(invalidLocal, globalOptions), null!);
         Assert.That(optionsInvalid.GhostReferenceMode, Is.EqualTo(GhostReferenceMode.Strict));
 
-        // Test default fallback
         // ReSharper disable once NullableWarningSuppressionIsUsed
         var optionsDefault = CommentSenseOptions.GetOptions(new CustomProvider(new MapOptions(new Dictionary<string, string>()), new MapOptions(new Dictionary<string, string>())), null!);
         Assert.That(optionsDefault.GhostReferenceMode, Is.EqualTo(GhostReferenceMode.Safe));
     }
 
     [Test]
-    public void VisibilityLevelBackwardCompatibility()
+    public void VisibilityLevelLegacyAnalyzeInternalMaintainsBackwardCompatibility()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>
         {
@@ -214,7 +239,7 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void AnalyzerOptionsVisibilityLevelBackwardCompatibilityNoOption()
+    public void VisibilityLevelLegacyAnalyzeInternalFalseDefaultsToProtected()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>
         {
@@ -230,7 +255,7 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void VisibilityLevelPrecedenceOverLegacyOption()
+    public void VisibilityLevelModernOptionPrecedenceOverridesLegacyOption()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>
         {
@@ -247,7 +272,7 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void VisibilityLevelLegacyOptionInGlobal()
+    public void VisibilityLevelLegacyOptionInGlobalReturnsInternal()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>());
         var globalOptions = new MapOptions(new Dictionary<string, string>
@@ -263,23 +288,115 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
-    public void OptionExistsOnlyInGlobal()
+    public void DefaultPropertyAccessReturnsDefaultValues()
     {
-        var localOptions = new MapOptions(new Dictionary<string, string>());
-        var globalOptions = new MapOptions(new Dictionary<string, string>
-        {
-            ["comment_sense.require_ending_punctuation"] = "true",
-            ["comment_sense.low_quality_terms"] = "BadGlobal"
-        });
-
-        var provider = new CustomProvider(localOptions, globalOptions);
-        // ReSharper disable once NullableWarningSuppressionIsUsed
-        var options = CommentSenseOptions.GetOptions(provider, null!);
+        var options = CommentSenseOptions.Default;
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(options.RequireEndingPunctuation, Is.True);
-            Assert.That(options.LowQualityTerms, Contains.Item("BadGlobal"));
+            Assert.That(options.Langwords, Is.Not.Empty);
+            Assert.That(options.ExcludeEnums, Is.False);
+            Assert.That(options.EnableConditionalSuppression, Is.False);
+            Assert.That(options.ScanCalledMethodsForExceptions, Is.False);
+        }
+    }
+
+    [Test]
+    public void ParseSetEdgeCasesReturnsCorrectSet()
+    {
+        var set = CommentSenseOptions.ParseSet("  term1  ,  ,  term2  ");
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(set, Has.Count.EqualTo(2));
+            Assert.That(set, Contains.Item("term1"));
+            Assert.That(set, Contains.Item("term2"));
+        }
+    }
+
+    [Test]
+    public void GetDoubleOptionNonExistentKeyReturnsDefault()
+    {
+        var options = new MapOptions(new Dictionary<string, string>());
+        var global = new MapOptions(new Dictionary<string, string>());
+        var val = CommentSenseOptions.GetDoubleOption(options, global, "nonexistent", 0.5);
+        Assert.That(val, Is.EqualTo(0.5));
+    }
+
+    [Test]
+    public void GetIntOptionNonExistentKeyReturnsDefault()
+    {
+        var options = new MapOptions(new Dictionary<string, string>());
+        var global = new MapOptions(new Dictionary<string, string>());
+        var val = CommentSenseOptions.GetIntOption(options, global, "nonexistent", 42);
+        Assert.That(val, Is.EqualTo(42));
+    }
+
+    [Test]
+    public void GetBoolOptionNonExistentKeyReturnsDefault()
+    {
+        var options = new MapOptions(new Dictionary<string, string>());
+        var global = new MapOptions(new Dictionary<string, string>());
+        var val = CommentSenseOptions.GetBoolOption(options, global, "nonexistent", true);
+        Assert.That(val, Is.True);
+    }
+
+    [Test]
+    public void GetBoolOptionKeyInGlobalReturnsGlobalValue()
+    {
+        var options = new MapOptions(new Dictionary<string, string>());
+        var global = new MapOptions(new Dictionary<string, string> { ["comment_sense.test"] = "true" });
+        var val = CommentSenseOptions.GetBoolOption(options, global, "test");
+        Assert.That(val, Is.True);
+    }
+
+    [Test]
+    public void GetEnumOptionKeyInGlobalReturnsGlobalValue()
+    {
+        var options = new MapOptions(new Dictionary<string, string>());
+        var global = new MapOptions(new Dictionary<string, string> { ["comment_sense.visibility_level"] = "Internal" });
+        var val = CommentSenseOptions.GetEnumOption(options, global, "visibility_level", VisibilityLevel.Public);
+        Assert.That(val, Is.EqualTo(VisibilityLevel.Internal));
+    }
+
+    [Test]
+    public void GetSetOptionKeyInGlobalReturnsGlobalValue()
+    {
+        var options = new MapOptions(new Dictionary<string, string>());
+        var global = new MapOptions(new Dictionary<string, string> { ["comment_sense.terms"] = "a,b" });
+        var val = CommentSenseOptions.GetSetOption(options, global, "terms", ImmutableHashSet<string>.Empty);
+        Assert.That(val, Contains.Item("a"));
+    }
+
+    [Test]
+    public void HasOptionVariousBranchesReturnsCorrectResults()
+    {
+        var options = new MapOptions(new Dictionary<string, string> { ["comment_sense.local"] = "val" });
+        var global = new MapOptions(new Dictionary<string, string> { ["comment_sense.global"] = "val" });
+        var empty = new MapOptions(new Dictionary<string, string>());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(CommentSenseOptions.HasOption(options, empty, "local"), Is.True);
+            Assert.That(CommentSenseOptions.HasOption(empty, global, "global"), Is.True);
+            Assert.That(CommentSenseOptions.HasOption(empty, empty, "none"), Is.False);
+        }
+    }
+
+    [Test]
+    public void RecordMethodsEqualityAndDestructuringBehavesCorrectly()
+    {
+        var o1 = CommentSenseOptions.Default;
+        var o2 = o1 with { MinSummaryLength = 100 };
+        var o3 = CommentSenseOptions.Default;
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(o1, Is.Not.EqualTo(o2));
+            Assert.That(o1, Is.EqualTo(o3));
+            Assert.That(o1.GetHashCode(), Is.EqualTo(o3.GetHashCode()));
+            Assert.That(o1.ToString(), Is.Not.Null);
+            var (_, _, _, _, _, _, _, minSummaryLength, _, _, _, _, _, _, _) = o1;
+            Assert.That(minSummaryLength, Is.EqualTo(o1.MinSummaryLength));
         }
     }
 

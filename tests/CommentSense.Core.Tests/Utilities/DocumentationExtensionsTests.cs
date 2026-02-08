@@ -10,11 +10,6 @@ namespace CommentSense.Core.Tests.Utilities;
 
 public class DocumentationExtensionsTests
 {
-    private static ISymbol GetSymbolFromSource(string source, string symbolName)
-    {
-        return RoslynTestUtils.GetSymbolFromSource(source, symbolName, parseDocumentation: true);
-    }
-
     [Test]
     public void HasValidDocumentationWithSummaryReturnsTrue()
     {
@@ -88,15 +83,15 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void HasValidDocumentationReturnsFalseForNull()
+    public void HasValidDocumentationNullSymbolReturnsFalse()
     {
         Assert.That(((ISymbol?)null).HasValidDocumentation(), Is.False);
     }
 
     [Test]
-    public void HasValidDocumentationReturnsFalseForNullString()
+    public void HasValidDocumentationNullStringReturnsFalse()
     {
-        Assert.That(DocumentationExtensions.HasValidDocumentation((string?)null), Is.False);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation((string?)null), Is.False);
     }
 
     [Test]
@@ -176,59 +171,59 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void HasValidDocumentationReturnsFalseForMalformedXml()
+    public void HasValidDocumentationMalformedXmlReturnsFalse()
     {
         const string xml = "<invalid";
-        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.False);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation(xml), Is.False);
     }
 
     [Test]
     public void HasValidDocumentationWithIncludeTagReturnsTrue()
     {
         const string xml = """<member><include file='docs.xml' path='[@name="test"]'/></member>""";
-        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation(xml), Is.True);
     }
 
     [Test]
     public void HasValidDocumentationWithNestedElementsInSummaryReturnsTrue()
     {
         const string xml = """<member><summary><see cref="T:System.String"/></summary></member>""";
-        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation(xml), Is.True);
     }
 
     [Test]
     public void HasValidDocumentationWithEmptyExceptionXmlReturnsTrue()
     {
         const string xml = """<member><exception cref="T:System.Exception"/></member>""";
-        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation(xml), Is.True);
     }
 
     [Test]
     public void HasValidDocumentationWithEmptyTagsReturnsTrue()
     {
         const string xml = "<member><summary> </summary><remarks/></member>";
-        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation(xml), Is.True);
     }
 
     [Test]
     public void HasValidDocumentationWithTypeParamReturnsTrue()
     {
         const string xml = """<member><typeparam name="T">The type.</typeparam></member>""";
-        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation(xml), Is.True);
     }
 
     [Test]
     public void HasValidDocumentationWithExampleReturnsTrue()
     {
         const string xml = "<member><example>This is an example.</example></member>";
-        Assert.That(DocumentationExtensions.HasValidDocumentation(xml), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation(xml), Is.True);
     }
 
     [Test]
-    public void GetParamNamesReturnsNames()
+    public void GetParamNamesReturnsCorrectNames()
     {
         const string xml = """<member><param name="p1">p1</param><param name="p2">p2</param></member>""";
-        var result = DocumentationExtensions.GetParamNames(xml).ToList();
+        var result = DocumentationXmlExtensions.GetParamNames(xml).ToList();
         var expected = new[] { "p1", "p2" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
@@ -237,7 +232,7 @@ public class DocumentationExtensionsTests
     public void GetParamNamesIgnoresParamWithoutName()
     {
         const string xml = """<member><param>no name</param><param name="p1">p1</param></member>""";
-        var result = DocumentationExtensions.GetParamNames(xml).ToList();
+        var result = DocumentationXmlExtensions.GetParamNames(xml).ToList();
         var expected = new[] { "p1" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
@@ -246,7 +241,7 @@ public class DocumentationExtensionsTests
     public void GetParamNamesIncludesEmptyParam()
     {
         const string xml = """<member><param name="p1"> </param><param name="p2">p2</param></member>""";
-        var result = DocumentationExtensions.GetParamNames(xml).ToList();
+        var result = DocumentationXmlExtensions.GetParamNames(xml).ToList();
         var expected = new[] { "p1", "p2" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
@@ -255,83 +250,83 @@ public class DocumentationExtensionsTests
     [TestCase("")]
     [TestCase("   ")]
     [TestCase("<invalid")]
-    public void GetParamNamesReturnsEmptyForInvalidInput(string? xml)
+    public void GetParamNamesInvalidInputReturnsEmpty(string? xml)
     {
-        Assert.That(DocumentationExtensions.GetParamNames(xml), Is.Empty);
+        Assert.That(DocumentationXmlExtensions.GetParamNames(xml), Is.Empty);
     }
 
     [TestCase(null)]
     [TestCase("")]
     [TestCase("   ")]
     [TestCase("<invalid")]
-    public void GetTypeParamNamesReturnsEmptyForInvalidInput(string? xml)
+    public void GetTypeParamNamesInvalidInputReturnsEmpty(string? xml)
     {
-        Assert.That(DocumentationExtensions.GetTypeParamNames(xml), Is.Empty);
+        Assert.That(DocumentationXmlExtensions.GetTypeParamNames(xml), Is.Empty);
     }
 
     [TestCase(null)]
     [TestCase("")]
     [TestCase("   ")]
     [TestCase("<invalid")]
-    public void GetExceptionCrefsReturnsEmptyForInvalidInput(string? xml)
+    public void GetExceptionCrefsInvalidInputReturnsEmpty(string? xml)
     {
-        Assert.That(DocumentationExtensions.GetExceptionCrefs(xml), Is.Empty);
+        Assert.That(DocumentationXmlExtensions.GetExceptionCrefs(xml), Is.Empty);
     }
 
     [TestCase(null)]
     [TestCase("")]
     [TestCase("   ")]
     [TestCase("<invalid")]
-    public void HasReturnsTagReturnsFalseForInvalidInput(string? xml)
+    public void HasReturnsTagInvalidInputReturnsFalse(string? xml)
     {
-        Assert.That(DocumentationExtensions.HasReturnsTag(xml), Is.False);
+        Assert.That(DocumentationXmlExtensions.HasReturnsTag(xml), Is.False);
     }
 
     [Test]
-    public void HasAutoValidTagWithMemberElementDirectly()
+    public void HasAutoValidTagWithMemberElementDirectlyReturnsTrue()
     {
         var member = new XElement("member", new XElement("inheritdoc"));
-        Assert.That(DocumentationExtensions.HasAutoValidTag(member), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasAutoValidTag(member), Is.True);
     }
 
     [Test]
-    public void GetParamNamesWithMemberElementDirectly()
+    public void GetParamNamesWithMemberElementDirectlyReturnsNames()
     {
         var member = new XElement("member", new XElement("param", new XAttribute("name", "x"), "Content"));
-        var result = DocumentationExtensions.GetParamNames(member).ToList();
+        var result = DocumentationXmlExtensions.GetParamNames(member).ToList();
         var expected = new[] { "x" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void GetTypeParamNamesWithMemberElementDirectly()
+    public void GetTypeParamNamesWithMemberElementDirectlyReturnsNames()
     {
         var member = new XElement("member", new XElement("typeparam", new XAttribute("name", "T"), "Content"));
-        var result = DocumentationExtensions.GetTypeParamNames(member).ToList();
+        var result = DocumentationXmlExtensions.GetTypeParamNames(member).ToList();
         var expected = new[] { "T" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void GetExceptionCrefsWithMemberElementDirectly()
+    public void GetExceptionCrefsWithMemberElementDirectlyReturnsCrefs()
     {
         var member = new XElement("member", new XElement("exception", new XAttribute("cref", "Ex"), "Content"));
-        var result = DocumentationExtensions.GetExceptionCrefs(member).ToList();
+        var result = DocumentationXmlExtensions.GetExceptionCrefs(member).ToList();
         var expected = new[] { "Ex" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void HasReturnsTagWithMemberElementDirectly()
+    public void HasReturnsTagWithMemberElementDirectlyReturnsTrue()
     {
         var member = new XElement("member", new XElement("returns", "Content"));
-        Assert.That(DocumentationExtensions.HasReturnsTag(member), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasReturnsTag(member), Is.True);
     }
 
     [Test]
-    public void TryParseDocumentationReturnsFalseForNull()
+    public void TryParseDocumentationNullReturnsFalse()
     {
-        var result = DocumentationExtensions.TryParseDocumentation(null, out var element);
+        var result = DocumentationXmlExtensions.TryParseDocumentation(null, out var element);
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result, Is.False);
@@ -340,9 +335,9 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void TryParseDocumentationReturnsFalseForEmpty()
+    public void TryParseDocumentationEmptyReturnsFalse()
     {
-        var result = DocumentationExtensions.TryParseDocumentation(string.Empty, out var element);
+        var result = DocumentationXmlExtensions.TryParseDocumentation(string.Empty, out var element);
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result, Is.False);
@@ -351,9 +346,9 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void TryParseDocumentationReturnsFalseForWhitespace()
+    public void TryParseDocumentationWhitespaceReturnsFalse()
     {
-        var result = DocumentationExtensions.TryParseDocumentation("   ", out var element);
+        var result = DocumentationXmlExtensions.TryParseDocumentation("   ", out var element);
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result, Is.False);
@@ -362,9 +357,9 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void TryParseDocumentationReturnsFalseForInvalidXml()
+    public void TryParseDocumentationInvalidXmlReturnsFalse()
     {
-        var result = DocumentationExtensions.TryParseDocumentation("<invalid", out var element);
+        var result = DocumentationXmlExtensions.TryParseDocumentation("<invalid", out var element);
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result, Is.False);
@@ -373,9 +368,9 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void TryParseDocumentationReturnsTrueForValidXml()
+    public void TryParseDocumentationValidXmlReturnsTrue()
     {
-        var result = DocumentationExtensions.TryParseDocumentation("<summary>Test</summary>", out var element);
+        var result = DocumentationXmlExtensions.TryParseDocumentation("<summary>Test</summary>", out var element);
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result, Is.True);
@@ -384,113 +379,113 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void HasAutoValidTagReturnsFalseWhenInheritDocIsNestedInSummary()
+    public void HasAutoValidTagNestedInheritDocInSummaryReturnsFalse()
     {
         const string xml = "<summary><inheritdoc/></summary>";
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(DocumentationExtensions.TryParseDocumentation(xml, out var root), Is.True);
-            Assert.That(DocumentationExtensions.HasAutoValidTag(root), Is.False);
+            Assert.That(DocumentationXmlExtensions.TryParseDocumentation(xml, out var root), Is.True);
+            Assert.That(DocumentationXmlExtensions.HasAutoValidTag(root), Is.False);
         }
     }
 
     [Test]
-    public void HasAutoValidTagReturnsFalseWhenInheritDocIsNestedInParaInSummary()
+    public void HasAutoValidTagNestedInheritDocInParaReturnsFalse()
     {
         const string xml = "<summary><para><inheritdoc/></para></summary>";
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(DocumentationExtensions.TryParseDocumentation(xml, out var root), Is.True);
-            Assert.That(DocumentationExtensions.HasAutoValidTag(root), Is.False);
+            Assert.That(DocumentationXmlExtensions.TryParseDocumentation(xml, out var root), Is.True);
+            Assert.That(DocumentationXmlExtensions.HasAutoValidTag(root), Is.False);
         }
     }
 
     [Test]
-    public void GetParamNamesIgnoresParamNestedInSummary()
+    public void GetParamNamesIgnoresNestedInSummary()
     {
         const string xml = """<member><summary>Use <param name="ignored"/> for something.</summary><param name="valid">Valid</param></member>""";
-        var result = DocumentationExtensions.GetParamNames(xml).ToList();
+        var result = DocumentationXmlExtensions.GetParamNames(xml).ToList();
         var expected = new[] { "valid" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void GetParamNamesIgnoresParamNestedInRemarks()
+    public void GetParamNamesIgnoresNestedInRemarks()
     {
         const string xml = """<member><remarks>Use <param name="ignored"/> for something.</remarks><param name="valid">Valid</param></member>""";
-        var result = DocumentationExtensions.GetParamNames(xml).ToList();
+        var result = DocumentationXmlExtensions.GetParamNames(xml).ToList();
         var expected = new[] { "valid" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void HasReturnsTagReturnsFalseWhenReturnsIsNestedInSummary()
+    public void HasReturnsTagNestedInSummaryReturnsFalse()
     {
         const string xml = "<summary><returns>Not a return definition</returns></summary>";
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(DocumentationExtensions.TryParseDocumentation(xml, out var root), Is.True);
-            Assert.That(DocumentationExtensions.HasReturnsTag(root), Is.False);
+            Assert.That(DocumentationXmlExtensions.TryParseDocumentation(xml, out var root), Is.True);
+            Assert.That(DocumentationXmlExtensions.HasReturnsTag(root), Is.False);
         }
     }
 
     [Test]
-    public void GetExceptionCrefsIgnoresExceptionNestedInSummary()
+    public void GetExceptionCrefsIgnoresNestedInSummary()
     {
         const string xml = """<member><summary>Throws <exception cref="IgnoredEx"/>.</summary><exception cref="ValidEx">Valid</exception></member>""";
-        Assert.That(DocumentationExtensions.TryParseDocumentation(xml, out var root), Is.True);
-        var result = DocumentationExtensions.GetExceptionCrefs(root).ToList();
+        Assert.That(DocumentationXmlExtensions.TryParseDocumentation(xml, out var root), Is.True);
+        var result = DocumentationXmlExtensions.GetExceptionCrefs(root).ToList();
         var expected = new[] { "ValidEx" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void HasAutoValidTagReturnsFalseWhenNestedInCustomTag()
+    public void HasAutoValidTagNestedInCustomTagReturnsFalse()
     {
         const string xml = "<mytag><inheritdoc/></mytag>";
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(DocumentationExtensions.TryParseDocumentation(xml, out var root), Is.True);
-            Assert.That(DocumentationExtensions.HasAutoValidTag(root), Is.False);
+            Assert.That(DocumentationXmlExtensions.TryParseDocumentation(xml, out var root), Is.True);
+            Assert.That(DocumentationXmlExtensions.HasAutoValidTag(root), Is.False);
         }
     }
 
     [Test]
-    public void GetParamNamesIgnoresParamNestedInCustomTag()
+    public void GetParamNamesIgnoresNestedInCustomTag()
     {
         const string xml = """<member><mytag><param name="ignored">Nested</param></mytag><param name="valid">Valid</param></member>""";
-        var result = DocumentationExtensions.GetParamNames(xml).ToList();
+        var result = DocumentationXmlExtensions.GetParamNames(xml).ToList();
         var expected = new[] { "valid" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void GetTypeParamNamesIgnoresTypeParamNestedInSummary()
+    public void GetTypeParamNamesIgnoresNestedInSummary()
     {
         const string xml = """<member><summary><typeparam name="T">Ignored</typeparam></summary><typeparam name="U">Valid</typeparam></member>""";
-        Assert.That(DocumentationExtensions.TryParseDocumentation(xml, out var root), Is.True);
-        var result = DocumentationExtensions.GetTypeParamNames(root).ToList();
+        Assert.That(DocumentationXmlExtensions.TryParseDocumentation(xml, out var root), Is.True);
+        var result = DocumentationXmlExtensions.GetTypeParamNames(root).ToList();
         var expected = new[] { "U" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void HasReturnsTagReturnsFalseWhenNestedInCustomTag()
+    public void HasReturnsTagNestedInCustomTagReturnsFalse()
     {
         const string xml = "<mytag><returns>Not a return definition</returns></mytag>";
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(DocumentationExtensions.TryParseDocumentation(xml, out var root), Is.True);
-            Assert.That(DocumentationExtensions.HasReturnsTag(root), Is.False);
+            Assert.That(DocumentationXmlExtensions.TryParseDocumentation(xml, out var root), Is.True);
+            Assert.That(DocumentationXmlExtensions.HasReturnsTag(root), Is.False);
         }
     }
 
     [Test]
-    public void GetExceptionCrefsIgnoresExceptionNestedInCustomTag()
+    public void GetExceptionCrefsIgnoresNestedInCustomTag()
     {
         const string xml = """<member><mytag><exception cref="IgnoredEx">Nested</exception></mytag><exception cref="ValidEx">Valid</exception></member>""";
-        Assert.That(DocumentationExtensions.TryParseDocumentation(xml, out var root), Is.True);
-        var result = DocumentationExtensions.GetExceptionCrefs(root).ToList();
+        Assert.That(DocumentationXmlExtensions.TryParseDocumentation(xml, out var root), Is.True);
+        var result = DocumentationXmlExtensions.GetExceptionCrefs(root).ToList();
         var expected = new[] { "ValidEx" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
@@ -499,8 +494,8 @@ public class DocumentationExtensionsTests
     public void GetParamNamesFindsParamInsideMemberWrapper()
     {
         const string xml = """<member><param name="x">Content</param></member>""";
-        Assert.That(DocumentationExtensions.TryParseDocumentation(xml, out var root), Is.True);
-        var result = DocumentationExtensions.GetParamNames(root).ToList();
+        Assert.That(DocumentationXmlExtensions.TryParseDocumentation(xml, out var root), Is.True);
+        var result = DocumentationXmlExtensions.GetParamNames(root).ToList();
         var expected = new[] { "x" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
@@ -509,88 +504,88 @@ public class DocumentationExtensionsTests
     public void GetTypeParamNamesStringOverloadReturnsNames()
     {
         const string xml = """<typeparam name="T">Test</typeparam>""";
-        var result = DocumentationExtensions.GetTypeParamNames(xml).ToList();
+        var result = DocumentationXmlExtensions.GetTypeParamNames(xml).ToList();
         var expected = new[] { "T" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void HasReturnsTagStringOverloadReturnsTrueWhenReturnsTagIsPresent()
+    public void HasReturnsTagStringOverloadReturnsTrueWhenPresent()
     {
         const string xml = "<returns>Test</returns>";
-        Assert.That(DocumentationExtensions.HasReturnsTag(xml), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasReturnsTag(xml), Is.True);
     }
 
     [Test]
     public void GetExceptionCrefsStringOverloadReturnsCrefs()
     {
         const string xml = """<exception cref="T:System.Exception">Test</exception>""";
-        var result = DocumentationExtensions.GetExceptionCrefs(xml).ToList();
+        var result = DocumentationXmlExtensions.GetExceptionCrefs(xml).ToList();
         var expected = new[] { "T:System.Exception" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void HasInheritDocReturnsTrueWhenPresent()
+    public void HasInheritDocPresentReturnsTrue()
     {
         var root = XElement.Parse("<root><inheritdoc/></root>");
-        Assert.That(DocumentationExtensions.HasInheritDoc(root), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasInheritDoc(root), Is.True);
     }
 
     [Test]
-    public void HasInheritDocReturnsFalseWhenAbsent()
+    public void HasInheritDocAbsentReturnsFalse()
     {
         var root = XElement.Parse("<root><summary/></root>");
-        Assert.That(DocumentationExtensions.HasInheritDoc(root), Is.False);
+        Assert.That(DocumentationXmlExtensions.HasInheritDoc(root), Is.False);
     }
 
     [Test]
-    public void HasInheritDocWithCrefReturnsTrueWhenCrefPresent()
+    public void HasInheritDocWithCrefCrefPresentReturnsTrue()
     {
         var root = XElement.Parse("<root><inheritdoc cref='T:System.Object'/></root>");
-        Assert.That(DocumentationExtensions.HasInheritDocWithCref(root), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasInheritDocWithCref(root), Is.True);
     }
 
     [Test]
-    public void HasInheritDocWithCrefReturnsFalseWhenCrefAbsent()
+    public void HasInheritDocWithCrefCrefAbsentReturnsFalse()
     {
         var root = XElement.Parse("<root><inheritdoc/></root>");
-        Assert.That(DocumentationExtensions.HasInheritDocWithCref(root), Is.False);
+        Assert.That(DocumentationXmlExtensions.HasInheritDocWithCref(root), Is.False);
     }
 
     [Test]
-    public void HasValueTagReturnsTrueWhenPresent()
+    public void HasValueTagPresentReturnsTrue()
     {
         var root = XElement.Parse("<root><value>Test</value></root>");
-        Assert.That(DocumentationExtensions.HasValueTag(root), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasValueTag(root), Is.True);
     }
 
     [Test]
-    public void HasValueTagReturnsFalseWhenAbsent()
+    public void HasValueTagAbsentReturnsFalse()
     {
         var root = XElement.Parse("<root><summary/></root>");
-        Assert.That(DocumentationExtensions.HasValueTag(root), Is.False);
+        Assert.That(DocumentationXmlExtensions.HasValueTag(root), Is.False);
     }
 
     [Test]
     public void HasValidDocumentationWithAutoValidTagReturnsTrue()
     {
         var root = XElement.Parse("<root><inheritdoc/></root>");
-        Assert.That(DocumentationExtensions.HasValidDocumentation(root), Is.True);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation(root), Is.True);
     }
 
     [Test]
     public void HasValidDocumentationWithUnknownTagReturnsFalse()
     {
         var root = XElement.Parse("<root><unknown/></root>");
-        Assert.That(DocumentationExtensions.HasValidDocumentation(root), Is.False);
+        Assert.That(DocumentationXmlExtensions.HasValidDocumentation(root), Is.False);
     }
 
     [Test]
     public void GetTargetElementsWithTagNameReturnsOnlyMatching()
     {
         var root = XElement.Parse("<root><summary>S</summary><remarks>R</remarks></root>");
-        var result = DocumentationExtensions.GetTargetElements(root, "summary").ToList();
+        var result = DocumentationXmlExtensions.GetTargetElements(root, "summary").ToList();
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result, Has.Count.EqualTo(1));
@@ -602,7 +597,7 @@ public class DocumentationExtensionsTests
     public void GetTargetElementsWithMemberElementReturnsDirectChildren()
     {
         var root = XElement.Parse("<member><summary>S</summary></member>");
-        var result = DocumentationExtensions.GetTargetElements(root).ToList();
+        var result = DocumentationXmlExtensions.GetTargetElements(root).ToList();
         using (Assert.EnterMultipleScope())
         {
             Assert.That(result, Has.Count.EqualTo(1));
@@ -611,7 +606,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetTagNameReturnsCorrectNameForElement()
+    public void GetTagNameXmlElementReturnsCorrectName()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary>Summary</summary>
@@ -622,7 +617,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetTagNameReturnsCorrectNameForEmptyElement()
+    public void GetTagNameXmlEmptyElementReturnsCorrectName()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <inheritdoc />
@@ -633,19 +628,18 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetTagNameReturnsEmptyForNonXmlNode()
+    public void GetTagNameNonXmlNodeReturnsEmpty()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// Summary
             public class C {}
             """);
         var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
-        // XmlTextSyntax is a XmlNodeSyntax but not XmlElement/XmlEmptyElement
         Assert.That(node.GetTagName(), Is.Empty);
     }
 
     [Test]
-    public void GetNameAttributeReturnsCorrectValueForElement()
+    public void GetNameAttributeXmlElementReturnsValue()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <param name="x">P</param>
@@ -656,7 +650,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetNameAttributeReturnsCorrectValueWithEntities()
+    public void GetNameAttributeWithEntitiesReturnsDecodedValue()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <mytag name="x&amp;y">P</mytag>
@@ -667,7 +661,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetNameAttributeReturnsCorrectValueForEmptyElement()
+    public void GetNameAttributeXmlEmptyElementReturnsValue()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <param name="y" />
@@ -678,7 +672,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetNameAttributeReturnsNullWhenMissing()
+    public void GetNameAttributeMissingReturnsNull()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary>S</summary>
@@ -689,7 +683,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetNameAttributeReturnsNullForNonXmlNode()
+    public void GetNameAttributeNonXmlNodeReturnsNull()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// Summary
@@ -700,7 +694,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixReturnsTrueForWhitespace()
+    public void IsPureWhitespaceOrPrefixWhitespaceReturnsTrue()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             ///
@@ -711,7 +705,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixReturnsTrueForPrefix()
+    public void IsPureWhitespaceOrPrefixPrefixReturnsTrue()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary/>
@@ -719,14 +713,12 @@ public class DocumentationExtensionsTests
             public class C {}
             """);
         var nodes = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().ToList();
-        // nodes[0] is "/// "
-        // nodes[1] is "\n/// "
         Assert.That(nodes, Has.Count.GreaterThanOrEqualTo(2));
         Assert.That(nodes[1].IsPureWhitespaceOrPrefix(), Is.True);
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixReturnsFalseForText()
+    public void IsPureWhitespaceOrPrefixTextReturnsFalse()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// Some text
@@ -737,47 +729,47 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixReturnsFalseForNull()
+    public void IsPureWhitespaceOrPrefixNullReturnsFalse()
     {
         Assert.That(((XmlTextSyntax?)null).IsPureWhitespaceOrPrefix(), Is.False);
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixReturnsTrueForEmptyString()
+    public void IsPureWhitespaceOrPrefixEmptyStringReturnsTrue()
     {
         var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral(string.Empty)));
         Assert.That(node.IsPureWhitespaceOrPrefix(), Is.True);
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixReturnsFalseForOnlySlash()
+    public void IsPureWhitespaceOrPrefixOnlySlashReturnsFalse()
     {
         var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("/")));
         Assert.That(node.IsPureWhitespaceOrPrefix(), Is.False);
     }
 
     [Test]
-    public void GetElementAttributeValuesWithTopLevelOnlyFalse()
+    public void GetElementAttributeValuesTopLevelOnlyFalseReturnsDeepValues()
     {
         var xml = """<member><summary><param name="inner">Inner</param></summary><param name="outer">Outer</param></member>""";
         var root = XElement.Parse(xml);
-        var result = DocumentationExtensions.GetElementAttributeValues(root, "param", "name", topLevelOnly: false).ToList();
+        var result = DocumentationXmlExtensions.GetElementAttributeValues(root, "param", "name", topLevelOnly: false).ToList();
         var expected = new[] { "inner", "outer" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void GetElementAttributeValuesWithTopLevelOnlyTrue()
+    public void GetElementAttributeValuesTopLevelOnlyTrueReturnsOnlyDirectValues()
     {
         var xml = """<member><summary><param name="inner">Inner</param></summary><param name="outer">Outer</param></member>""";
         var root = XElement.Parse(xml);
-        var result = DocumentationExtensions.GetElementAttributeValues(root, "param", "name", topLevelOnly: true).ToList();
+        var result = DocumentationXmlExtensions.GetElementAttributeValues(root, "param", "name", topLevelOnly: true).ToList();
         var expected = new[] { "outer" };
         Assert.That(result, Is.EquivalentTo(expected));
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsTrailingWhenAtStart()
+    public void GetAssociatedWhitespaceToRemoveAtStartReturnsTrailing()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <param name="x" />
@@ -791,7 +783,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsLeadingWhenNotAtStart()
+    public void GetAssociatedWhitespaceToRemoveNotAtStartReturnsLeading()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary>S</summary>
@@ -805,7 +797,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsTrailingWhenNotAtEnd()
+    public void GetAssociatedWhitespaceToRemoveNotAtEndReturnsTrailing()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary>S</summary> <param name="x" /> <returns>R</returns>
@@ -818,7 +810,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsNullWhenNoWhitespace()
+    public void GetAssociatedWhitespaceToRemoveNoWhitespaceReturnsNull()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary>S</summary><param name="x"/><returns>R</returns>
@@ -830,7 +822,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsTrailingWhenAtStartWithPrefix()
+    public void GetAssociatedWhitespaceToRemoveAtStartWithPrefixReturnsTrailing()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <param name="x" />
@@ -848,7 +840,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsLeadingWhenInMiddle()
+    public void GetAssociatedWhitespaceToRemoveInMiddleReturnsLeading()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary>S</summary>
@@ -865,14 +857,14 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsNullForUnsupportedParent()
+    public void GetAssociatedWhitespaceToRemoveUnsupportedParentReturnsNull()
     {
         var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("test")));
         Assert.That(node.GetAssociatedWhitespaceToRemove(), Is.Null);
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsNullWhenTrailingIsNull()
+    public void GetAssociatedWhitespaceToRemoveTrailingIsNullReturnsNull()
     {
         var summary = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("summary"));
         var element = SyntaxFactory.XmlElement(
@@ -887,7 +879,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsNullWhenLeadingIsNull()
+    public void GetAssociatedWhitespaceToRemoveLeadingIsNullReturnsNull()
     {
         var element = SyntaxFactory.XmlElement(
             SyntaxFactory.XmlName("summary"),
@@ -897,7 +889,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveWithIndexOneAndLeadingNotXmlText()
+    public void GetAssociatedWhitespaceToRemoveIndexOneAndLeadingNotXmlTextReturnsNull()
     {
         var param = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("param"));
         var summary = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("summary"));
@@ -910,7 +902,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveWithIndexOneAndLeadingNotPureWhitespace()
+    public void GetAssociatedWhitespaceToRemoveIndexOneAndLeadingNotPureWhitespaceReturnsNull()
     {
         var param = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("param"));
         var summary = SyntaxFactory.XmlElement(
@@ -925,7 +917,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsTrailingWhenNotAtEndAndLeadingNotPure()
+    public void GetAssociatedWhitespaceToRemoveTrailingNotAtEndAndLeadingNotPureReturnsTrailing()
     {
         var param = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("param"));
         var returns = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("returns"));
@@ -945,7 +937,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveWithIndexZeroAndTrailingPure()
+    public void GetAssociatedWhitespaceToRemoveIndexZeroAndTrailingPureReturnsTrailing()
     {
         var param = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("param"));
         var element = SyntaxFactory.XmlElement(
@@ -962,17 +954,17 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetAssociatedWhitespaceToRemoveReturnsNullWhenIndexIsMinusOne()
+    public void GetAssociatedWhitespaceToRemoveIndexIsMinusOneReturnsNull()
     {
         var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("test")));
         var emptyList = SyntaxFactory.List<XmlNodeSyntax>();
 
-        var result = DocumentationExtensions.GetAssociatedWhitespaceToRemove(node, emptyList);
+        var result = DocumentationSyntaxExtensions.GetAssociatedWhitespaceToRemove(node, emptyList);
         Assert.That(result, Is.Null);
     }
 
     [Test]
-    public void GetParentContentReturnsDocTriviaForTopLevelNode()
+    public void GetParentContentTopLevelNodeReturnsDocTrivia()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary>S</summary>
@@ -988,7 +980,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetParentContentReturnsElementForNestedNode()
+    public void GetParentContentNestedNodeReturnsElement()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary><see cref="T"/></summary>
@@ -1004,7 +996,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetParentContentWalksUpToElement()
+    public void GetParentContentTextNodeWalksUpToElement()
     {
         var tree = CSharpSyntaxTree.ParseText("""
             /// <summary>Text</summary>
@@ -1020,7 +1012,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetParentContentReturnsNullForDetachedNode()
+    public void GetParentContentDetachedNodeReturnsNull()
     {
         var node = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("summary"));
         var (parent, content) = node.GetParentContent();
@@ -1032,15 +1024,15 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetTargetElementsRecursiveWithTagName()
+    public void GetTargetElementsRecursiveReturnsAllMatching()
     {
         var root = XElement.Parse("<root><summary><see cref='T1'/></summary><see cref='T2'/></root>");
-        var result = DocumentationExtensions.GetTargetElements(root, "see", recursive: true).ToList();
+        var result = DocumentationXmlExtensions.GetTargetElements(root, "see", recursive: true).ToList();
         Assert.That(result, Has.Count.EqualTo(2));
     }
 
     [Test]
-    public void GetDocumentationLocationsRecursive()
+    public void GetDocumentationLocationsRecursiveReturnsDeepLocations()
     {
         const string source = """
             public class Test
@@ -1055,7 +1047,7 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void GetDocumentationLocationWithCrefAttributeAndTPrefix()
+    public void GetDocumentationLocationCrefWithTPrefixReturnsLocation()
     {
         const string source = """
             public class Test
@@ -1067,5 +1059,10 @@ public class DocumentationExtensionsTests
         var symbol = GetSymbolFromSource(source, "Method");
         var location = symbol.GetDocumentationLocation("exception", "T:System.Exception", attributeName: "cref");
         Assert.That(location, Is.Not.EqualTo(Location.None));
+    }
+
+    private static ISymbol GetSymbolFromSource(string source, string symbolName)
+    {
+        return RoslynTestUtils.GetSymbolFromSource(source, symbolName, parseDocumentation: true);
     }
 }

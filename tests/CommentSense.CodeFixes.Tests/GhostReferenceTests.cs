@@ -15,8 +15,10 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
         { "dotnet_diagnostic.CSENSE006.severity", "none" }
     };
 
+    #region Parameter References (CSENSE020)
+
     [Test]
-    public async Task WrapParameterInSummary()
+    public async Task Parameter_InSummary_WrapsInParamRef()
     {
         const string source = """
             public class Test
@@ -41,7 +43,7 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
-    public async Task WrapParameterWithDifferentCasing()
+    public async Task Parameter_WithDifferentCasing_WrapsInCorrectCasedParamRef()
     {
         const string source = """
             public class Test
@@ -66,80 +68,7 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
-    public async Task WrapTypeParameterInSummary()
-    {
-        const string source = """
-            /// <summary>
-            /// A collection of {|CSENSE021:TValue|}.
-            /// </summary>
-            public class Test<TValue>
-            {
-            }
-            """;
-        const string fixedSource = """
-            /// <summary>
-            /// A collection of <typeparamref name="TValue" />.
-            /// </summary>
-            public class Test<TValue>
-            {
-            }
-            """;
-
-        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
-    }
-
-    [Test]
-    public async Task WrapMultipleReferencesInBatch()
-    {
-        const string source = """
-            public class Test
-            {
-                /// <summary>
-                /// Takes {|CSENSE020:firstValue|} and {|CSENSE020:secondValue|}.
-                /// </summary>
-                public void Add(int firstValue, int secondValue) { }
-            }
-            """;
-        const string fixedSource = """
-            public class Test
-            {
-                /// <summary>
-                /// Takes <paramref name="firstValue" /> and <paramref name="secondValue" />.
-                /// </summary>
-                public void Add(int firstValue, int secondValue) { }
-            }
-            """;
-
-        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
-    }
-
-    [Test]
-    public async Task CodeActionTitleUsesOriginalName()
-    {
-        const string source = """
-            public class Test
-            {
-                /// <summary>
-                /// Processes {|CSENSE020:Inputdata|}.
-                /// </summary>
-                public void Process(string inputData) { }
-            }
-            """;
-        const string fixedSource = """
-            public class Test
-            {
-                /// <summary>
-                /// Processes <paramref name="inputData" />.
-                /// </summary>
-                public void Process(string inputData) { }
-            }
-            """;
-
-        await VerifyCodeFixTitleAsync(source, fixedSource, "Wrap in <paramref name=\"inputData\" />", DisableUnrelatedRules);
-    }
-
-    [Test]
-    public async Task WrapRegularConstructorParameter()
+    public async Task ConstructorParameter_InSummary_WrapsInParamRef()
     {
         const string source = """
             public class Test
@@ -168,7 +97,7 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
-    public async Task WrapPrimaryConstructorParameter()
+    public async Task PrimaryConstructorParameter_InSummary_WrapsInParamRef()
     {
         const string source = """
             /// <summary>
@@ -190,8 +119,93 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
         await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
     }
 
+    #endregion
+
+    #region Type Parameter References (CSENSE021)
+
     [Test]
-    public async Task MultipleReferencesInSameSummaryFixAll()
+    public async Task TypeParameter_InSummary_WrapsInTypeParamRef()
+    {
+        const string source = """
+            /// <summary>
+            /// A collection of {|CSENSE021:TValue|}.
+            /// </summary>
+            public class Test<TValue>
+            {
+            }
+            """;
+        const string fixedSource = """
+            /// <summary>
+            /// A collection of <typeparamref name="TValue" />.
+            /// </summary>
+            public class Test<TValue>
+            {
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    #endregion
+
+    #region Code Action Metadata
+
+    [Test]
+    public async Task CodeAction_Title_UsesOriginalSymbolName()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary>
+                /// Processes {|CSENSE020:Inputdata|}.
+                /// </summary>
+                public void Process(string inputData) { }
+            }
+            """;
+        const string fixedSource = """
+            public class Test
+            {
+                /// <summary>
+                /// Processes <paramref name="inputData" />.
+                /// </summary>
+                public void Process(string inputData) { }
+            }
+            """;
+
+        await VerifyCodeFixTitleAsync(source, fixedSource, "Wrap in <paramref name=\"inputData\" />", DisableUnrelatedRules);
+    }
+
+    #endregion
+
+    #region Batch and FixAll
+
+    [Test]
+    public async Task MultipleReferences_InSameSummary_WrapsAllInBatch()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary>
+                /// Takes {|CSENSE020:firstValue|} and {|CSENSE020:secondValue|}.
+                /// </summary>
+                public void Add(int firstValue, int secondValue) { }
+            }
+            """;
+        const string fixedSource = """
+            public class Test
+            {
+                /// <summary>
+                /// Takes <paramref name="firstValue" /> and <paramref name="secondValue" />.
+                /// </summary>
+                public void Add(int firstValue, int secondValue) { }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task MultipleReferences_FixAll_WrapsAllOccurrences()
     {
         const string source = """
             public class Test
@@ -216,7 +230,7 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
-    public async Task MixedGhostReferencesFixAll()
+    public async Task MixedGhostReferences_FixAll_WrapsBothParameterAndTypeParameter()
     {
         const string source = """
             /// <summary>
@@ -233,4 +247,6 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
 
         await VerifyFixAllAsync(source, fixedSource, DisableUnrelatedRules);
     }
+
+    #endregion
 }

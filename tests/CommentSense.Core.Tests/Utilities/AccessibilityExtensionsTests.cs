@@ -19,7 +19,7 @@ public class AccessibilityExtensionsTests
     [TestCase("public class C { public void M() { label: goto label; } }", "label", false)]
     [TestCase("using System.Linq; public class C { public void M() { var list = new int[0]; var query = from x in list select x; } }", "x", false)]
     [TestCase("public class C { static C() {} }", "C", true)]
-    public void IsEffectivelyAccessibleReturnsExpectedValue(string source, string symbolName, bool expected)
+    public void IsEffectivelyAccessibleVariousSymbolsReturnsExpected(string source, string symbolName, bool expected)
     {
         var symbol = RoslynTestUtils.GetSymbolFromSource(source, symbolName);
         Assert.That(symbol.IsEffectivelyAccessible(), Is.EqualTo(expected));
@@ -32,21 +32,21 @@ public class AccessibilityExtensionsTests
     [TestCase("public class C { private void M() {} }", "M", VisibilityLevel.Private, true)]
     [TestCase("internal class C { public void M() {} }", "M", VisibilityLevel.Internal, true)]
     [TestCase("internal class C { public void M() {} }", "M", VisibilityLevel.Public, false)]
-    public void IsEffectivelyAccessibleWithVisibilityLevel(string source, string symbolName, VisibilityLevel level, bool expected)
+    public void IsEffectivelyAccessibleWithVisibilityLevelReturnsExpected(string source, string symbolName, VisibilityLevel level, bool expected)
     {
         var symbol = RoslynTestUtils.GetSymbolFromSource(source, symbolName);
         Assert.That(symbol.IsEffectivelyAccessible(level), Is.EqualTo(expected));
     }
 
     [Test]
-    public void IsEffectivelyAccessibleWithInvalidVisibilityLevelReturnsFalse()
+    public void IsEffectivelyAccessibleInvalidVisibilityLevelReturnsFalse()
     {
         var symbol = RoslynTestUtils.GetSymbolFromSource("public class C {}", "C");
         Assert.That(symbol.IsEffectivelyAccessible((VisibilityLevel)999), Is.False);
     }
 
     [Test]
-    public void IsEffectivelyAccessibleReturnsTrueForAssembly()
+    public void IsEffectivelyAccessibleAssemblySymbolReturnsTrue()
     {
         var symbol = RoslynTestUtils.GetSymbolFromSource("public class C {}", "C");
         var assembly = symbol.ContainingAssembly;
@@ -54,7 +54,7 @@ public class AccessibilityExtensionsTests
     }
 
     [Test]
-    public void IsEffectivelyAccessibleReturnsFalseForNull()
+    public void IsEffectivelyAccessibleNullSymbolReturnsFalse()
     {
         Assert.That(AccessibilityExtensions.IsEffectivelyAccessible(null), Is.False);
     }

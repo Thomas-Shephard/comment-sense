@@ -20,7 +20,7 @@ internal static class ExceptionAnalyzer
 
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
-        var documentedExceptionElements = DocumentationExtensions.GetTargetElements(xml, DocumentationTags.Exception);
+        var documentedExceptionElements = DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception);
         var documentedTypes = GetDocumentedExceptionTypes(context, documentedExceptionElements);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor, options);
 
@@ -31,7 +31,7 @@ internal static class ExceptionAnalyzer
     private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, HashSet<ITypeSymbol> documentedTypes)
     {
         // CSENSE012: Missing Exception Documentation
-        if (DocumentationExtensions.HasInheritDoc(xml) || DocumentationExtensions.HasAutoValidTag(xml))
+        if (DocumentationXmlExtensions.HasInheritDoc(xml) || DocumentationXmlExtensions.HasAutoValidTag(xml))
             return;
 
         foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) && !IsIgnored(t, options)))
@@ -313,7 +313,7 @@ internal static class ExceptionAnalyzer
             symbol = delegateMethod.ContainingType;
         }
 
-        return DocumentationExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml())
+        return DocumentationXmlExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml())
                                       .Select(cref => ResolveExceptionType(cref, compilation))
                                       .OfType<ITypeSymbol>();
     }
