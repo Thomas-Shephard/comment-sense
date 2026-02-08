@@ -79,4 +79,90 @@ public class SymbolExtensionsTests
         var parameters = symbol.GetParameters();
         Assert.That(parameters.IsEmpty, Is.True);
     }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsTrueForSameClass()
+    {
+        var tree = CSharpSyntaxTree.ParseText("class C {}");
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var symbol = compilation.GetTypeByMetadataName("C") ?? throw new InvalidOperationException();
+        Assert.That(symbol.InheritsFromOrEquals(symbol), Is.True);
+    }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsTrueForBaseClass()
+    {
+        var tree = CSharpSyntaxTree.ParseText("class B {} class C : B {}");
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var b = compilation.GetTypeByMetadataName("B") ?? throw new InvalidOperationException();
+        var c = compilation.GetTypeByMetadataName("C") ?? throw new InvalidOperationException();
+        Assert.That(c.InheritsFromOrEquals(b), Is.True);
+    }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsTrueForInterface()
+    {
+        var tree = CSharpSyntaxTree.ParseText("interface I {} class C : I {}");
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var i = compilation.GetTypeByMetadataName("I") ?? throw new InvalidOperationException();
+        var c = compilation.GetTypeByMetadataName("C") ?? throw new InvalidOperationException();
+        Assert.That(c.InheritsFromOrEquals(i), Is.True);
+    }
+
+    [Test]
+    public void InheritsFromOrEqualsReturnsFalseForUnrelated()
+    {
+        var tree = CSharpSyntaxTree.ParseText("class A {} class B {}");
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var a = compilation.GetTypeByMetadataName("A") ?? throw new InvalidOperationException();
+        var b = compilation.GetTypeByMetadataName("B") ?? throw new InvalidOperationException();
+        Assert.That(a.InheritsFromOrEquals(b), Is.False);
+    }
+
+    [Test]
+    public void GetAssociatedSymbolReturnsSymbolForField()
+    {
+        var source = "class C { int f1, f2; }";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var root = tree.GetRoot();
+        var node = root.DescendantNodes().OfType<VariableDeclaratorSyntax>().First(v => v.Identifier.ValueText == "f1");
+
+        var symbol = node.GetAssociatedSymbol(compilation.GetSemanticModel(tree));
+        Assert.That(symbol, Is.Not.Null);
+        Assert.That(symbol.Name, Is.EqualTo("f1"));
+    }
+
+    [Test]
+    public void GetAssociatedSymbolReturnsSymbolForLocal()
+    {
+        var source = "class C { void M() { int l1 = 0; } }";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var root = tree.GetRoot();
+        var node = root.DescendantNodes().OfType<VariableDeclaratorSyntax>().First(v => v.Identifier.ValueText == "l1");
+
+        var symbol = node.GetAssociatedSymbol(compilation.GetSemanticModel(tree));
+        Assert.That(symbol, Is.Not.Null);
+        Assert.That(symbol.Name, Is.EqualTo("l1"));
+    }
+
+    [Test]
+    public void GetAssociatedSymbolReturnsNullForDetachedNode()
+    {
+        var node = SyntaxFactory.IdentifierName("test");
+        var tree = CSharpSyntaxTree.ParseText("");
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var symbol = node.GetAssociatedSymbol(compilation.GetSemanticModel(tree));
+        Assert.That(symbol, Is.Null);
+    }
+
+    [Test]
+    public void GetPrimaryConstructorReturnsNullForEnum()
+    {
+        var tree = CSharpSyntaxTree.ParseText("enum E { A }");
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var type = compilation.GetTypeByMetadataName("E") ?? throw new InvalidOperationException();
+        Assert.That(type.GetPrimaryConstructor(), Is.Null);
+    }
 }

@@ -10,10 +10,12 @@ internal static class DocumentationExtensions
     private const string MemberTagName = "member";
 
     private static readonly HashSet<string> AutoValidTags = [
-        "inheritdoc", "include"
+        DocumentationTags.InheritDoc, DocumentationTags.Include
     ];
     private static readonly HashSet<string> ContentRequiredTags = [
-        "summary", "remarks", "returns", "value", "param", "typeparam", "exception", "example", "seealso", "permission"
+        DocumentationTags.Summary, DocumentationTags.Remarks, DocumentationTags.Returns, DocumentationTags.Value,
+        DocumentationTags.Param, DocumentationTags.TypeParam, DocumentationTags.Exception, DocumentationTags.Example,
+        DocumentationTags.SeeAlso, DocumentationTags.Permission
     ];
 
     public static bool HasValidDocumentation(this ISymbol? symbol)
@@ -72,17 +74,22 @@ internal static class DocumentationExtensions
 
     public static bool HasInheritDoc(XElement root)
     {
-        return root.Descendants("inheritdoc").Any();
+        return root.Descendants(DocumentationTags.InheritDoc).Any();
     }
 
     public static bool HasInheritDocWithCref(XElement root)
     {
-        return root.Descendants("inheritdoc").Any(e => e.Attribute("cref") != null);
+        return root.Descendants(DocumentationTags.InheritDoc).Any(e => e.Attribute(DocumentationAttributes.Cref) != null);
+    }
+
+    public static IEnumerable<string> GetNames(XElement root, string tagName, string attributeName = DocumentationAttributes.Name, bool topLevelOnly = true)
+    {
+        return GetElementAttributeValues(root, tagName, attributeName, topLevelOnly);
     }
 
     public static IEnumerable<string> GetParamNames(XElement root)
     {
-        return GetElementAttributeValues(root, "param", "name", topLevelOnly: true);
+        return GetNames(root, DocumentationTags.Param, topLevelOnly: true);
     }
 
     public static IEnumerable<string> GetParamNames(string? xml)
@@ -95,7 +102,7 @@ internal static class DocumentationExtensions
 
     public static IEnumerable<string> GetTypeParamNames(XElement root)
     {
-        return GetElementAttributeValues(root, "typeparam", "name", topLevelOnly: true);
+        return GetNames(root, DocumentationTags.TypeParam, topLevelOnly: true);
     }
 
     public static IEnumerable<string> GetTypeParamNames(string? xml)
@@ -108,7 +115,7 @@ internal static class DocumentationExtensions
 
     public static bool HasReturnsTag(XElement root)
     {
-        return GetTopLevelElements(root, "returns").Any();
+        return GetTargetElements(root, DocumentationTags.Returns, recursive: false).Any();
     }
 
     public static bool HasReturnsTag(string? xml)
@@ -118,12 +125,12 @@ internal static class DocumentationExtensions
 
     public static bool HasValueTag(XElement root)
     {
-        return GetTopLevelElements(root, "value").Any();
+        return GetTargetElements(root, DocumentationTags.Value, recursive: false).Any();
     }
 
     public static IEnumerable<string> GetExceptionCrefs(XElement root)
     {
-        return GetElementAttributeValues(root, "exception", "cref", topLevelOnly: true);
+        return GetNames(root, DocumentationTags.Exception, DocumentationAttributes.Cref, topLevelOnly: true);
     }
 
     public static IEnumerable<string> GetExceptionCrefs(string? xml)
@@ -134,30 +141,30 @@ internal static class DocumentationExtensions
         return [];
     }
 
-    public static IEnumerable<XElement> GetTargetElements(XElement root, string? tagName = null)
+    public static IEnumerable<XElement> GetTargetElements(XElement root, string? tagName = null, bool recursive = false)
     {
         var target = root.Name.LocalName == MemberTagName ? root : root.Element(MemberTagName) ?? root;
 
         if (tagName == null)
-            return target.Elements();
+            return recursive ? target.Descendants() : target.Elements();
 
-        if (tagName is "param" or "typeparam" or "returns" or "value")
-            return target.Descendants(tagName);
-
-        return target.Elements(tagName);
+        return recursive ? target.Descendants(tagName) : target.Elements(tagName);
     }
 
-    public static IEnumerable<XElement> GetTopLevelElements(XElement root, string tagName)
+    public static IEnumerable<(XElement Element, Location Location)> GetTargetElementsWithLocations(this ISymbol symbol, XElement xml, string tagName, bool topLevelOnly = false)
     {
-        var target = root.Name.LocalName == MemberTagName ? root : root.Element(MemberTagName) ?? root;
-        return target.Elements(tagName);
+        var elements = GetTargetElements(xml, tagName, recursive: !topLevelOnly).ToList();
+        var locations = symbol.GetDocumentationLocations(tagName, topLevelOnly: topLevelOnly);
+
+        for (int i = 0; i < elements.Count; i++)
+        {
+            yield return (elements[i], locations.GetLocationOrDefault(i, symbol));
+        }
     }
 
     public static IEnumerable<string> GetElementAttributeValues(XElement root, string tagName, string attributeName, bool topLevelOnly = false)
     {
-        var elements = topLevelOnly
-            ? GetTopLevelElements(root, tagName)
-            : GetTargetElements(root, tagName);
+        var elements = GetTargetElements(root, tagName, recursive: !topLevelOnly);
 
         return elements
                .Select(d => d.Attribute(attributeName)?.Value)
@@ -184,7 +191,18 @@ internal static class DocumentationExtensions
             _                                  => default
         };
 
-        return attributes.OfType<XmlNameAttributeSyntax>().FirstOrDefault(a => a.Name.LocalName.ValueText == "name")?.Identifier.Identifier.ValueText;
+        foreach (var attribute in attributes)
+        {
+            if (attribute is XmlNameAttributeSyntax { Name.LocalName.ValueText: DocumentationAttributes.Name } nameAttr)
+                return nameAttr.Identifier.Identifier.ValueText;
+
+            if (attribute is XmlTextAttributeSyntax { Name.LocalName.ValueText: DocumentationAttributes.Name } textAttr)
+            {
+                return string.Concat(textAttr.TextTokens.Select(t => t.ValueText));
+            }
+        }
+
+        return null;
     }
 
     public static XmlTextSyntax? GetAssociatedWhitespaceToRemove(this XmlNodeSyntax xmlNode)
@@ -243,5 +261,115 @@ internal static class DocumentationExtensions
             return (e, e.Content);
 
         return (null, default);
+    }
+
+    public static MemberDeclarationSyntax? GetMemberDeclaration(this SyntaxNode? node)
+    {
+        if (node == null)
+            return null;
+
+        var docTrivia = node.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>();
+        var targetNode = docTrivia != null ? docTrivia.ParentTrivia.Token.Parent : node;
+        return targetNode?.FirstAncestorOrSelf<MemberDeclarationSyntax>();
+    }
+
+    public static Location GetPrimaryLocation(this System.Collections.Immutable.ImmutableArray<Location> locations)
+    {
+        if (locations.Length == 0)
+            return Location.None;
+
+        return locations[0];
+    }
+
+    public static Location GetLocationOrDefault(this System.Collections.Immutable.ImmutableArray<Location> locations, int index, ISymbol symbol)
+    {
+        return index >= 0 && index < locations.Length
+            ? locations[index]
+            : symbol.Locations.GetPrimaryLocation();
+    }
+
+    public static Location GetDocumentationLocation(this ISymbol symbol, string tagName, string? attributeValue = null, int occurrence = 0, string attributeName = DocumentationAttributes.Name, bool topLevelOnly = true)
+    {
+        return symbol.GetDocumentationLocations(tagName, attributeValue, attributeName, topLevelOnly).GetLocationOrDefault(occurrence, symbol);
+    }
+
+    public static System.Collections.Immutable.ImmutableArray<Location> GetDocumentationLocations(this ISymbol symbol, string tagName, string? attributeValue = null, string attributeName = DocumentationAttributes.Name, bool topLevelOnly = true)
+    {
+        var builder = System.Collections.Immutable.ImmutableArray.CreateBuilder<Location>();
+
+        var docTrivias = symbol.DeclaringSyntaxReferences
+                               .Select(r => r.GetSyntax())
+                               .Select(GetDocumentationCommentTrivia)
+                               .OfType<DocumentationCommentTriviaSyntax>();
+
+        foreach (var docTrivia in docTrivias)
+        {
+            GetDocumentationLocationsInternal(docTrivia, tagName, attributeValue, attributeName, builder, topLevelOnly);
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static DocumentationCommentTriviaSyntax? GetDocumentationCommentTrivia(SyntaxNode syntax)
+    {
+        // Documentation trivia might be on the member declaration rather than the specific declarator (e.g. for fields/events)
+        var current = syntax;
+        while (current != null)
+        {
+            var docTrivia = current.GetLeadingTrivia()
+                .Select(t => t.GetStructure())
+                .OfType<DocumentationCommentTriviaSyntax>()
+                .FirstOrDefault();
+
+            if (docTrivia != null)
+                return docTrivia;
+
+            if (current is MemberDeclarationSyntax or CompilationUnitSyntax)
+                break;
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
+    private static void GetDocumentationLocationsInternal(DocumentationCommentTriviaSyntax docTrivia, string tagName, string? attributeValue, string attributeName, System.Collections.Immutable.ImmutableArray<Location>.Builder builder, bool topLevelOnly)
+    {
+        var nodes = topLevelOnly ? docTrivia.Content : docTrivia.DescendantNodes();
+        foreach (var node in nodes)
+        {
+            bool matches = node switch
+            {
+                XmlElementSyntax element => element.StartTag.Name.LocalName.ValueText == tagName && (attributeValue == null || HasAttribute(element, attributeName, attributeValue)),
+                XmlEmptyElementSyntax emptyElement => emptyElement.Name.LocalName.ValueText == tagName && (attributeValue == null || HasAttribute(emptyElement, attributeName, attributeValue)),
+                _ => false
+            };
+
+            if (matches)
+            {
+                builder.Add(node.GetLocation());
+            }
+        }
+    }
+
+    private static bool HasAttribute(XmlElementSyntax element, string attributeName, string value)
+    {
+        return element.StartTag.Attributes.Any(a => MatchAttribute(a, attributeName, value));
+    }
+
+    private static bool HasAttribute(XmlEmptyElementSyntax element, string attributeName, string value)
+    {
+        return element.Attributes.Any(a => MatchAttribute(a, attributeName, value));
+    }
+
+    private static bool MatchAttribute(XmlAttributeSyntax attribute, string name, string value)
+    {
+        return attribute switch
+        {
+            XmlNameAttributeSyntax nameAttr => nameAttr.Name.LocalName.ValueText == name && nameAttr.Identifier.Identifier.ValueText == value,
+            XmlCrefAttributeSyntax crefAttr => crefAttr.Name.LocalName.ValueText == name && (crefAttr.Cref.ToString() == value || $"T:{crefAttr.Cref}" == value),
+            XmlTextAttributeSyntax textAttr => textAttr.Name.LocalName.ValueText == name && string.Concat(textAttr.TextTokens.Select(t => t.ValueText)) == value,
+            _                               => false
+        };
     }
 }

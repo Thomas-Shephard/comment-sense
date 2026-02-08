@@ -25,8 +25,8 @@ internal static class GhostReferenceAnalyzer
         if (IsIgnoredTag(containingTag))
             return;
 
-        var parameters = GetParameters(symbol);
-        var typeParameters = GetTypeParameters(symbol);
+        var parameters = symbol.GetParameters().Select(p => p.Name).ToImmutableArray();
+        var typeParameters = symbol.GetTypeParameters().Select(p => p.Name).ToImmutableArray();
 
         if (parameters.IsEmpty && typeParameters.IsEmpty)
             return;
@@ -92,8 +92,8 @@ internal static class GhostReferenceAnalyzer
 
         if (options.GhostReferenceMode == GhostReferenceMode.Safe)
         {
-            if (containingTag == "param" && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
-            if (containingTag == "typeparam" && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
+            if (containingTag == DocumentationTags.Param && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
+            if (containingTag == DocumentationTags.TypeParam && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
         }
 
         return true;
@@ -121,7 +121,7 @@ internal static class GhostReferenceAnalyzer
 
     private static bool IsIgnoredTag(string? tagName)
     {
-        return tagName is "code" or "c" or "paramref" or "typeparamref" or "see";
+        return tagName is DocumentationTags.Code or DocumentationTags.C or DocumentationTags.ParamRef or DocumentationTags.TypeParamRef or DocumentationTags.See;
     }
 
     private static (string? TagName, string? NameValue) GetContainingTagInfo(XmlTextSyntax xmlText)
@@ -135,8 +135,8 @@ internal static class GhostReferenceAnalyzer
             var tagName = element.StartTag.Name.LocalName.ValueText;
             innermostTag ??= tagName;
 
-            var nameValue = GetNameAttributeValue(element);
-            if (nameValue != null && tagName is "param" or "typeparam")
+            var nameValue = element.GetNameAttribute();
+            if (nameValue != null && tagName is DocumentationTags.Param or DocumentationTags.TypeParam)
                 return (tagName, nameValue);
 
             if (IsIgnoredTag(tagName))
@@ -144,45 +144,5 @@ internal static class GhostReferenceAnalyzer
         }
 
         return (innermostTag, null);
-    }
-
-    private static string? GetNameAttributeValue(XmlElementSyntax element)
-    {
-        foreach (var attribute in element.StartTag.Attributes)
-        {
-            if (attribute is XmlNameAttributeSyntax { Name.LocalName.ValueText: "name" } nameAttr)
-                return nameAttr.Identifier.Identifier.ValueText;
-
-            if (attribute is XmlTextAttributeSyntax { Name.LocalName.ValueText: "name" } textAttr)
-            {
-                return textAttr.TextTokens
-                    .FirstOrDefault(t => t.IsKind(SyntaxKind.XmlTextLiteralToken))
-                    .Text;
-            }
-        }
-
-        return null;
-    }
-
-    private static ImmutableArray<string> GetParameters(ISymbol symbol)
-    {
-        return symbol switch
-        {
-            IMethodSymbol m => [.. m.Parameters.Select(p => p.Name)],
-            IPropertySymbol { IsIndexer: true } p => [.. p.Parameters.Select(param => param.Name)],
-            INamedTypeSymbol { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null } n => [.. n.DelegateInvokeMethod.Parameters.Select(p => p.Name)],
-            INamedTypeSymbol n when n.GetPrimaryConstructor() is { } ctor => [.. ctor.Parameters.Select(p => p.Name)],
-            _ => []
-        };
-    }
-
-    private static ImmutableArray<string> GetTypeParameters(ISymbol symbol)
-    {
-        return symbol switch
-        {
-            IMethodSymbol m => [.. m.TypeParameters.Select(p => p.Name)],
-            INamedTypeSymbol n => [.. n.TypeParameters.Select(p => p.Name)],
-            _ => []
-        };
     }
 }

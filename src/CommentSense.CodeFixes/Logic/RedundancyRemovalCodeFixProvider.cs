@@ -7,7 +7,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace CommentSense.CodeFixes.Logic;
 
@@ -143,11 +142,5 @@ public class RedundancyRemovalCodeFixProvider : CodeFixProviderBase
         return newRoot is not null
             ? document.WithSyntaxRoot(newRoot)
             : document;
-    }
-
-    private static XmlNodeSyntax? FindXmlNode(SyntaxNode root, TextSpan span)
-    {
-        var node = root.FindNode(span, findInsideTrivia: true, getInnermostNodeForTie: true);
-        return node.FirstAncestorOrSelf<XmlNodeSyntax>(n => n is XmlElementSyntax or XmlEmptyElementSyntax);
     }
 }

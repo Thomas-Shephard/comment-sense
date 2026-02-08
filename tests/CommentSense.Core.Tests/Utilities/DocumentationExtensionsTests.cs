@@ -656,6 +656,17 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
+    public void GetNameAttributeReturnsCorrectValueWithEntities()
+    {
+        var tree = CSharpSyntaxTree.ParseText("""
+            /// <mytag name="x&amp;y">P</mytag>
+            public void M(int x) {}
+            """);
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlElementSyntax>().First();
+        Assert.That(node.GetNameAttribute(), Is.EqualTo("x&y"));
+    }
+
+    [Test]
     public void GetNameAttributeReturnsCorrectValueForEmptyElement()
     {
         var tree = CSharpSyntaxTree.ParseText("""
@@ -1018,5 +1029,43 @@ public class DocumentationExtensionsTests
             Assert.That(parent, Is.Null);
             Assert.That(content, Is.Default);
         }
+    }
+
+    [Test]
+    public void GetTargetElementsRecursiveWithTagName()
+    {
+        var root = XElement.Parse("<root><summary><see cref='T1'/></summary><see cref='T2'/></root>");
+        var result = DocumentationExtensions.GetTargetElements(root, "see", recursive: true).ToList();
+        Assert.That(result, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void GetDocumentationLocationsRecursive()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary><param name="p1">Inner</param></summary>
+                public void Method(int p1) { }
+            }
+            """;
+        var symbol = GetSymbolFromSource(source, "Method");
+        var locations = symbol.GetDocumentationLocations("param", topLevelOnly: false);
+        Assert.That(locations, Has.Length.EqualTo(1));
+    }
+
+    [Test]
+    public void GetDocumentationLocationWithCrefAttributeAndTPrefix()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <exception cref="System.Exception">Docs</exception>
+                public void Method() { }
+            }
+            """;
+        var symbol = GetSymbolFromSource(source, "Method");
+        var location = symbol.GetDocumentationLocation("exception", "T:System.Exception", attributeName: "cref");
+        Assert.That(location, Is.Not.EqualTo(Location.None));
     }
 }

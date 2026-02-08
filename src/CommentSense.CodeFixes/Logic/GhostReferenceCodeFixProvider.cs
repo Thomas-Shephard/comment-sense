@@ -73,7 +73,7 @@ public class GhostReferenceCodeFixProvider : CodeFixProviderBase
             SyntaxFactory.XmlName(tagName),
             [
                 SyntaxFactory.XmlNameAttribute(
-                    SyntaxFactory.XmlName(SyntaxFactory.Identifier("name").WithLeadingTrivia(SyntaxFactory.Space)),
+                    SyntaxFactory.XmlName(SyntaxFactory.Identifier(DocumentationAttributes.Name).WithLeadingTrivia(SyntaxFactory.Space)),
                     SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
                     SyntaxFactory.IdentifierName(name),
                     SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken))

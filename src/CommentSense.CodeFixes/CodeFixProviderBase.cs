@@ -43,6 +43,18 @@ public abstract class CodeFixProviderBase : CodeFixProvider
     }
 
     /// <summary>
+    /// Finds the <see cref="XmlNodeSyntax"/> (element or empty element) at the specified <paramref name="span"/>.
+    /// </summary>
+    /// <param name="root">The syntax <paramref name="root"/> to search in.</param>
+    /// <param name="span">The text <paramref name="span"/> to find.</param>
+    /// <returns>The found <see cref="XmlNodeSyntax"/>, or <see langword="null"/> if not found.</returns>
+    protected static XmlNodeSyntax? FindXmlNode(SyntaxNode root, TextSpan span)
+    {
+        var node = root.FindNode(span, findInsideTrivia: true, getInnermostNodeForTie: true);
+        return node.FirstAncestorOrSelf<XmlNodeSyntax>(n => n is XmlElementSyntax or XmlEmptyElementSyntax);
+    }
+
+    /// <summary>
     /// Replaces a span of text within a <see cref="XmlTextSyntax"/> with a sequence of <see cref="XmlNodeSyntax"/> nodes.
     /// </summary>
     /// <param name="document">The <paramref name="document"/> to modify.</param>
