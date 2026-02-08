@@ -24,7 +24,9 @@ public class RedundancyRemovalCodeFixProvider : CodeFixProviderBase
         CommentSenseDiagnosticIds.DuplicateParameterDocumentationId,
         CommentSenseDiagnosticIds.DuplicateTypeParameterDocumentationId,
         CommentSenseDiagnosticIds.StrayReturnValueDocumentationId,
-        CommentSenseDiagnosticIds.StrayValueDocumentationId
+        CommentSenseDiagnosticIds.StrayValueDocumentationId,
+        CommentSenseDiagnosticIds.StraySummaryDocumentationId,
+        CommentSenseDiagnosticIds.StrayExceptionDocumentationId
     ];
 
     /// <inheritdoc />

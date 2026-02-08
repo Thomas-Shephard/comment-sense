@@ -9,7 +9,7 @@ public abstract class CommentSenseCodeFixTestBase<TAnalyzer, TCodeFix>
     where TAnalyzer : DiagnosticAnalyzer, new()
     where TCodeFix : Microsoft.CodeAnalysis.CodeFixes.CodeFixProvider, new()
 {
-    protected static async Task VerifyCodeFixAsync(string source, string fixedSource, IDictionary<string, string>? configOptions = null, DocumentationMode documentationMode = DocumentationMode.Parse, IEnumerable<DiagnosticResult>? expectedDiagnostics = null)
+    protected static async Task VerifyCodeFixAsync(string source, string fixedSource, IDictionary<string, string>? configOptions = null, DocumentationMode documentationMode = DocumentationMode.Parse, IEnumerable<DiagnosticResult>? expectedDiagnostics = null, IEnumerable<DiagnosticResult>? expectedDiagnosticsAfter = null)
     {
         var tester = new CSharpCodeFixTest<TAnalyzer, TCodeFix, NUnitVerifier>
         {
@@ -19,6 +19,9 @@ public abstract class CommentSenseCodeFixTestBase<TAnalyzer, TCodeFix>
         };
 
         tester.ApplyCommonConfiguration(configOptions, documentationMode, expectedDiagnostics);
+
+        if (expectedDiagnosticsAfter != null)
+            tester.FixedState.ExpectedDiagnostics.AddRange(expectedDiagnosticsAfter);
 
         await tester.RunAsync();
     }

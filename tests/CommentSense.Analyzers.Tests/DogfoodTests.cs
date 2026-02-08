@@ -5,7 +5,7 @@ using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
 
-public class DogfoodTests
+public partial class DogfoodTests
 {
     [Test]
     public Task DogfoodDefault()
@@ -75,7 +75,35 @@ public class DogfoodTests
             test.TestState.Sources.Add(source);
         }
 
+        AddMockResources(test.TestState, srcDir);
+
         Assert.DoesNotThrowAsync(async () => await test.RunAsync());
+    }
+
+    private static void AddMockResources(SolutionState testState, string srcDir)
+    {
+        foreach (var resxFile in Directory.GetFiles(srcDir, "Resources.resx", SearchOption.AllDirectories))
+        {
+            var projectDir = Path.GetDirectoryName(resxFile);
+            var namespaceName = Path.GetFileName(projectDir);  // Matches the namespace: CommentSense.Analyzers, CommentSense.CodeFixes
+
+            var resourceNames = ResourceNameRegex().Matches(File.ReadAllText(resxFile))
+                                      .Select(m => m.Groups[1].Value)
+                                      .ToList();
+
+            var mockSource = $$"""
+                namespace {{namespaceName}}
+                {
+                    internal class Resources
+                    {
+                        public static global::System.Resources.ResourceManager ResourceManager => null;
+                        {{string.Join("\n        ", resourceNames.Select(name => $"public static string {name} => null;"))}}
+                    }
+                }
+                """;
+
+            testState.Sources.Add(($"{namespaceName}.Resources.g.cs", mockSource));
+        }
     }
 
     private static IEnumerable<string> GetSourceFiles(string dir) =>
@@ -98,4 +126,7 @@ public class DogfoodTests
 
         throw new DirectoryNotFoundException("Could not find repository root.");
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex("<data name=\"([^\"]+)\"")]
+    private static partial System.Text.RegularExpressions.Regex ResourceNameRegex();
 }

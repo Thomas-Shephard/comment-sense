@@ -615,6 +615,25 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     }
 
     [Test]
+    public async Task ExceptionTagWithMissingCrefAtTopLevelDoesNotCrash()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a summary for the method.</summary>
+                /// <exception>Missing cref attribute</exception>
+                public void MyMethod()
+                {
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
     public async Task ExceptionTagWithWhitespaceCrefAttributeDoesNotCountAsDocumented()
     {
         const string testCode = """

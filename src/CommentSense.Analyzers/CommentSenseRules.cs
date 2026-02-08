@@ -212,6 +212,24 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: CreateResourceString(nameof(Resources.GhostTypeParameterReferenceDescription)));
 
+    public static readonly DiagnosticDescriptor StraySummaryDocumentationRule = new(
+        CommentSenseDiagnosticIds.StraySummaryDocumentationId,
+        CreateResourceString(nameof(Resources.StraySummaryDocumentationTitle)),
+        CreateResourceString(nameof(Resources.StraySummaryDocumentationMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.StraySummaryDocumentationDescription)));
+
+    public static readonly DiagnosticDescriptor StrayExceptionDocumentationRule = new(
+        CommentSenseDiagnosticIds.StrayExceptionDocumentationId,
+        CreateResourceString(nameof(Resources.StrayExceptionDocumentationTitle)),
+        CreateResourceString(nameof(Resources.StrayExceptionDocumentationMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.StrayExceptionDocumentationDescription)));
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =
     [
         DisabledDocumentationParsingRule,
@@ -235,6 +253,8 @@ internal static class CommentSenseRules
         MissingInheritDocRule,
         UseLangwordRule,
         GhostParameterReferenceRule,
-        GhostTypeParameterReferenceRule
+        GhostTypeParameterReferenceRule,
+        StraySummaryDocumentationRule,
+        StrayExceptionDocumentationRule
     ];
 }

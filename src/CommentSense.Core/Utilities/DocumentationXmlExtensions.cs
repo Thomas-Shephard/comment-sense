@@ -124,12 +124,22 @@ internal static class DocumentationXmlExtensions
 
     public static IEnumerable<XElement> GetTargetElements(XElement root, string? tagName = null, bool recursive = false)
     {
-        var target = root.Name.LocalName == MemberTagName ? root : root.Element(MemberTagName) ?? root;
+        var target = GetEffectiveTarget(root);
 
         if (tagName == null)
             return recursive ? target.Descendants() : target.Elements();
 
         return recursive ? target.Descendants(tagName) : target.Elements(tagName);
+    }
+
+    public static bool IsTopLevel(XElement root, XElement element, XElement? effectiveTarget = null)
+    {
+        return element.Parent != null && element.Parent == (effectiveTarget ?? GetEffectiveTarget(root));
+    }
+
+    public static XElement GetEffectiveTarget(XElement root)
+    {
+        return root.Name.LocalName == MemberTagName ? root : root.Element(MemberTagName) ?? root;
     }
 
     public static IEnumerable<string> GetElementAttributeValues(XElement root, string tagName, string attributeName, bool topLevelOnly = false)

@@ -267,4 +267,58 @@ public class ParameterDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false, compilerDiagnostics: CompilerDiagnostics.None);
     }
+
+    [Test]
+    public async Task NestedParameterTagReportsStrayDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>
+                /// This is a summary for the method.
+                /// {|CSENSE003:<param name="p1">Nested parameter tag.</param>|}
+                /// </summary>
+                public void MyMethod(int {|CSENSE002:p1|}) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task NestedParameterTagWithMissingNameReportsStrayDiagnosticWithUnknown()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>
+                /// This is a summary for the method.
+                /// {|CSENSE003:<param>Nested parameter tag missing name.</param>|}
+                /// </summary>
+                public void MyMethod(int {|CSENSE002:p1|}) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task NestedParameterTagWithWhitespaceNameReportsStrayDiagnosticWithUnknown()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>
+                /// This is a summary for the method.
+                /// {|CSENSE003:<param name=" ">Nested parameter tag with whitespace name.</param>|}
+                /// </summary>
+                public void MyMethod(int {|CSENSE002:p1|}) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }

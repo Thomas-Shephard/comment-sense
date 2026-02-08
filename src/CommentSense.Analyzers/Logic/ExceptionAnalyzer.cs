@@ -44,17 +44,47 @@ internal static class ExceptionAnalyzer
     private static void ReportLowQualityExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
     {
         // CSENSE016: Low Quality Exception Documentation
-        foreach (var (exceptionElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Exception, topLevelOnly: true))
+        // CSENSE023: Stray Exception Documentation
+        var seenExceptions = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+        var seenUnresolvedCrefs = new HashSet<string>(StringComparer.Ordinal);
+        var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
+
+        foreach (var (exceptionElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Exception, topLevelOnly: false))
         {
             var cref = exceptionElement.Attribute(DocumentationAttributes.Cref)?.Value;
-            if (cref is null || string.IsNullOrWhiteSpace(cref))
+
+            bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, exceptionElement, effectiveTarget);
+            if (!isTopLevel)
+            {
+                var strayDisplayName = string.IsNullOrWhiteSpace(cref)
+                    ? "<unknown>"
+                    : cref;
+
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayExceptionDocumentationRule, location, strayDisplayName));
                 continue;
+            }
 
             var resolved = ResolveExceptionType(cref, context.Compilation);
-            if (resolved == null || !QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: DocumentationTags.Exception))
-                continue;
+            var displayName = resolved?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) ?? cref ?? "<unknown>";
 
-            QualityAnalyzer.Report(context, location, DocumentationTags.Exception, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+            if (resolved == null)
+            {
+                if (cref != null && !seenUnresolvedCrefs.Add(cref))
+                    context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayExceptionDocumentationRule, location, displayName));
+
+                continue;
+            }
+
+            if (!seenExceptions.Add(resolved))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayExceptionDocumentationRule, location, displayName));
+                continue;
+            }
+
+            if (QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: DocumentationTags.Exception))
+            {
+                QualityAnalyzer.Report(context, location, DocumentationTags.Exception, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+            }
         }
     }
 
@@ -82,20 +112,19 @@ internal static class ExceptionAnalyzer
         return new HashSet<ITypeSymbol>(
             exceptionElements
                 .Select(e => e.Attribute(DocumentationAttributes.Cref)?.Value)
-                .Where(cref => !string.IsNullOrWhiteSpace(cref))
-                .OfType<string>()
                 .Select(cref => ResolveExceptionType(cref, context.Compilation))
                 .OfType<ITypeSymbol>(),
             SymbolEqualityComparer.Default);
     }
 
-    private static ITypeSymbol? ResolveExceptionType(string cref, Compilation compilation)
+    private static ITypeSymbol? ResolveExceptionType(string? cref, Compilation compilation)
     {
+        if (cref == null || string.IsNullOrWhiteSpace(cref))
+            return null;
+
         var resolved = DocumentationCommentId.GetFirstSymbolForDeclarationId(cref, compilation);
         if (resolved is ITypeSymbol ts)
-        {
             return ts;
-        }
 
         return ResolveExceptionTypeFallback(cref, compilation);
     }

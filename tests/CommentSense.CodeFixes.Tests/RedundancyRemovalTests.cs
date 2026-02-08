@@ -513,6 +513,98 @@ public class RedundancyRemovalTests : CommentSenseCodeFixTestBase<CommentSenseAn
     }
 
     [Test]
+    public async Task RemoveStraySummaryDocumentation()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <remarks>
+                /// {|CSENSE022:<summary>Nested</summary>|}
+                /// </remarks>
+                public void Method() { }
+            }
+            """;
+        const string fixedSource = """
+            public class Test
+            {
+                /// <remarks>
+                /// </remarks>
+                public void Method() { }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task RemoveDuplicateSummaryDocumentation()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary>First</summary>
+                /// {|CSENSE022:<summary>Second</summary>|}
+                public void Method() { }
+            }
+            """;
+        const string fixedSource = """
+            public class Test
+            {
+                /// <summary>First</summary>
+                public void Method() { }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task RemoveStrayExceptionDocumentation()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary>
+                /// {|CSENSE023:<exception cref="System.Exception">Nested</exception>|}
+                /// </summary>
+                public void Method() { }
+            }
+            """;
+        const string fixedSource = """
+            public class Test
+            {
+                /// <summary>
+                /// </summary>
+                public void Method() { }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task RemoveDuplicateExceptionDocumentation()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <exception cref="System.Exception">First</exception>
+                /// {|CSENSE023:<exception cref="System.Exception">Second</exception>|}
+                public void Method() { }
+            }
+            """;
+        const string fixedSource = """
+            public class Test
+            {
+                /// <exception cref="System.Exception">First</exception>
+                public void Method() { }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
     public void GetFixInternalAsyncWithInvalidScopeReturnsNull()
     {
         const FixAllScope invalidScope = (FixAllScope)(-1);

@@ -304,7 +304,7 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
             public class MyClass
             {
                 /// <summary>
-                /// <para>This is a nested <param name="p1">p1</param> tag.</para>
+                /// <para>This is a nested {|CSENSE003:<param name="p1">p1</param>|} tag (flagged as stray).</para>
                 /// </summary>
                 /// {|CSENSE016:<param name="p1">p1</param>|}
                 public void MyMethod(int p1) { }

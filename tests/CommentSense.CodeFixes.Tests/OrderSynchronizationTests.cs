@@ -5,6 +5,7 @@ using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.CodeFixes.Tests;
@@ -405,12 +406,12 @@ public class OrderSynchronizationTests : CommentSenseCodeFixTestBase<CommentSens
     }
 
     [Test]
-    public async Task NestedTagsAreIgnored()
+    public async Task NestedTagsAreFlagged()
     {
         const string source = """
             public class Test
             {
-                /// <summary>Summary <param name="p1">Nested</param></summary>
+                /// <summary>Summary {|CSENSE003:<param name="p1">Nested</param>|}</summary>
                 /// <param name="p2">Second</param>
                 /// {|CSENSE008:<param name="p1">First</param>|}
                 public void Method(int p1, int p2) { }
@@ -426,7 +427,9 @@ public class OrderSynchronizationTests : CommentSenseCodeFixTestBase<CommentSens
             }
             """;
 
-        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+        var expectedAfter = new DiagnosticResult("CSENSE003", DiagnosticSeverity.Warning).WithSpan(3, 26, 3, 57).WithArguments("p1");
+
+        await VerifyCodeFixAsync(source, fixedSource, configOptions: DisableUnrelatedRules, expectedDiagnosticsAfter: [expectedAfter]);
     }
 
     [Test]
