@@ -91,6 +91,7 @@ The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.analyze_internal`: (DEPRECATED) Boolean to enable analysis of internal members. Use `visibility_level = Internal` instead.
 *   `comment_sense.min_summary_length`: Integer for minimum length of summary text.
 *   `comment_sense.require_ending_punctuation`: Boolean to require summaries to end with punctuation.
+*   `comment_sense.require_capitalization`: Boolean to require documentation to start with a capital letter (if it starts with a letter).
 *   `comment_sense.similarity_threshold`: Double (0.0 to 1.0) for similarity analysis threshold.
 *   `comment_sense.allow_implicit_inheritdoc`: Boolean to allow skipping documentation for overrides/implementations.
 *   `comment_sense.exclude_constants`: Boolean to skip documentation requirements for constant fields.

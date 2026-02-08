@@ -53,6 +53,9 @@ internal static class QualityAnalyzer
             return true;
 
         var trimmed = content.Trim();
+        if (options.RequireCapitalization && StartsWithLowercase(trimmed))
+            return true;
+
         if (options.RequireEndingPunctuation && !HasEndingPunctuation(trimmed))
             return true;
 
@@ -84,6 +87,9 @@ internal static class QualityAnalyzer
         var lastChar = content[content.Length - 1];
         return PunctuationChars.Contains(lastChar);
     }
+
+    private static bool StartsWithLowercase(string content) =>
+        content.Length > 0 && char.IsLetter(content, 0) && char.IsLower(content, 0);
 
     public static double CalculateSimilarity(string source, string target)
     {

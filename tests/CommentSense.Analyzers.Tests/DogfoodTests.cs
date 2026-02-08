@@ -20,6 +20,7 @@ public partial class DogfoodTests
         {
             { "comment_sense.min_summary_length", "10" },
             { "comment_sense.require_ending_punctuation", "true" },
+            { "comment_sense.require_capitalization", "true" },
             { "comment_sense.similarity_threshold", "0.7" },
             { "comment_sense.ghost_references.mode", "strict" },
             { "comment_sense.ignore_system_exceptions", "true" },

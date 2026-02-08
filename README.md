@@ -26,7 +26,7 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Configurable:* Set `comment_sense.allow_implicit_inheritdoc = false` to require explicit documentation (e.g., `<inheritdoc />`) for all inheriting members.
 *   **CSENSE016**: Flags "low quality" documentation.
     *   *Default:* Flags empty content or content that just repeats the symbol name.
-    *   *Configurable:* Add custom terms, minimum length, punctuation requirements, and similarity thresholds.
+    *   *Configurable:* Add custom terms, minimum length, punctuation requirements, capitalization requirements, and similarity thresholds.
 *   **CSENSE007**: Validates that `cref` attributes in documentation point to valid symbols.
 *   **CSENSE022**: Flags stray `<summary>` tags that are nested within other tags or duplicated.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
@@ -105,6 +105,9 @@ comment_sense.min_summary_length = 10
 
 # Whether to require summaries to end with punctuation (. ! ?)
 comment_sense.require_ending_punctuation = true
+
+# Whether to require documentation to start with a capital letter (if it starts with a letter)
+comment_sense.require_capitalization = true
 
 # Threshold (0.0 to 1.0) for similarity between documentation and member name.
 # Setting this to 0.0 (default) disables similarity analysis.
