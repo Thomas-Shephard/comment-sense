@@ -593,7 +593,7 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
     [Test]
     public async Task InheritDocOnRefReturnPropertyMatchingValueReturnInterfaceReportsDiagnostic()
     {
-         // Issue 2: Property check for IsInheriting (Ref return).
+        // Issue 2: Property check for IsInheriting (Ref return).
         const string testCode = """
             /// <summary>Interface IBase.</summary>
             public interface IBase {

@@ -9,9 +9,9 @@ internal static class DocumentationSyntaxExtensions
     {
         return xmlNode switch
         {
-            XmlElementSyntax element           => element.StartTag.Name.LocalName.ValueText,
+            XmlElementSyntax element => element.StartTag.Name.LocalName.ValueText,
             XmlEmptyElementSyntax emptyElement => emptyElement.Name.LocalName.ValueText,
-            _                                  => string.Empty
+            _ => string.Empty
         };
     }
 
@@ -19,9 +19,9 @@ internal static class DocumentationSyntaxExtensions
     {
         var attributes = xmlNode switch
         {
-            XmlElementSyntax element           => element.StartTag.Attributes,
+            XmlElementSyntax element => element.StartTag.Attributes,
             XmlEmptyElementSyntax emptyElement => emptyElement.Attributes,
-            _                                  => default
+            _ => default
         };
 
         foreach (var attribute in attributes)
@@ -41,8 +41,8 @@ internal static class DocumentationSyntaxExtensions
         var content = xmlNode.Parent switch
         {
             DocumentationCommentTriviaSyntax doc => doc.Content,
-            XmlElementSyntax element             => element.Content,
-            _                                    => default
+            XmlElementSyntax element => element.Content,
+            _ => default
         };
 
         if (content == default)

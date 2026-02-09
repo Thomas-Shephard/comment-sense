@@ -7,10 +7,9 @@ namespace CommentSense.TestHelpers;
 
 public static class RoslynTestUtils
 {
-    private static readonly List<MetadataReference> CachedReferences = AppDomain.CurrentDomain.GetAssemblies()
+    private static readonly List<MetadataReference> CachedReferences = [.. AppDomain.CurrentDomain.GetAssemblies()
         .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
-        .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))
-        .ToList();
+        .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))];
 
     public static ISymbol GetSymbolFromSource(string source, string symbolName, bool parseDocumentation = false)
     {
@@ -48,12 +47,7 @@ public static class RoslynTestUtils
                                   FromClauseSyntax fromClause => fromClause.Identifier.ValueText == symbolName,
                                   LetClauseSyntax letClause => letClause.Identifier.ValueText == symbolName,
                                   _ => false
-                              });
-
-        if (declaration == null)
-        {
-            throw new InvalidOperationException($"Could not find declaration for '{symbolName}' in the provided source code.");
-        }
+                              }) ?? throw new InvalidOperationException($"Could not find declaration for '{symbolName}' in the provided source code.");
 
         var symbol = semanticModel.GetDeclaredSymbol(declaration);
 

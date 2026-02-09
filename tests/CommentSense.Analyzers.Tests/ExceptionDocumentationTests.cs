@@ -1167,6 +1167,6 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             compilerDiagnostics: CompilerDiagnostics.None,
             diagnosticOptions: [("CSENSE001", Microsoft.CodeAnalysis.ReportDiagnostic.Suppress)],
             referenceAssemblies: ReferenceAssemblies.Net.Net100,
-            solutionTransform: (solution, projectId) => solution.WithProjectMetadataReferences(projectId, Array.Empty<Microsoft.CodeAnalysis.MetadataReference>()));
+            solutionTransform: (solution, projectId) => solution.WithProjectMetadataReferences(projectId, []));
     }
 }

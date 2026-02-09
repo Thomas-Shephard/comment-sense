@@ -140,13 +140,13 @@ internal static class DocumentationLocationExtensions
             case XmlNameAttributeSyntax nameAttr when nameAttr.Name.LocalName.ValueText == name:
                 return nameAttr.Identifier.Identifier.ValueText == value;
             case XmlCrefAttributeSyntax crefAttr when crefAttr.Name.LocalName.ValueText == name:
-            {
-                string crefStr = crefAttr.Cref.ToString();
-                if (crefStr == value)
-                    return true;
+                {
+                    string crefStr = crefAttr.Cref.ToString();
+                    if (crefStr == value)
+                        return true;
 
-                return "T:" + crefStr == value;
-            }
+                    return "T:" + crefStr == value;
+                }
             case XmlTextAttributeSyntax textAttr when textAttr.Name.LocalName.ValueText == name:
                 return string.Concat(textAttr.TextTokens.Select(t => t.ValueText)) == value;
             default:

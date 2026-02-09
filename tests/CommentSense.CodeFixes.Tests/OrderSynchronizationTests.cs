@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using CommentSense.Analyzers;
 using CommentSense.CodeFixes.Logic;
 using CommentSense.TestHelpers;
@@ -61,7 +60,7 @@ public class OrderSynchronizationTests : CommentSenseCodeFixTestBase<CommentSens
         using var workspace = new AdhocWorkspace();
         var doc = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("Test.cs", code);
 
-        var result = OrderSynchronizationCodeFixProvider.ReorderTags(doc, root, docTrivia, "param", ImmutableArray<string>.Empty);
+        var result = OrderSynchronizationCodeFixProvider.ReorderTags(doc, root, docTrivia, "param", []);
 
         Assert.That(result, Is.EqualTo(doc));
     }

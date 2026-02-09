@@ -42,12 +42,12 @@ internal static class AnalyzerExtensions
 
                 break;
             case IPropertySymbol or IFieldSymbol:
-            {
-                if (symbol.ContainingType is { IsRecord: true } && symbol.DeclaringSyntaxReferences.Any(r => r.GetSyntax() is ParameterSyntax))
-                    return false;
+                {
+                    if (symbol.ContainingType is { IsRecord: true } && symbol.DeclaringSyntaxReferences.Any(r => r.GetSyntax() is ParameterSyntax))
+                        return false;
 
-                break;
-            }
+                    break;
+                }
         }
 
         return symbol.IsEffectivelyAccessible(visibilityLevel);
@@ -127,10 +127,10 @@ internal static class AnalyzerExtensions
 
         return symbol switch
         {
-            IEventSymbol eventSymbol when baseMember is IEventSymbol baseEvent             => SymbolEqualityComparer.Default.Equals(baseEvent.Type, eventSymbol.Type),
-            IMethodSymbol methodSymbol when baseMember is IMethodSymbol baseMethod         => MatchesMethod(methodSymbol, baseMethod),
+            IEventSymbol eventSymbol when baseMember is IEventSymbol baseEvent => SymbolEqualityComparer.Default.Equals(baseEvent.Type, eventSymbol.Type),
+            IMethodSymbol methodSymbol when baseMember is IMethodSymbol baseMethod => MatchesMethod(methodSymbol, baseMethod),
             IPropertySymbol propertySymbol when baseMember is IPropertySymbol baseProperty => MatchesProperty(propertySymbol, baseProperty),
-            _                                                                              => false
+            _ => false
         };
     }
 

@@ -47,7 +47,8 @@ public class KeywordToSeeLangwordCodeFixProvider : CodeFixProviderBase
 
     private static async Task<Document> ConvertKeywordToSeeLangwordAsync(Document document, TextSpan diagnosticSpan, string canonicalKeyword, CancellationToken cancellationToken)
     {
-        return await ReplaceTextWithNodesAsync(document, diagnosticSpan, (xmlText, tokenIndex, relativeStart, relativeEnd) => {
+        return await ReplaceTextWithNodesAsync(document, diagnosticSpan, (xmlText, tokenIndex, relativeStart, relativeEnd) =>
+        {
             var seeLangword = CreateSeeLangwordElement(canonicalKeyword);
             return CreateReplacementNodes(xmlText, tokenIndex, relativeStart, relativeEnd, seeLangword);
         }, cancellationToken).ConfigureAwait(false);
