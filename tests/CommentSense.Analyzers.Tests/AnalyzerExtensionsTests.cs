@@ -11,10 +11,9 @@ namespace CommentSense.Analyzers.Tests;
 
 public class AnalyzerExtensionsTests
 {
-    private static readonly List<MetadataReference> CachedReferences = AppDomain.CurrentDomain.GetAssemblies()
+    private static readonly List<MetadataReference> CachedReferences = [.. AppDomain.CurrentDomain.GetAssemblies()
         .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
-        .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))
-        .ToList();
+        .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))];
 
     [Test]
     public void GetPrimaryLocationReturnsLocationNoneForEmptyArray()

@@ -104,26 +104,26 @@ public class LowQualityDocumentationCodeFixProvider : CodeFixProviderBase
         switch (node)
         {
             case XmlTextSyntax or XmlCDataSectionSyntax:
-            {
-                if (!TryCapitalizeTokens(node.GetTextTokens(), out var newTokens, out shouldStop))
-                    return false;
-
-                newContent = content.Replace(node, node.WithTextTokens(newTokens));
-                return true;
-            }
-            case XmlElementSyntax xmlElement:
-            {
-                var newElementContent = CapitalizeFirstLetter(xmlElement.Content);
-                if (newElementContent != xmlElement.Content)
                 {
-                    newContent = content.Replace(xmlElement, xmlElement.WithContent(newElementContent));
+                    if (!TryCapitalizeTokens(node.GetTextTokens(), out var newTokens, out shouldStop))
+                        return false;
+
+                    newContent = content.Replace(node, node.WithTextTokens(newTokens));
                     return true;
                 }
+            case XmlElementSyntax xmlElement:
+                {
+                    var newElementContent = CapitalizeFirstLetter(xmlElement.Content);
+                    if (newElementContent != xmlElement.Content)
+                    {
+                        newContent = content.Replace(xmlElement, xmlElement.WithContent(newElementContent));
+                        return true;
+                    }
 
-                if (xmlElement.Content.HasAnyLetter())
-                    shouldStop = true;
-                break;
-            }
+                    if (xmlElement.Content.HasAnyLetter())
+                        shouldStop = true;
+                    break;
+                }
         }
 
         return false;

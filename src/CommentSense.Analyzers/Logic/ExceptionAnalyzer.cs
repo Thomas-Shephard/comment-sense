@@ -222,10 +222,10 @@ internal static class ExceptionAnalyzer
     {
         return node switch
         {
-            ThrowStatementSyntax ts                                       => GetExceptionsFromThrowStatement(ts, semanticModel, exceptionType, token),
-            ThrowExpressionSyntax te                                      => GetExceptionsFromThrowExpression(te, semanticModel, token),
-            InvocationExpressionSyntax invocation                         => GetExceptionsFromInvocationInternal(invocation, semanticModel, options, exceptionType, exceptionCache, token),
-            ObjectCreationExpressionSyntax objectCreation                 => GetExceptionsFromObjectCreation(objectCreation, semanticModel, options, exceptionCache, token),
+            ThrowStatementSyntax ts => GetExceptionsFromThrowStatement(ts, semanticModel, exceptionType, token),
+            ThrowExpressionSyntax te => GetExceptionsFromThrowExpression(te, semanticModel, token),
+            InvocationExpressionSyntax invocation => GetExceptionsFromInvocationInternal(invocation, semanticModel, options, exceptionType, exceptionCache, token),
+            ObjectCreationExpressionSyntax objectCreation => GetExceptionsFromObjectCreation(objectCreation, semanticModel, options, exceptionCache, token),
             ImplicitObjectCreationExpressionSyntax implicitObjectCreation => GetExceptionsFromImplicitObjectCreation(implicitObjectCreation, semanticModel, options, exceptionCache, token),
             ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions =>
                 GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache),
@@ -332,7 +332,7 @@ internal static class ExceptionAnalyzer
         if (symbol is not (IMethodSymbol or IPropertySymbol or IEventSymbol))
             return [];
 
-        return cache.GetOrAdd(symbol, s => GetExceptionsFromSymbolInternal(s, compilation).ToList());
+        return cache.GetOrAdd(symbol, s => [.. GetExceptionsFromSymbolInternal(s, compilation)]);
     }
 
     private static IEnumerable<ITypeSymbol> GetExceptionsFromSymbolInternal(ISymbol symbol, Compilation compilation)
@@ -352,8 +352,8 @@ internal static class ExceptionAnalyzer
         var name = invocation.Expression switch
         {
             MemberAccessExpressionSyntax ma => ma.Name.Identifier.ValueText,
-            IdentifierNameSyntax id         => id.Identifier.ValueText,
-            _                               => null
+            IdentifierNameSyntax id => id.Identifier.ValueText,
+            _ => null
         };
 
         if (name == null || !name.StartsWith("Throw", StringComparison.Ordinal))
@@ -376,23 +376,23 @@ internal static class ExceptionAnalyzer
             switch (current)
             {
                 case TryStatementSyntax tryStatement:
-                {
-                    // Only consider it caught if the throw is inside the 'try' block
-                    // (Exceptions thrown in catch/finally blocks escape this try statement)
-                    if (tryStatement.Block.Span.Contains(throwNode.Span))
                     {
-                        var isCaught = tryStatement.Catches
-                                                   .Where(c => c.Filter == null)
-                                                   .Any(c => c.Declaration == null ||
-                                                             (semanticModel.GetTypeInfo(c.Declaration.Type).Type is { } caughtType &&
-                                                              thrownType.InheritsFromOrEquals(caughtType)));
+                        // Only consider it caught if the throw is inside the 'try' block
+                        // (Exceptions thrown in catch/finally blocks escape this try statement)
+                        if (tryStatement.Block.Span.Contains(throwNode.Span))
+                        {
+                            var isCaught = tryStatement.Catches
+                                                       .Where(c => c.Filter == null)
+                                                       .Any(c => c.Declaration == null ||
+                                                                 (semanticModel.GetTypeInfo(c.Declaration.Type).Type is { } caughtType &&
+                                                                  thrownType.InheritsFromOrEquals(caughtType)));
 
-                        if (isCaught)
-                            return true;
+                            if (isCaught)
+                                return true;
+                        }
+
+                        break;
                     }
-
-                    break;
-                }
                 case MethodDeclarationSyntax:
                 case LocalFunctionStatementSyntax:
                 case ConstructorDeclarationSyntax:

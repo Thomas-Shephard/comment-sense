@@ -86,7 +86,7 @@ public class CodeFixProviderBaseTests
         const string source = "public class C {}";
         var tree = CSharpSyntaxTree.ParseText(source);
         var root = tree.GetRoot();
-        
+
         // Find the 'public' keyword
         var token = root.FindToken(0);
         var span = token.Span;
