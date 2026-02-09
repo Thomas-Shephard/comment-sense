@@ -25,6 +25,7 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Note:* By default, these members are allowed to implicitly inherit documentation.
     *   *Configurable:* Set `comment_sense.allow_implicit_inheritdoc = false` to require explicit documentation (e.g., `<inheritdoc />`) for all inheriting members.
 *   **CSENSE016**: Flags "low quality" documentation.
+    *   **Code Fix:** An automatic code fix is available to correct capitalization and add missing ending punctuation.
     *   *Default:* Flags empty content or content that just repeats the symbol name.
     *   *Configurable:* Add custom terms, minimum length, punctuation requirements, capitalization requirements, and similarity thresholds.
 *   **CSENSE007**: Validates that `cref` attributes in documentation point to valid symbols.

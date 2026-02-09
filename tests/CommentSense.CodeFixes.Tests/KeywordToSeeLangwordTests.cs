@@ -10,7 +10,8 @@ public class KeywordToSeeLangwordTests : CommentSenseCodeFixTestBase<CommentSens
     private static readonly Dictionary<string, string> DisableUnrelatedRules = new()
     {
         { "dotnet_diagnostic.CSENSE001.severity", "none" },
-        { "dotnet_diagnostic.CSENSE006.severity", "none" }
+        { "dotnet_diagnostic.CSENSE006.severity", "none" },
+        { "dotnet_diagnostic.CSENSE016.severity", "none" }
     };
 
     [Test]

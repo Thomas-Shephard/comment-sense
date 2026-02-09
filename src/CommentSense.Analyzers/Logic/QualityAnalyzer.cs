@@ -1,5 +1,6 @@
 using System.Xml.Linq;
 using CommentSense.Core;
+using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -7,33 +8,36 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class QualityAnalyzer
 {
-    private static readonly char[] PunctuationChars = ['.', '!', '?'];
-    private static readonly char[] TrimChars = [.. PunctuationChars, ':', ' '];
+    private static readonly char[] TrimChars = ['.', '!', '?', ':', ' '];
 
     public static bool IsLowQuality(XElement element, ISymbol symbol, ISymbol targetSymbol, CommentSenseOptions options)
     {
+        if (element.HasElements && string.IsNullOrWhiteSpace(element.Value))
+            return false;
+
+        var content = element.Value;
         var type = (symbol as IMethodSymbol)?.ReturnType ?? (symbol as IPropertySymbol)?.Type;
 
         // Properties use <value>, while methods and delegates use <returns>.
         // For delegates, symbol is the DelegateInvokeMethod (IMethodSymbol).
         var tagName = symbol is IPropertySymbol ? DocumentationTags.Value : DocumentationTags.Returns;
 
-        if (IsLowQualityForAnyFormat(element, symbol, options, tagName))
+        if (IsLowQualityForAnyFormat(content, symbol, options, tagName))
             return true;
 
-        if (!ReferenceEquals(symbol, targetSymbol) && IsLowQualityForAnyFormat(element, targetSymbol, options, tagName))
+        if (!ReferenceEquals(symbol, targetSymbol) && IsLowQualityForAnyFormat(content, targetSymbol, options, tagName))
             return true;
 
         if (type is null)
             return false;
 
         var typeName = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-        if (IsLowQuality(element, typeName, options, tagName: tagName))
+        if (IsLowQuality(content, typeName, options, tagName: tagName))
             return true;
 
         // Also check the simple name (e.g., "List" for "List<int>")
         var simpleTypeName = type.Name;
-        if (simpleTypeName != typeName && IsLowQuality(element, simpleTypeName, options, tagName: tagName))
+        if (simpleTypeName != typeName && IsLowQuality(content, simpleTypeName, options, tagName: tagName))
             return true;
 
         return false;
@@ -41,7 +45,7 @@ internal static class QualityAnalyzer
 
     public static bool IsLowQuality(XElement element, string symbolName, CommentSenseOptions options, string? tagName = null)
     {
-        if (element.HasElements)
+        if (element.HasElements && string.IsNullOrWhiteSpace(element.Value))
             return false;
 
         return IsLowQuality(element.Value, symbolName, options, tagName);
@@ -52,13 +56,13 @@ internal static class QualityAnalyzer
         if (content is null || string.IsNullOrWhiteSpace(content))
             return true;
 
+        if (options.RequireCapitalization && DocumentationQualityExtensions.StartsWithLowercase(content))
+            return true;
+
+        if (options.RequireEndingPunctuation && !DocumentationQualityExtensions.EndsWithPunctuation(content, trimEnd: true))
+            return true;
+
         var trimmed = content.Trim();
-        if (options.RequireCapitalization && StartsWithLowercase(trimmed))
-            return true;
-
-        if (options.RequireEndingPunctuation && !HasEndingPunctuation(trimmed))
-            return true;
-
         var normalized = trimmed.TrimEnd(TrimChars);
         if (string.IsNullOrEmpty(normalized))
             return true;
@@ -74,22 +78,21 @@ internal static class QualityAnalyzer
 
     public static bool IsLowQualityForAnyFormat(XElement element, ISymbol symbol, CommentSenseOptions options, string? tagName = null)
     {
+        if (element.HasElements && string.IsNullOrWhiteSpace(element.Value))
+            return false;
+
+        return IsLowQualityForAnyFormat(element.Value, symbol, options, tagName);
+    }
+
+    public static bool IsLowQualityForAnyFormat(string content, ISymbol symbol, CommentSenseOptions options, string? tagName = null)
+    {
         var displayName = symbol.GetDisplayName();
-        if (IsLowQuality(element, displayName, options, tagName: tagName))
+        if (IsLowQuality(content, displayName, options, tagName: tagName))
             return true;
 
         var minimallyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-        return minimallyQualifiedName != displayName && IsLowQuality(element, minimallyQualifiedName, options, tagName: tagName);
+        return minimallyQualifiedName != displayName && IsLowQuality(content, minimallyQualifiedName, options, tagName: tagName);
     }
-
-    private static bool HasEndingPunctuation(string content)
-    {
-        var lastChar = content[content.Length - 1];
-        return PunctuationChars.Contains(lastChar);
-    }
-
-    private static bool StartsWithLowercase(string content) =>
-        content.Length > 0 && char.IsLetter(content, 0) && char.IsLower(content, 0);
 
     public static double CalculateSimilarity(string source, string target)
     {
