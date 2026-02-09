@@ -79,4 +79,7 @@
   <data name="SortTagsTitle" xml:space="preserve">
     <value>Sort &lt;{0}&gt; tags</value>
   </data>
+  <data name="ImproveDocumentationQualityTitle" xml:space="preserve">
+    <value>Improve &lt;{0}&gt; documentation quality</value>
+  </data>
 </root>

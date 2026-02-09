@@ -59,4 +59,18 @@ public abstract class CommentSenseCodeFixTestBase<TAnalyzer, TCodeFix>
 
         await tester.RunAsync();
     }
+
+    protected static async Task VerifyNoCodeFixAsync(string source, IDictionary<string, string>? configOptions = null, DocumentationMode documentationMode = DocumentationMode.Parse, IEnumerable<DiagnosticResult>? expectedDiagnostics = null)
+    {
+        var tester = new CSharpCodeFixTest<TAnalyzer, TCodeFix, NUnitVerifier>
+        {
+            TestCode = source.NormalizeLineEndings(),
+            FixedCode = source.NormalizeLineEndings(),
+            MarkupOptions = MarkupOptions.UseFirstDescriptor
+        };
+
+        tester.ApplyCommonConfiguration(configOptions, documentationMode, expectedDiagnostics);
+
+        await tester.RunAsync();
+    }
 }
