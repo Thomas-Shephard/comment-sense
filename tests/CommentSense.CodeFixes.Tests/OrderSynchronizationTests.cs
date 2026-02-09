@@ -1,6 +1,7 @@
 using CommentSense.Analyzers;
 using CommentSense.CodeFixes.Logic;
 using CommentSense.TestHelpers;
+using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -18,15 +19,15 @@ public class OrderSynchronizationTests : CommentSenseCodeFixTestBase<CommentSens
     };
 
     [Test]
-    public void GetExpectedOrderReturnsEmptyForUnsupportedTagName()
+    public void GetExpectedMemberNamesReturnsEmptyForUnsupportedTagName()
     {
         // ReSharper disable once NullableWarningSuppressionIsUsed
-        var result = OrderSynchronizationCodeFixProvider.GetExpectedOrder(null!, "invalid");
+        var result = SymbolExtensions.GetExpectedMemberNames(null!, "invalid");
         Assert.That(result.IsEmpty, Is.True);
     }
 
     [Test]
-    public void GetExpectedOrderReturnsEmptyForUnsupportedSymbol()
+    public void GetExpectedMemberNamesReturnsEmptyForUnsupportedSymbol()
     {
         var syntaxTree = CSharpSyntaxTree.ParseText("class C { int F; }");
         var compilation = CSharpCompilation.Create("Test", [syntaxTree]);
@@ -35,10 +36,10 @@ public class OrderSynchronizationTests : CommentSenseCodeFixTestBase<CommentSens
         var semanticModel = compilation.GetSemanticModel(syntaxTree);
         var symbol = semanticModel.GetDeclaredSymbol(fieldDecl.Declaration.Variables.First()) ?? throw new InvalidOperationException();
 
-        var resultParam = OrderSynchronizationCodeFixProvider.GetExpectedOrder(symbol, "param");
+        var resultParam = SymbolExtensions.GetExpectedMemberNames(symbol, "param");
         Assert.That(resultParam.IsEmpty, Is.True);
 
-        var resultTypeParam = OrderSynchronizationCodeFixProvider.GetExpectedOrder(symbol, "typeparam");
+        var resultTypeParam = SymbolExtensions.GetExpectedMemberNames(symbol, "typeparam");
         Assert.That(resultTypeParam.IsEmpty, Is.True);
     }
 

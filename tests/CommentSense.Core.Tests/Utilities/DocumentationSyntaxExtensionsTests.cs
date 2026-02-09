@@ -168,4 +168,127 @@ public class DocumentationSyntaxExtensionsTests
         var node = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("summary"));
         Assert.That(node.GetAssociatedWhitespaceToRemove(), Is.Null);
     }
+
+    [Test]
+    public void GetIndentationWithWhitespaceReturnsIndentation()
+    {
+        var tree = CSharpSyntaxTree.ParseText("    public class C {}");
+        var member = tree.GetRoot().DescendantNodes().OfType<MemberDeclarationSyntax>().First();
+        Assert.That(member.GetIndentation(), Is.EqualTo("    "));
+    }
+
+    [Test]
+    public void GetIndentationNoWhitespaceReturnsEmpty()
+    {
+        var tree = CSharpSyntaxTree.ParseText("public class C {}");
+        var member = tree.GetRoot().DescendantNodes().OfType<MemberDeclarationSyntax>().First();
+        Assert.That(member.GetIndentation(), Is.EqualTo(string.Empty));
+    }
+
+    [Test]
+    public void GetNewLineWithWindowsLineEndingReturnsWindowsLineEnding()
+    {
+        var tree = CSharpSyntaxTree.ParseText("public class C {}\r\n");
+        var node = tree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().First();
+        Assert.That(node.GetNewLine(), Is.EqualTo("\r\n"));
+    }
+
+    [Test]
+    public void GetNewLineWithUnixLineEndingReturnsUnixLineEnding()
+    {
+        var tree = CSharpSyntaxTree.ParseText("public class C {}\n");
+        var node = tree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().First();
+        Assert.That(node.GetNewLine(), Is.EqualTo("\n"));
+    }
+
+    [Test]
+    public void GetNewLineNoLineEndingReturnsEnvironmentNewLine()
+    {
+        var tree = CSharpSyntaxTree.ParseText("public class C {}");
+        var node = tree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().First();
+        Assert.That(node.GetNewLine(), Is.EqualTo(Environment.NewLine));
+    }
+
+    [Test]
+    public void GetNewLineFromTriviaDetectsWindowsNewLine()
+    {
+        var eol = SyntaxFactory.EndOfLine("\r\n");
+        var text = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral(SyntaxTriviaList.Empty, "///", "///", SyntaxTriviaList.Create(eol))));
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia, SyntaxFactory.List<XmlNodeSyntax>([text]));
+        Assert.That(trivia.GetNewLine(), Is.EqualTo("\r\n"));
+    }
+
+    [Test]
+    public void GetNewLineFromTriviaDetectsUnixNewLine()
+    {
+        var eol = SyntaxFactory.EndOfLine("\n");
+        var text = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral(SyntaxTriviaList.Empty, "///", "///", SyntaxTriviaList.Create(eol))));
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia, SyntaxFactory.List<XmlNodeSyntax>([text]));
+        Assert.That(trivia.GetNewLine(), Is.EqualTo("\n"));
+    }
+
+    [Test]
+    public void GetNewLineFromTriviaDetectsLiteralWindowsNewLineInText()
+    {
+        var crlf = "\r\n";
+        var text = "/// line1" + crlf + "/// line2";
+        var token = SyntaxFactory.Token(SyntaxTriviaList.Empty, SyntaxKind.XmlTextLiteralToken, text, text, SyntaxTriviaList.Empty);
+        var xmlText = SyntaxFactory.XmlText(SyntaxFactory.TokenList(token));
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia, SyntaxFactory.List<XmlNodeSyntax>([xmlText]));
+        Assert.That(trivia.GetNewLine(), Is.EqualTo("\r\n"));
+    }
+
+    [Test]
+    public void GetNewLineFromTriviaDetectsLiteralUnixNewLineInText()
+    {
+        var text = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral(SyntaxTriviaList.Empty, "/// line1\n/// line2", "/// line1\n/// line2", SyntaxTriviaList.Empty)));
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia, SyntaxFactory.List<XmlNodeSyntax>([text]));
+        // Fallback to manual check if firstNewLine is empty.
+        Assert.That(trivia.GetNewLine(), Is.EqualTo("\n"));
+    }
+
+    [Test]
+    public void GetNewLineFromTriviaFallsBackToDocumentNewLine()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia);
+        Assert.That(trivia.GetNewLine(), Is.EqualTo(Environment.NewLine));
+    }
+
+    [Test]
+    public void GetPrefixSingleLineDocumentationReturnsTripleSlash()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/// <summary/>\npublic class C {}");
+        var trivia = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<DocumentationCommentTriviaSyntax>().First();
+        Assert.That(trivia.GetPrefix(), Is.EqualTo("/// "));
+    }
+
+    [Test]
+    public void GetPrefixMultiLineDocumentationReturnsStar()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/** <summary/> */\npublic class C {}");
+        var trivia = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<DocumentationCommentTriviaSyntax>().First();
+        Assert.That(trivia.GetPrefix(), Is.EqualTo(" * "));
+    }
+
+    [Test]
+    public void CreateXmlTextReturnsCorrectText()
+    {
+        var text = "test content";
+        var node = DocumentationSyntaxExtensions.CreateXmlText(text);
+        Assert.That(node.ToString(), Is.EqualTo(text));
+    }
+
+    [Test]
+    public void CreateXmlElementNoNameReturnsElement()
+    {
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("summary", content: "TODO");
+        Assert.That(node.ToString(), Is.EqualTo("<summary>TODO</summary>"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithNameReturnsElementWithAttribute()
+    {
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("param", name: "x", content: "TODO");
+        Assert.That(node.ToString(), Is.EqualTo("<param name=\"x\">TODO</param>"));
+    }
 }

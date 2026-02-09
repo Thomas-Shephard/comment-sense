@@ -291,6 +291,30 @@ public class SymbolExtensionsTests
     }
 
     [Test]
+    public void GetExpectedMemberNamesParamReturnsParameterNames()
+    {
+        var symbol = GetSymbol("public class C { void M(int p1, int p2) {} }", "M");
+        var names = symbol.GetExpectedMemberNames(DocumentationTags.Param);
+        Assert.That(names, Is.EquivalentTo((string[])["p1", "p2"]));
+    }
+
+    [Test]
+    public void GetExpectedMemberNamesTypeParamReturnsTypeParameterNames()
+    {
+        var symbol = GetSymbol("public class C { void M<T1, T2>() {} }", "M");
+        var names = symbol.GetExpectedMemberNames(DocumentationTags.TypeParam);
+        Assert.That(names, Is.EquivalentTo((string[])["T1", "T2"]));
+    }
+
+    [Test]
+    public void GetExpectedMemberNamesUnsupportedTagReturnsEmpty()
+    {
+        var symbol = GetSymbol("public class C { void M(int p1) {} }", "M");
+        var names = symbol.GetExpectedMemberNames("unsupported");
+        Assert.That(names.IsEmpty, Is.True);
+    }
+
+    [Test]
     public void GetPrimaryConstructorNonClassOrStructReturnsNull()
     {
         var tree = CSharpSyntaxTree.ParseText("enum E { A }");

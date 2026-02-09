@@ -78,25 +78,9 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
         if (symbol == null) return document;
 
         var tagName = xmlNode.GetTagName();
-        var expectedOrder = GetExpectedOrder(symbol, tagName);
+        var expectedOrder = symbol.GetExpectedMemberNames(tagName);
 
         return ReorderTags(document, root, docTrivia, tagName, expectedOrder);
-    }
-
-    internal static ImmutableArray<string> GetExpectedOrder(ISymbol symbol, string tagName)
-    {
-        if (tagName == DocumentationTags.Param)
-        {
-            var parameters = symbol.GetParameters();
-            if (!parameters.IsEmpty) return [.. parameters.Select(p => p.Name)];
-        }
-        else if (tagName == DocumentationTags.TypeParam)
-        {
-            var typeParameters = symbol.GetTypeParameters();
-            if (!typeParameters.IsEmpty) return [.. typeParameters.Select(p => p.Name)];
-        }
-
-        return [];
     }
 
     internal static Document ReorderTags(Document document, SyntaxNode root, DocumentationCommentTriviaSyntax docTrivia, string tagName, ImmutableArray<string> expectedOrder)

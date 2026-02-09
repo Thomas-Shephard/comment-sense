@@ -18,10 +18,12 @@ For CommentSense to analyze your documentation, your project must have XML docum
 
 ### General Documentation
 *   **CSENSE001**: Ensures public members have XML documentation (e.g., `<summary>`, `<inheritdoc />`, or other content tags).
+    *   **Code Fix**: An automatic code fix is available to generate a `<summary>` placeholder. This fix supports **Fix All** in document, project, or solution.
     *   *Note:* Using `<inheritdoc />` (without a `cref`) on a member that does not override or implement a base member will trigger this warning.
     *   *Default:* Analyzes members according to the `visibility_level` (default: `protected`).
     *   *Configurable:* Set the visibility threshold using `comment_sense.visibility_level`.
 *   **CSENSE018**: Warns when a member that overrides or implements a base member is missing explicit documentation (when configured to require it).
+    *   **Code Fix**: An automatic code fix is available to insert an `<inheritdoc />` tag. This fix supports **Fix All** in document, project, or solution.
     *   *Note:* By default, these members are allowed to implicitly inherit documentation.
     *   *Configurable:* Set `comment_sense.allow_implicit_inheritdoc = false` to require explicit documentation (e.g., `<inheritdoc />`) for all inheriting members.
 *   **CSENSE016**: Flags "low quality" documentation.
@@ -38,6 +40,7 @@ For CommentSense to analyze your documentation, your project must have XML docum
 ### Parameters & Type Parameters
 Ensures parameters and type parameters are correctly documented and referenced.
 *   **CSENSE002 / CSENSE004**: Flags parameters or type parameters defined in code but missing from documentation.
+    *   **Code Fix**: An automatic code fix is available to generate missing `<param>` or `<typeparam>` tags with placeholders. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE003 / CSENSE005**: Flags "stray" tags referring to parameters that do not exist.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE008 / CSENSE010**: Enforces that the order of parameter tags in documentation matches the method signature.
@@ -51,6 +54,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
 
 ### Return Values
 *   **CSENSE006**: Requires a `<returns>` tag for members that return a value (i.e., non-`void`, non-`Task`, non-`ValueTask`).
+    *   **Code Fix**: An automatic code fix is available to generate a missing `<returns>` tag with a placeholder. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE013**: Flags stray or duplicate `<returns>` tags on members that do not produce a documented return value (including `void`, `Task`, and `ValueTask` members), as well as on properties and indexers.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 ### Exceptions
@@ -64,6 +68,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
 
 ### Properties
 *   **CSENSE014**: Requires a `<value>` tag for properties.
+    *   **Code Fix**: An automatic code fix is available to generate a missing `<value>` tag with a placeholder. This fix supports **Fix All** in document, project, or solution.
     *   *Default:* Disabled.
 *   **CSENSE015**: Flags stray or duplicate `<value>` tags.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.

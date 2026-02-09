@@ -107,4 +107,14 @@ internal static class SymbolExtensions
 
         return false;
     }
+
+    public static ImmutableArray<string> GetExpectedMemberNames(this ISymbol symbol, string tagName)
+    {
+        return tagName switch
+        {
+            DocumentationTags.Param => [.. symbol.GetParameters().Select(p => p.Name)],
+            DocumentationTags.TypeParam => [.. symbol.GetTypeParameters().Select(p => p.Name)],
+            _ => []
+        };
+    }
 }

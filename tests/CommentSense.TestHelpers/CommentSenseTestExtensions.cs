@@ -24,18 +24,15 @@ public static class CommentSenseTestExtensions
 
             if (project.ParseOptions is CSharpParseOptions parseOptions)
             {
-                return solution.WithProjectParseOptions(projectId, parseOptions.WithDocumentationMode(documentationMode));
+                solution = solution.WithProjectParseOptions(projectId, parseOptions.WithDocumentationMode(documentationMode));
             }
 
             return solution;
         });
 
-        if (configOptions != null)
-        {
-            var options = EditorConfigHeader.Concat(configOptions.Select(kv => $"{kv.Key} = {kv.Value}"));
-            var configText = string.Join(Environment.NewLine, options);
-            test.TestState.AnalyzerConfigFiles.Add(("/.editorconfig", configText));
-        }
+        var options = EditorConfigHeader.Concat(configOptions?.Select(kv => $"{kv.Key} = {kv.Value}") ?? []);
+        var configText = string.Join(Environment.NewLine, options);
+        test.TestState.AnalyzerConfigFiles.Add(("/.editorconfig", configText));
 
         if (expectedDiagnostics != null)
         {
