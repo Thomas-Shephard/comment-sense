@@ -608,10 +608,9 @@ public class RedundancyRemovalTests : CommentSenseCodeFixTestBase<CommentSenseAn
     public void GetFixInternalAsyncWithInvalidScopeReturnsNull()
     {
         const FixAllScope invalidScope = (FixAllScope)(-1);
-
+        var provider = (CodeFixProviderBase.FixAllProviderBase)new RedundancyRemovalCodeFixProvider().GetFixAllProvider();
         // ReSharper disable once NullableWarningSuppressionIsUsed
-        var result = RedundancyRemovalCodeFixProvider.RedundancyRemovalFixAllProvider.GetFixInternalAsync(invalidScope, null!);
-
+        var result = provider.GetFixInternalAsync(invalidScope, null!);
         Assert.That(result, Is.Null);
     }
 }

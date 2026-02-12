@@ -19,4 +19,19 @@ internal static class DocumentationTags
     public const string ParamRef = "paramref";
     public const string TypeParamRef = "typeparamref";
     public const string See = "see";
+
+    public static readonly IReadOnlyDictionary<string, int> TagOrder = new Dictionary<string, int>(StringComparer.Ordinal)
+    {
+        [InheritDoc] = -1,
+        [Summary] = 0,
+        [TypeParam] = 1,
+        [Param] = 2,
+        [Returns] = 3,
+        [Value] = 3,
+        [Exception] = 4,
+        [Remarks] = 5,
+        [Example] = 6,
+        [SeeAlso] = 7,
+        [Permission] = 8
+    };
 }

@@ -32,60 +32,34 @@ public class RedundancyRemovalCodeFixProvider : CodeFixProviderBase
     /// <inheritdoc />
     public override FixAllProvider GetFixAllProvider() => new RedundancyRemovalFixAllProvider();
 
-    internal sealed class RedundancyRemovalFixAllProvider : FixAllProvider
+    private sealed class RedundancyRemovalFixAllProvider() : FixAllProviderBase(Resources.RemoveAllRedundantTitle)
     {
-        public override Task<CodeAction?> GetFixAsync(FixAllContext fixAllContext)
+        internal override async Task<Document> FixDocumentInternalAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
         {
-            return Task.FromResult(GetFixInternalAsync(fixAllContext.Scope, fixAllContext));
-        }
+            if (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is not { } root)
+                return document;
 
-        internal static CodeAction? GetFixInternalAsync(FixAllScope scope, FixAllContext fixAllContext)
-        {
-            return scope switch
+            var nodesToRemove = new HashSet<XmlNodeSyntax>();
+            var xmlNodes = diagnostics
+                .Select(d => FindXmlNode(root, d.Location.SourceSpan))
+                .OfType<XmlNodeSyntax>();
+
+            foreach (var xmlNode in xmlNodes)
             {
-                FixAllScope.Document when fixAllContext.Document != null => CodeAction.Create(Resources.RemoveAllRedundantTitle, ct => FixDocumentAsync(fixAllContext.Document, fixAllContext, ct)),
-                FixAllScope.Project => CodeAction.Create(Resources.RemoveAllRedundantTitle, ct => FixProjectAsync(fixAllContext.Project, fixAllContext, ct)),
-                FixAllScope.Solution => CodeAction.Create(Resources.RemoveAllRedundantTitle, ct => FixSolutionAsync(fixAllContext.Solution, fixAllContext, ct)),
-                _ => null
-            };
-        }
+                nodesToRemove.Add(xmlNode);
 
-        private static async Task<Document> FixDocumentAsync(Document document, FixAllContext fixAllContext, CancellationToken cancellationToken)
-        {
-            var diagnostics = await fixAllContext.GetDocumentDiagnosticsAsync(document).ConfigureAwait(false);
-            return diagnostics.IsEmpty
-                ? document
-                : await FixDocumentInternalAsync(document, diagnostics, cancellationToken).ConfigureAwait(false);
-        }
-
-        private static async Task<Solution> FixProjectAsync(Project project, FixAllContext fixAllContext, CancellationToken cancellationToken)
-        {
-            var newSolution = project.Solution;
-
-            foreach (var document in project.Documents)
-            {
-                var diagnostics = await fixAllContext.GetDocumentDiagnosticsAsync(document).ConfigureAwait(false);
-                if (diagnostics.IsEmpty) continue;
-
-                var fixedDocument = await FixDocumentInternalAsync(document, diagnostics, cancellationToken).ConfigureAwait(false);
-                if (await fixedDocument.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is { } fixedRoot)
-                    newSolution = newSolution.WithDocumentSyntaxRoot(document.Id, fixedRoot);
+                if (xmlNode.GetAssociatedWhitespaceToRemove() is { } whitespace)
+                    nodesToRemove.Add(whitespace);
             }
 
-            return newSolution;
-        }
+            if (nodesToRemove.Count == 0)
+                return document;
 
-        private static async Task<Solution> FixSolutionAsync(Solution solution, FixAllContext fixAllContext, CancellationToken cancellationToken)
-        {
-            var newSolution = solution;
+            var newRoot = root.RemoveNodes(nodesToRemove, SyntaxRemoveOptions.KeepNoTrivia);
 
-            foreach (var projectId in solution.Projects.Select(p => p.Id))
-            {
-                if (newSolution.GetProject(projectId) is { } currentProject)
-                    newSolution = await FixProjectAsync(currentProject, fixAllContext, cancellationToken).ConfigureAwait(false);
-            }
-
-            return newSolution;
+            return newRoot is not null
+                ? document.WithSyntaxRoot(newRoot)
+                : document;
         }
     }
 
@@ -112,37 +86,15 @@ public class RedundancyRemovalCodeFixProvider : CodeFixProviderBase
             context.RegisterCodeFix(
                 CodeAction.Create(
                     title: title,
-                    createChangedDocument: c => FixDocumentInternalAsync(context.Document, [diagnostic], c),
+                    createChangedDocument: c => FixDocumentAsync(context.Document, diagnostic, c),
                     equivalenceKey: nameof(RedundancyRemovalCodeFixProvider)),
                 diagnostic);
         }
     }
 
-    private static async Task<Document> FixDocumentInternalAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
+    private static async Task<Document> FixDocumentAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
     {
-        if (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is not { } root)
-            return document;
-
-        var nodesToRemove = new HashSet<XmlNodeSyntax>();
-        var xmlNodes = diagnostics
-            .Select(d => FindXmlNode(root, d.Location.SourceSpan))
-            .OfType<XmlNodeSyntax>();
-
-        foreach (var xmlNode in xmlNodes)
-        {
-            nodesToRemove.Add(xmlNode);
-
-            if (xmlNode.GetAssociatedWhitespaceToRemove() is { } whitespace)
-                nodesToRemove.Add(whitespace);
-        }
-
-        if (nodesToRemove.Count == 0)
-            return document;
-
-        var newRoot = root.RemoveNodes(nodesToRemove, SyntaxRemoveOptions.KeepNoTrivia);
-
-        return newRoot is not null
-            ? document.WithSyntaxRoot(newRoot)
-            : document;
+        var fixAllProvider = new RedundancyRemovalFixAllProvider();
+        return await fixAllProvider.FixDocumentInternalAsync(document, [diagnostic], cancellationToken).ConfigureAwait(false);
     }
 }

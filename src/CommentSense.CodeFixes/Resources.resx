@@ -82,4 +82,19 @@
   <data name="ImproveDocumentationQualityTitle" xml:space="preserve">
     <value>Improve &lt;{0}&gt; documentation quality</value>
   </data>
+  <data name="AddMissingTagTitle" xml:space="preserve">
+    <value>Add missing &lt;{0}&gt;{1}&lt;/{0}&gt;</value>
+  </data>
+  <data name="AddMissingNamedTagTitle" xml:space="preserve">
+    <value>Add missing &lt;{0} name="{1}"&gt;{2}&lt;/{0}&gt;</value>
+  </data>
+  <data name="DocumentationPlaceholder" xml:space="preserve">
+    <value>TODO</value>
+  </data>
+  <data name="AddMissingTagsTitle" xml:space="preserve">
+    <value>Add all missing documentation tags</value>
+  </data>
+  <data name="AddInheritDocTitle" xml:space="preserve">
+    <value>Add &lt;inheritdoc /&gt;</value>
+  </data>
 </root>

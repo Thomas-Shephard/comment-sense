@@ -1,8 +1,10 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using System.Collections.Immutable;
 
 namespace CommentSense.CodeFixes;
 
@@ -13,6 +15,65 @@ public abstract class CodeFixProviderBase : CodeFixProvider
 {
     /// <inheritdoc />
     public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
+
+    internal abstract class FixAllProviderBase(string title) : FixAllProvider
+    {
+        public override Task<CodeAction?> GetFixAsync(FixAllContext fixAllContext)
+        {
+            return Task.FromResult(GetFixInternalAsync(fixAllContext.Scope, fixAllContext));
+        }
+
+        internal CodeAction? GetFixInternalAsync(FixAllScope scope, FixAllContext fixAllContext)
+        {
+            return scope switch
+            {
+                FixAllScope.Document when fixAllContext.Document != null => CodeAction.Create(title, ct => FixDocumentAsync(fixAllContext.Document, fixAllContext, ct)),
+                FixAllScope.Project => CodeAction.Create(title, ct => FixProjectAsync(fixAllContext.Project, fixAllContext, ct)),
+                FixAllScope.Solution => CodeAction.Create(title, ct => FixSolutionAsync(fixAllContext.Solution, fixAllContext, ct)),
+                _ => null
+            };
+        }
+
+        private async Task<Document> FixDocumentAsync(Document document, FixAllContext fixAllContext, CancellationToken cancellationToken)
+        {
+            var diagnostics = await fixAllContext.GetDocumentDiagnosticsAsync(document).ConfigureAwait(false);
+            return diagnostics.IsEmpty
+                ? document
+                : await FixDocumentInternalAsync(document, diagnostics, cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task<Solution> FixProjectAsync(Project project, FixAllContext fixAllContext, CancellationToken cancellationToken)
+        {
+            var newSolution = project.Solution;
+
+            foreach (var document in project.Documents)
+            {
+                var diagnostics = await fixAllContext.GetDocumentDiagnosticsAsync(document).ConfigureAwait(false);
+                if (diagnostics.IsEmpty) continue;
+
+                var fixedDocument = await FixDocumentInternalAsync(document, diagnostics, cancellationToken).ConfigureAwait(false);
+                if (await fixedDocument.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is { } fixedRoot)
+                    newSolution = newSolution.WithDocumentSyntaxRoot(document.Id, fixedRoot);
+            }
+
+            return newSolution;
+        }
+
+        private async Task<Solution> FixSolutionAsync(Solution solution, FixAllContext fixAllContext, CancellationToken cancellationToken)
+        {
+            var newSolution = solution;
+
+            foreach (var project in solution.Projects)
+            {
+                if (newSolution.GetProject(project.Id) is { } currentProject)
+                    newSolution = await FixProjectAsync(currentProject, fixAllContext, cancellationToken).ConfigureAwait(false);
+            }
+
+            return newSolution;
+        }
+
+        internal abstract Task<Document> FixDocumentInternalAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken);
+    }
 
     /// <summary>
     /// Finds the <see cref="XmlTextSyntax"/> at the specified <paramref name="span"/>, with robustness for <paramref name="span"/> shifts.
@@ -90,9 +151,9 @@ public abstract class CodeFixProviderBase : CodeFixProvider
         var parent = xmlText.Parent;
         if (parent == null) return document;
 
-        SyntaxNode? updatedParent = parent switch
+        var updatedParent = parent switch
         {
-            XmlElementSyntax xmlElement => xmlElement.WithContent(xmlElement.Content.ReplaceRange(xmlText, replacementNodes)),
+            XmlElementSyntax xmlElement => (SyntaxNode)xmlElement.WithContent(xmlElement.Content.ReplaceRange(xmlText, replacementNodes)),
             DocumentationCommentTriviaSyntax docTriviaContent => docTriviaContent.WithContent(docTriviaContent.Content.ReplaceRange(xmlText, replacementNodes)),
             _ => null
         };

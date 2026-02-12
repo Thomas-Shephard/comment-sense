@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CommentSense.Core.Utilities;
@@ -103,5 +104,71 @@ internal static class DocumentationSyntaxExtensions
         var targetNode = docTrivia != null ? docTrivia.ParentTrivia.Token.Parent : node;
         return targetNode?.FirstAncestorOrSelf<MemberDeclarationSyntax>();
     }
-}
 
+    public static string GetIndentation(this MemberDeclarationSyntax member)
+    {
+        var leadingTrivia = member.GetLeadingTrivia();
+        var lastWhitespace = leadingTrivia.LastOrDefault(t => t.IsKind(SyntaxKind.WhitespaceTrivia));
+        return lastWhitespace.ToString();
+    }
+
+    public static string GetNewLine(this SyntaxNode node)
+    {
+        var firstNewLine = node.SyntaxTree.GetRoot().DescendantTrivia().FirstOrDefault(t => t.IsKind(SyntaxKind.EndOfLineTrivia)).ToString();
+        return !string.IsNullOrEmpty(firstNewLine) ? firstNewLine : Environment.NewLine;
+    }
+
+    public static string GetNewLine(this DocumentationCommentTriviaSyntax docTrivia)
+    {
+        var firstNewLineTrivia = docTrivia.DescendantTrivia().FirstOrDefault(t => t.IsKind(SyntaxKind.EndOfLineTrivia));
+        if (firstNewLineTrivia.IsKind(SyntaxKind.EndOfLineTrivia))
+            return firstNewLineTrivia.ToString();
+
+        var xmlText = docTrivia.DescendantNodes().OfType<XmlTextSyntax>().FirstOrDefault();
+        if (xmlText != null)
+        {
+            var text = xmlText.ToFullString();
+            if (text.Contains("\r\n")) return "\r\n";
+            if (text.Contains("\n")) return "\n";
+        }
+
+        return ((SyntaxNode)docTrivia).GetNewLine();
+    }
+
+    public static string GetPrefix(this DocumentationCommentTriviaSyntax docTrivia)
+    {
+        return docTrivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia) ? " * " : "/// ";
+    }
+
+    public static XmlTextSyntax CreateXmlText(string text)
+    {
+        return SyntaxFactory.XmlText(SyntaxFactory.TokenList(
+            SyntaxFactory.XmlTextLiteral(
+                SyntaxTriviaList.Empty,
+                text,
+                text,
+                SyntaxTriviaList.Empty)));
+    }
+
+    public static XmlElementSyntax CreateXmlElement(string tagName, string? name = null, string content = "")
+    {
+        var nameAttribute = name != null
+            ? SyntaxFactory.XmlNameAttribute(
+                SyntaxFactory.XmlName(SyntaxFactory.Identifier(SyntaxFactory.TriviaList(SyntaxFactory.Whitespace(" ")), DocumentationAttributes.Name, SyntaxTriviaList.Empty)),
+                SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+                SyntaxFactory.IdentifierName(name),
+                SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken))
+            : null;
+
+        var startTag = SyntaxFactory.XmlElementStartTag(SyntaxFactory.XmlName(tagName));
+        if (nameAttribute != null)
+        {
+            startTag = startTag.AddAttributes(nameAttribute);
+        }
+
+        return SyntaxFactory.XmlElement(
+            startTag,
+            SyntaxFactory.XmlElementEndTag(SyntaxFactory.XmlName(tagName)))
+            .WithContent(SyntaxFactory.SingletonList<XmlNodeSyntax>(CreateXmlText(content)));
+    }
+}
