@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using CommentSense.Core;
@@ -37,7 +38,10 @@ internal static class ExceptionAnalyzer
         foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) && !IsIgnored(t, options)))
         {
             var location = symbol.Locations.GetPrimaryLocation();
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+            var displayName = thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            var crefValue = thrownType.ToDisplayString(FullNameFormat).Replace('<', '{').Replace('>', '}');
+            var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.CrefProperty, crefValue);
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, properties, displayName));
         }
     }
 
@@ -75,26 +79,31 @@ internal static class ExceptionAnalyzer
                 continue;
             }
 
-            if (!seenExceptions.Add(resolved))
+            if (seenExceptions.Add(resolved))
+            {
+                var isLowQuality = QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: DocumentationTags.Exception);
+                if (isLowQuality)
+                    QualityAnalyzer.Report(context, location, DocumentationTags.Exception, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+            }
+            else
             {
                 context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayExceptionDocumentationRule, location, displayName));
-                continue;
-            }
-
-            if (QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: DocumentationTags.Exception))
-            {
-                QualityAnalyzer.Report(context, location, DocumentationTags.Exception, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
             }
         }
     }
 
     private static bool IsIgnored(ITypeSymbol type, CommentSenseOptions options)
     {
-        if (options.IgnoredExceptions.Contains(type.Name) || options.IgnoredExceptions.Contains(type.ToDisplayString(FullNameFormat)))
+        if (options.IgnoredExceptions.Contains(type.Name))
+            return true;
+
+        if (options.IgnoredExceptions.Contains(type.ToDisplayString(FullNameFormat)))
+            return true;
+
+        if (type is INamedTypeSymbol { IsGenericType: true } named && options.IgnoredExceptions.Contains(named.OriginalDefinition.ToDisplayString(FullNameFormat)))
             return true;
 
         var ns = type.ContainingNamespace.ToDisplayString();
-
         if (options.IgnoreSystemExceptions && IsInNamespace(ns, "System"))
             return true;
 
@@ -103,8 +112,10 @@ internal static class ExceptionAnalyzer
 
     private static bool IsInNamespace(string ns, string targetNamespace)
     {
-        return ns.Equals(targetNamespace, StringComparison.OrdinalIgnoreCase) ||
-               ns.StartsWith(targetNamespace + ".", StringComparison.OrdinalIgnoreCase);
+        if (ns.Equals(targetNamespace, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return ns.StartsWith(targetNamespace + ".", StringComparison.OrdinalIgnoreCase);
     }
 
     private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(SymbolAnalysisContext context, IEnumerable<XElement> exceptionElements)
@@ -117,40 +128,165 @@ internal static class ExceptionAnalyzer
             SymbolEqualityComparer.Default);
     }
 
+    private sealed record CrefInfo(char? Prefix, string TypeName, string OriginalCref)
+    {
+        public static CrefInfo Parse(string cref)
+        {
+            if (cref.Length >= 2 && cref[1] == ':')
+                return new CrefInfo(cref[0], cref.Substring(2), cref);
+
+            return new CrefInfo(null, cref, cref);
+        }
+
+        public string DocId
+        {
+            get
+            {
+                if (Prefix.HasValue)
+                    return OriginalCref;
+
+                return "T:" + OriginalCref;
+            }
+        }
+
+        public bool IsPotentiallyValidException => Prefix switch
+        {
+            null or 'T' or '!' => true,
+            _ => false
+        };
+    }
+
     private static ITypeSymbol? ResolveExceptionType(string? cref, Compilation compilation)
     {
         if (cref == null || string.IsNullOrWhiteSpace(cref))
             return null;
 
-        var resolved = DocumentationCommentId.GetFirstSymbolForDeclarationId(cref, compilation);
+        cref = cref.Trim();
+        var info = CrefInfo.Parse(cref);
+
+        var resolved = DocumentationCommentId.GetFirstSymbolForDeclarationId(info.DocId, compilation);
         if (resolved is ITypeSymbol ts)
             return ts;
 
-        return ResolveExceptionTypeFallback(cref, compilation);
+        return ResolveExceptionTypeFallback(info, compilation);
     }
 
-    private static ITypeSymbol? ResolveExceptionTypeFallback(string cref, Compilation compilation)
+    private static ITypeSymbol? ResolveExceptionTypeFallback(CrefInfo info, Compilation compilation)
     {
-        // Strip the ID prefix (e.g., "T:", "M:", "!:") if present
-        var typeName = cref;
-        if (cref.Length > 2 && cref[1] == ':')
-            typeName = cref.Substring(2);
+        if (!info.IsPotentiallyValidException)
+            return null;
 
-        // Extract simple name to use fast lookup
-        var parts = typeName.Split('.');
-        var simpleName = parts[parts.Length - 1];
+        var normalizedTypeName = DocumentationSyntaxExtensions.NormalizeCref(info.TypeName);
 
-        // Try direct lookup
-        var type = compilation.GetTypeByMetadataName(typeName);
-        if (type != null)
-            return type;
+        // Extract simple name of the target type to use fast lookup (ignoring generic arguments)
+        var parts = normalizedTypeName.Split('.');
+        var lastPart = parts[parts.Length - 1];
+        var simpleName = lastPart;
+        var genericStartIndex = lastPart.IndexOf('<');
+        if (genericStartIndex != -1)
+            simpleName = lastPart.Substring(0, genericStartIndex);
 
-        // Try lookup by name (e.g. "ArgumentNullException" instead of "System.ArgumentNullException")
-        return compilation.GetSymbolsWithName(simpleName, SymbolFilter.Type)
-                          .OfType<ITypeSymbol>()
-                          .FirstOrDefault(t => (t.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) == typeName || t.Name == typeName) && !t.IsImplicitlyDeclared);
+        var typeNameWithoutGenerics = RemoveGenerics(normalizedTypeName);
+
+        // Try direct lookup (only for non-generic types as GetTypeByMetadataName requires backticks for generics)
+        if (!normalizedTypeName.Contains('<'))
+        {
+            var type = compilation.GetTypeByMetadataName(normalizedTypeName);
+            if (type != null)
+                return type;
+        }
+
+        var symbols = GetSymbolsByName(compilation, simpleName);
+        return FindBestExceptionMatch(symbols, normalizedTypeName, typeNameWithoutGenerics);
     }
 
+    private static List<ITypeSymbol> GetSymbolsByName(Compilation compilation, string simpleName)
+    {
+        // Try lookup by name (e.g. "ArgumentNullException" instead of "System.ArgumentNullException")
+        var symbols = compilation.GetSymbolsWithName(simpleName, SymbolFilter.Type)
+                                 .OfType<ITypeSymbol>()
+                                 .Where(t => !t.IsImplicitlyDeclared)
+                                 .ToList();
+
+        if (symbols.Count != 0)
+            return symbols;
+
+        var stack = new Stack<INamespaceSymbol>();
+        stack.Push(compilation.GlobalNamespace);
+        while (stack.Count > 0)
+        {
+            var ns = stack.Pop();
+            foreach (var member in ns.GetMembers())
+            {
+                switch (member)
+                {
+                    case INamespaceSymbol nested:
+                        stack.Push(nested);
+                        break;
+                    case ITypeSymbol type when type.Name == simpleName:
+                        symbols.Add(type);
+                        break;
+                }
+            }
+        }
+
+        return symbols;
+    }
+
+    private static ITypeSymbol? FindBestExceptionMatch(List<ITypeSymbol> symbols, string normalizedTypeName, string typeNameWithoutGenerics)
+    {
+        ITypeSymbol? genericFallback = null;
+
+        foreach (var t in symbols)
+        {
+            var fullName = t.ToDisplayString(FullNameFormat);
+            var minName = t.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            var minParts = minName.Split('.');
+
+            if (fullName == normalizedTypeName || minName == normalizedTypeName || t.Name == normalizedTypeName || minParts[minParts.Length - 1] == normalizedTypeName)
+                return t;
+
+            if (genericFallback != null)
+                continue;
+
+            if (t is not INamedTypeSymbol { IsGenericType: true } named)
+                continue;
+
+            var definitionFull = RemoveGenerics(named.OriginalDefinition.ToDisplayString(FullNameFormat));
+            var definitionMin = RemoveGenerics(named.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+
+            if (definitionFull == typeNameWithoutGenerics || definitionMin == typeNameWithoutGenerics)
+                genericFallback = t;
+        }
+
+        return genericFallback;
+    }
+
+    private static string RemoveGenerics(string typeName)
+    {
+        var result = new System.Text.StringBuilder();
+        int depth = 0;
+        foreach (char c in typeName)
+        {
+            switch (c)
+            {
+                case '<':
+                    depth++;
+                    break;
+                case '>':
+                    depth--;
+                    break;
+                default:
+                    {
+                        if (depth == 0)
+                            result.Append(c);
+                        break;
+                    }
+            }
+        }
+
+        return result.ToString();
+    }
     private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options)
     {
         var thrownTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
@@ -211,9 +347,10 @@ internal static class ExceptionAnalyzer
         foreach (var node in nodes)
         {
             var exceptions = GetExceptionsFromNode(node, semanticModel, options, exceptionType, exceptionCache, token);
-            foreach (var type in exceptions.OfType<ITypeSymbol>().Where(t => !IsCaughtLocally(node, t, semanticModel)))
+            foreach (var type in exceptions.OfType<ITypeSymbol>())
             {
-                yield return type;
+                if (!IsCaughtLocally(node, type, semanticModel))
+                    yield return type;
             }
         }
     }

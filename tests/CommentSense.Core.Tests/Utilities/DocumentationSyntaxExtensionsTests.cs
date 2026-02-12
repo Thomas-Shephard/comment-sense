@@ -288,7 +288,72 @@ public class DocumentationSyntaxExtensionsTests
     [Test]
     public void CreateXmlElementWithNameReturnsElementWithAttribute()
     {
-        var node = DocumentationSyntaxExtensions.CreateXmlElement("param", name: "x", content: "TODO");
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("param", attributeValue: "x", content: "TODO");
         Assert.That(node.ToString(), Is.EqualTo("<param name=\"x\">TODO</param>"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithExceptionCrefReturnsElementWithCrefAttribute()
+    {
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("exception", attributeValue: "System.Exception", content: "TODO");
+        Assert.That(node.ToString(), Is.EqualTo("<exception cref=\"System.Exception\">TODO</exception>"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithSeeCrefReturnsElementWithCrefAttribute()
+    {
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("see", attributeValue: "System.String");
+        Assert.That(node.ToString(), Is.EqualTo("<see cref=\"System.String\" />"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithGenericSeeCrefReturnsNormalizedAttribute()
+    {
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("see", attributeValue: "List{string}");
+        Assert.That(node.ToString(), Is.EqualTo("<see cref=\"List{string}\" />"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithSeeAlsoCrefReturnsEmptyElement()
+    {
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("seealso", attributeValue: "System.String");
+        Assert.That(node.ToString(), Is.EqualTo("<seealso cref=\"System.String\" />"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithNullContentAndSeeReturnsEmptyElement()
+    {
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("see", attributeValue: "System.String", content: null!);
+        Assert.That(node.ToString(), Is.EqualTo("<see cref=\"System.String\" />"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithNullContentAndSeeAlsoReturnsEmptyElement()
+    {
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("seealso", attributeValue: "System.String", content: null!);
+        Assert.That(node.ToString(), Is.EqualTo("<seealso cref=\"System.String\" />"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithContentAndSeeReturnsFullElement()
+    {
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("see", attributeValue: "T", content: "Link text");
+        Assert.That(node.ToString(), Is.EqualTo("<see cref=\"T\">Link text</see>"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithContentAndSeeAlsoReturnsFullElement()
+    {
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("seealso", attributeValue: "T", content: "Link text");
+        Assert.That(node.ToString(), Is.EqualTo("<seealso cref=\"T\">Link text</seealso>"));
+    }
+
+    [Test]
+    public void CreateXmlElementWithEmptyContentAndNotSeeReturnsFullElement()
+    {
+        var node = DocumentationSyntaxExtensions.CreateXmlElement("summary", content: "");
+        Assert.That(node.ToString(), Is.EqualTo("<summary></summary>"));
     }
 }

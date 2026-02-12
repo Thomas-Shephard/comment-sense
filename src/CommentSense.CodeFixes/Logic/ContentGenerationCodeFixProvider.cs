@@ -25,6 +25,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId,
         CommentSenseDiagnosticIds.MissingReturnValueDocumentationId,
         CommentSenseDiagnosticIds.MissingValueDocumentationId,
+        CommentSenseDiagnosticIds.MissingExceptionDocumentationId,
         CommentSenseDiagnosticIds.MissingInheritDocId
     ];
 
@@ -41,7 +42,20 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
             // Group diagnostics by member and capture symbol upfront
-            var memberGroups = diagnostics
+            var memberGroups = GetMemberGroups(root, semanticModel, diagnostics, cancellationToken);
+
+            var membersToReplace = memberGroups.Select(g => g.Member).ToList();
+            var currentRoot = root.TrackNodes(membersToReplace);
+
+            currentRoot = memberGroups.Aggregate(currentRoot, ApplyFixesToMember);
+
+            return document.WithSyntaxRoot(currentRoot);
+        }
+
+        private static List<(MemberDeclarationSyntax Member, List<Diagnostic> Diagnostics, ISymbol? Symbol)> GetMemberGroups(
+            SyntaxNode root, SemanticModel? semanticModel, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
+        {
+            return [.. diagnostics
                 .Select(d =>
                 {
                     var memberNode = root.FindNode(d.Location.SourceSpan).FirstAncestorOrSelf<MemberDeclarationSyntax>();
@@ -54,50 +68,75 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
                     var member = g.Key;
                     if (member == null)
                         return default;
+
                     return (Member: member, Diagnostics: g.Select(x => x.Diagnostic).ToList(), Symbol: semanticModel?.GetDeclaredSymbol(member, cancellationToken));
                 })
-                .Where(x => x.Member != null)
-                .ToList();
+                .Where(x => x.Member != null)];
+        }
 
-            var membersToReplace = memberGroups.Select(g => g.Member).ToList();
-            var currentRoot = root.TrackNodes(membersToReplace);
-
-            foreach (var (initialMember, list, symbol) in memberGroups)
+        private static SyntaxNode ApplyFixesToMember(SyntaxNode currentRoot, (MemberDeclarationSyntax Member, List<Diagnostic> Diagnostics, ISymbol? Symbol) group)
+        {
+            var (initialMember, list, symbol) = group;
+            foreach (var diag in list)
             {
-                foreach (var diag in list)
+                var member = currentRoot.GetCurrentNode(initialMember);
+                if (member == null) break;
+
+                string? name = GetTargetName(diag);
+                string? tagName = GetTagNameForDiagnostic(diag.Id);
+
+                var docTrivia = member.GetLeadingTrivia()
+                    .Select(t => t.GetStructure())
+                    .OfType<DocumentationCommentTriviaSyntax>()
+                    .FirstOrDefault();
+
+                if (docTrivia == null)
                 {
-                    var member = currentRoot.GetCurrentNode(initialMember);
-                    if (member == null) break;
-
-                    string? name = null;
-                    if (diag.Id == CommentSenseDiagnosticIds.MissingParameterDocumentationId ||
-                        diag.Id == CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId)
+                    var newMember = AddNewDocumentationToMember(member, diag.Id, tagName, name, Resources.DocumentationPlaceholder);
+                    currentRoot = currentRoot.ReplaceNode(member, newMember);
+                }
+                else
+                {
+                    string effectiveTagName;
+                    if (tagName != null)
                     {
-                        diag.Properties.TryGetValue(DocumentationAttributes.NameProperty, out name);
+                        effectiveTagName = tagName;
                     }
-
-                    string? tagName = GetTagNameForDiagnostic(diag.Id);
-
-                    var docTrivia = member.GetLeadingTrivia()
-                        .Select(t => t.GetStructure())
-                        .OfType<DocumentationCommentTriviaSyntax>()
-                        .FirstOrDefault();
-
-                    if (docTrivia == null)
+                    else if (diag.Id == CommentSenseDiagnosticIds.MissingInheritDocId)
                     {
-                        var newMember = AddNewDocumentationToMember(member, diag.Id, tagName, name, Resources.DocumentationPlaceholder);
-                        currentRoot = currentRoot.ReplaceNode(member, newMember);
+                        effectiveTagName = DocumentationTags.InheritDoc;
                     }
                     else
                     {
-                        var effectiveTagName = tagName ?? (diag.Id == CommentSenseDiagnosticIds.MissingInheritDocId ? DocumentationTags.InheritDoc : DocumentationTags.Summary);
-                        var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder);
-                        currentRoot = currentRoot.ReplaceNode(docTrivia, newDocTrivia);
+                        effectiveTagName = DocumentationTags.Summary;
                     }
+
+                    var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder);
+                    currentRoot = currentRoot.ReplaceNode(docTrivia, newDocTrivia);
                 }
             }
 
-            return document.WithSyntaxRoot(currentRoot);
+            return currentRoot;
+        }
+
+        private static string? GetTargetName(Diagnostic diag)
+        {
+            switch (diag.Id)
+            {
+                case CommentSenseDiagnosticIds.MissingParameterDocumentationId:
+                case CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId:
+                    {
+                        diag.Properties.TryGetValue(DocumentationAttributes.NameProperty, out var name);
+                        return name;
+                    }
+                case CommentSenseDiagnosticIds.MissingExceptionDocumentationId:
+                    {
+                        diag.Properties.TryGetValue(DocumentationAttributes.CrefProperty, out var name);
+                        return name;
+                    }
+                default:
+                    return null;
+            }
         }
 
         private static string? GetTagNameForDiagnostic(string diagnosticId)
@@ -109,6 +148,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
                 CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId => DocumentationTags.TypeParam,
                 CommentSenseDiagnosticIds.MissingReturnValueDocumentationId => DocumentationTags.Returns,
                 CommentSenseDiagnosticIds.MissingValueDocumentationId => DocumentationTags.Value,
+                CommentSenseDiagnosticIds.MissingExceptionDocumentationId => DocumentationTags.Exception,
                 _ => null
             };
         }
@@ -190,6 +230,11 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
                     tagName = DocumentationTags.Value;
                     title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingTagTitle, tagName, Resources.DocumentationPlaceholder);
                     break;
+                case CommentSenseDiagnosticIds.MissingExceptionDocumentationId:
+                    tagName = DocumentationTags.Exception;
+                    diagnostic.Properties.TryGetValue(DocumentationAttributes.CrefProperty, out name);
+                    title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingCrefTagTitle, tagName, name ?? string.Empty, Resources.DocumentationPlaceholder);
+                    break;
                 case CommentSenseDiagnosticIds.MissingInheritDocId:
                     title = Resources.AddInheritDocTitle;
                     break;
@@ -224,16 +269,34 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         var prefix = docTrivia.GetPrefix();
 
         var newNodes = new List<XmlNodeSyntax>();
-        var isImmediatelyAfterInitialPrefix =
-            insertionIndex == 1 &&
-            content.Count > 0 &&
-            content[0] is XmlTextSyntax initialText &&
-            !initialText.ToString().Contains(newLine) &&
-            initialText.ToString().TrimEnd().EndsWith(prefix.TrimEnd(), StringComparison.Ordinal);
-
-        if (insertionIndex > 0 && !isImmediatelyAfterInitialPrefix && (content[insertionIndex - 1] is not XmlTextSyntax textNode || !textNode.ToString().Contains(newLine)))
+        var isImmediatelyAfterInitialPrefix = false;
+        if (insertionIndex == 1)
         {
-            newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
+            if (content.Count > 0)
+            {
+                if (content[0] is XmlTextSyntax initialText)
+                {
+                    var textStr = initialText.ToString();
+                    if (!textStr.Contains(newLine))
+                    {
+                        var trimmedText = textStr.TrimEnd();
+                        var trimmedPrefix = prefix.TrimEnd();
+                        if (trimmedText.EndsWith(trimmedPrefix, StringComparison.Ordinal) || trimmedText.EndsWith("/**", StringComparison.Ordinal) || docTrivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) && string.IsNullOrWhiteSpace(textStr))
+                            isImmediatelyAfterInitialPrefix = true;
+                    }
+                }
+            }
+        }
+
+        if (insertionIndex > 0)
+        {
+            if (!isImmediatelyAfterInitialPrefix)
+            {
+                bool needsInitialNewline = content[insertionIndex - 1] is not XmlTextSyntax textNode || !textNode.ToString().Contains(newLine);
+
+                if (needsInitialNewline)
+                    newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
+            }
         }
 
         if (tagName == DocumentationTags.InheritDoc)
@@ -249,13 +312,19 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
             newNodes.Add(DocumentationSyntaxExtensions.CreateXmlElement(tagName, name, placeholder));
         }
 
-        if (insertionIndex < content.Count && content[insertionIndex] is not XmlTextSyntax)
+        if (insertionIndex < content.Count)
         {
-            newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
+            if (content[insertionIndex] is not XmlTextSyntax)
+            {
+                newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
+            }
         }
-        else if (insertionIndex == content.Count && (content.Count == 0 || !content.Last().ToString().Contains(newLine)))
+        else if (insertionIndex == content.Count)
         {
-            newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine));
+            if (content.Count == 0 || !content.Last().ToString().Contains(newLine))
+            {
+                newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine));
+            }
         }
 
         var newContent = content.InsertRange(insertionIndex, newNodes);
@@ -281,14 +350,17 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
             bestIndex = i + 1;
         }
 
-        if (bestIndex != -1) return bestIndex;
+        if (bestIndex != -1)
+            return bestIndex;
 
-        if (content.Count > 0 && content[0] is XmlTextSyntax firstText)
-        {
-            var text = firstText.ToString().TrimStart();
-            if (text.StartsWith("///", StringComparison.Ordinal) || text.StartsWith("/**", StringComparison.Ordinal))
-                return 1;
-        }
+        if (content.Count <= 0 || content[0] is not XmlTextSyntax firstText)
+            return content.Count;
+
+        var text = firstText.ToString().TrimStart();
+        if (text.StartsWith("///", StringComparison.Ordinal))
+            return 1;
+        if (text.StartsWith("/**", StringComparison.Ordinal))
+            return 1;
 
         return content.Count;
     }
@@ -306,7 +378,10 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         if (currentOrder > targetOrder)
             return true;
 
-        if (currentOrder != targetOrder || targetExpectedIndex == -1)
+        if (currentOrder != targetOrder)
+            return false;
+
+        if (targetExpectedIndex == -1)
             return false;
 
         var currentName = node.GetNameAttribute();
