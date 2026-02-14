@@ -356,4 +356,50 @@ public class DocumentationSyntaxExtensionsTests
         var node = DocumentationSyntaxExtensions.CreateXmlElement("summary", content: "");
         Assert.That(node.ToString(), Is.EqualTo("<summary></summary>"));
     }
+
+    [Test]
+    public void ParseCrefValidSimpleNameReturnsTypeCref()
+    {
+        var result = DocumentationSyntaxExtensions.ParseCref("int");
+        Assert.That(result, Is.InstanceOf<TypeCrefSyntax>());
+        Assert.That(result.ToString(), Is.EqualTo("int"));
+    }
+
+    [Test]
+    public void ParseCrefValidGenericNameReturnsCref()
+    {
+        var result = DocumentationSyntaxExtensions.ParseCref("List{int}");
+        Assert.That(result, Is.InstanceOf<CrefSyntax>());
+        Assert.That(result.ToString(), Is.EqualTo("List{int}"));
+    }
+
+    [Test]
+    public void ParseCrefMalformedInputReturnsFallback()
+    {
+        var result = DocumentationSyntaxExtensions.ParseCref("< >");
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ToString(), Is.Not.Null);
+    }
+
+    [Test]
+    public void ParseCrefEmptyInputReturnsFallback()
+    {
+        var result = DocumentationSyntaxExtensions.ParseCref("");
+        Assert.That(result, Is.Not.Null);
+    }
+
+    [Test]
+    public void ParseCrefWithAngleBracketsReturnsCorrectCref()
+    {
+        var result = DocumentationSyntaxExtensions.ParseCref("List<int>");
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.ToString(), Is.EqualTo("List<int>"));
+    }
+
+    [Test]
+    public void ParseCrefWithAmpersandTriggersFallback()
+    {
+        var result = DocumentationSyntaxExtensions.ParseCref("&");
+        Assert.That(result, Is.Not.Null);
+    }
 }

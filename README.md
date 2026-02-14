@@ -63,6 +63,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
     *   *Configurable:*
         *   Ignore exceptions using `comment_sense.ignored_exceptions`, `comment_sense.ignore_system_exceptions`, and `comment_sense.ignored_exception_namespaces`.
         *   Enable scanning of called methods and constructors for their documented exceptions using `comment_sense.scan_called_methods_for_exceptions = true`.
+        *   Control the fuzzy-match threshold for suggesting renames of misspelled exception tags using `comment_sense.rename_similarity_threshold`.
 *   **CSENSE017**: Validates that the `cref` attribute in an `<exception>` tag refers to a valid Exception type.
 *   **CSENSE023**: Flags stray `<exception>` tags that are nested within other tags or duplicated for the same exception type.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.

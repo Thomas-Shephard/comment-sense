@@ -217,4 +217,51 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
+
+    [Test]
+    public async Task ThrowsInMembersAreExcludedFromPrimaryConstructorAnalysis()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a valid summary for the class.</summary>
+            /// <param name="p">The parameter.</param>
+            /// <exception cref="ArgumentNullException">Thrown by initializer.</exception>
+            public class C(string p)
+            {
+                // This throw is part of the constructor flow (initializer)
+                private readonly string _p = p ?? throw new ArgumentNullException(nameof(p));
+
+                // These throws should be EXCLUDED
+
+                /// <summary>This is a valid summary for the method.</summary>
+                /// <exception cref="InvalidOperationException">Thrown always.</exception>
+                public void Method() => throw new InvalidOperationException();
+
+                /// <summary>This is a valid summary for the property.</summary>
+                /// <value>The value.</value>
+                /// <exception cref="NotSupportedException">Thrown always.</exception>
+                public int Property => throw new NotSupportedException();
+
+                /// <summary>This is a valid summary for the indexer.</summary>
+                /// <param name="i">The index.</param>
+                /// <value>The value.</value>
+                /// <exception cref="NotImplementedException">Thrown always.</exception>
+                public int this[int i] => throw new NotImplementedException();
+
+                /// <summary>This is a valid summary for the event.</summary>
+                public event EventHandler Event
+                {
+                    add => throw new Exception();
+                    remove => throw new Exception();
+                }
+
+                /// <summary>This is a valid summary for the secondary constructor.</summary>
+                /// <exception cref="Exception">Thrown always.</exception>
+                public C() : this("default") { throw new Exception(); } // Secondary ctor
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
 }

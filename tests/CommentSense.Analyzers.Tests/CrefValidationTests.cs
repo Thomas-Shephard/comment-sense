@@ -243,4 +243,50 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             """;
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
+
+    [Test]
+    public async Task FuzzyMatchWithMultipleExceptionsReportsSuggestion()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a valid summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid summary for the method.</summary>
+                /// <exception cref="{|CSENSE007:ArgNull|}">Typo.</exception>
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE012")]
+                public void MyMethod()
+                {
+                    if (true) throw new ArgumentNullException();
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task NoFuzzyMatchWithMultipleExceptionsReturnsNull()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a valid summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid summary for the method.</summary>
+                /// <exception cref="{|CSENSE007:TotallyUnrelated|}">No match.</exception>
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE012")]
+                public void MyMethod()
+                {
+                    if (true) throw new ArgumentNullException();
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }

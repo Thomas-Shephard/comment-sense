@@ -13,9 +13,15 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class ExceptionAnalyzer
 {
-    private static readonly SymbolDisplayFormat FullNameFormat = new(
+    internal static readonly SymbolDisplayFormat FullNameFormat = new(
+        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
         genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
+
+    internal static string ToCrefString(this ITypeSymbol symbol)
+    {
+        return symbol.ToDisplayString(FullNameFormat).Replace('<', '{').Replace('>', '}');
+    }
 
     private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>> CompilationExceptionCache = new();
 
@@ -179,6 +185,7 @@ internal static class ExceptionAnalyzer
             return null;
 
         var normalizedTypeName = DocumentationSyntaxExtensions.NormalizeCref(info.TypeName);
+        var typeNameWithoutGenerics = RemoveGenerics(normalizedTypeName);
 
         // Extract simple name of the target type to use fast lookup (ignoring generic arguments)
         var parts = normalizedTypeName.Split('.');
@@ -190,8 +197,6 @@ internal static class ExceptionAnalyzer
 
         if (string.IsNullOrWhiteSpace(simpleName) || !SyntaxFacts.IsValidIdentifier(simpleName))
             return null;
-
-        var typeNameWithoutGenerics = RemoveGenerics(normalizedTypeName);
 
         // Try direct lookup (only for non-generic types as GetTypeByMetadataName requires backticks for generics)
         if (!normalizedTypeName.Contains('<'))
@@ -246,9 +251,7 @@ internal static class ExceptionAnalyzer
         {
             var fullName = t.ToDisplayString(FullNameFormat);
             var minName = t.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-            var minParts = minName.Split('.');
-
-            if (fullName == normalizedTypeName || minName == normalizedTypeName || t.Name == normalizedTypeName || minParts[minParts.Length - 1] == normalizedTypeName)
+            if (fullName == normalizedTypeName || minName == normalizedTypeName || t.Name == normalizedTypeName)
                 return t;
 
             if (genericFallback != null)
@@ -258,7 +261,10 @@ internal static class ExceptionAnalyzer
                 continue;
 
             var definitionFull = RemoveGenerics(named.OriginalDefinition.ToDisplayString(FullNameFormat));
-            var definitionMin = RemoveGenerics(named.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+            var definitionMin = named.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+
+            if (definitionMin.Contains('<'))
+                definitionMin = definitionMin.Substring(0, definitionMin.IndexOf('<'));
 
             if (definitionFull == typeNameWithoutGenerics || definitionMin == typeNameWithoutGenerics)
                 genericFallback = t;
@@ -276,9 +282,11 @@ internal static class ExceptionAnalyzer
             switch (c)
             {
                 case '<':
+                case '{':
                     depth++;
                     break;
                 case '>':
+                case '}':
                     depth--;
                     break;
                 default:
@@ -292,23 +300,73 @@ internal static class ExceptionAnalyzer
 
         return result.ToString();
     }
-    private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options)
+
+    internal static string? FindBestMatchingThrownException(ISymbol symbol, string crefText, CommentSenseOptions options, Compilation compilation, CancellationToken cancellationToken = default)
+    {
+        if (options.RenameSimilarityThreshold <= 0.0)
+            return null;
+
+        var isPrimaryCtor = symbol.IsPrimaryConstructor();
+        var thrownTypes = GetThrownTypes(compilation, symbol, isPrimaryCtor, options, cancellationToken).ToList();
+        if (thrownTypes.Count == 0)
+            return null;
+
+        var normalizedCref = DocumentationSyntaxExtensions.NormalizeCref(crefText);
+        var crefParts = normalizedCref.Split('.');
+        var simpleCrefName = RemoveGenerics(crefParts[crefParts.Length - 1]);
+
+        // 1. Exact name match
+        var exactMatch = thrownTypes.FirstOrDefault(t => t.Name.Equals(simpleCrefName, StringComparison.OrdinalIgnoreCase));
+        if (exactMatch != null)
+            return exactMatch.ToCrefString();
+
+        // 2. If only one exception is thrown, suggest it if there's any similarity
+        if (thrownTypes.Count == 1)
+        {
+            var single = thrownTypes[0];
+            if (single.Name.IndexOf(simpleCrefName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                simpleCrefName.IndexOf(single.Name, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                single.Name.CalculateSimilarity(simpleCrefName) >= options.RenameSimilarityThreshold)
+            {
+                return single.ToCrefString();
+            }
+        }
+
+        // 3. Fuzzy match by name similarity
+        var bestMatch = thrownTypes
+            .Select(t => new { Symbol = t, Similarity = t.Name.CalculateSimilarity(simpleCrefName) })
+            .Where(x => x.Similarity >= options.RenameSimilarityThreshold)
+            .OrderByDescending(x => x.Similarity)
+            .FirstOrDefault();
+
+        if (bestMatch != null)
+            return bestMatch.Symbol.ToCrefString();
+
+        return null;
+    }
+
+    private static HashSet<ITypeSymbol> GetThrownTypes(Compilation compilation, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options, CancellationToken cancellationToken = default)
     {
         var thrownTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
-        var exceptionCache = CompilationExceptionCache.GetValue(context.Compilation, _ => new ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>(SymbolEqualityComparer.Default));
+        var exceptionCache = CompilationExceptionCache.GetValue(compilation, _ => new ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>(SymbolEqualityComparer.Default));
 
         foreach (var syntaxReference in symbol.DeclaringSyntaxReferences)
         {
-            var syntax = syntaxReference.GetSyntax();
-            var semanticModel = context.Compilation.GetSemanticModel(syntax.SyntaxTree);
+            var syntax = syntaxReference.GetSyntax(cancellationToken);
+            var semanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
 
             var nodes = GetDescendantNodesOfInterest(syntax, isPrimaryCtor);
-            var exceptions = IdentifyThrownExceptions(nodes, semanticModel, options, exceptionCache, context.CancellationToken);
+            var exceptions = IdentifyThrownExceptions(nodes, semanticModel, options, exceptionCache, cancellationToken);
 
             thrownTypes.UnionWith(exceptions);
         }
 
         return thrownTypes;
+    }
+
+    private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options)
+    {
+        return GetThrownTypes(context.Compilation, symbol, isPrimaryCtor, options, context.CancellationToken);
     }
 
     private static IEnumerable<SyntaxNode> GetDescendantNodesOfInterest(SyntaxNode root, bool isPrimaryCtor)

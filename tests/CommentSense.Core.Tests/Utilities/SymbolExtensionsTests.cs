@@ -350,6 +350,46 @@ public class SymbolExtensionsTests
         Assert.That(symbol.IsPrimaryConstructor(), Is.False);
     }
 
+    [Test]
+    public void IsPrimaryConstructorExtensionMethodSymbolReturnsExpectedResults()
+    {
+        var source = "public class C(int x) { public void M() {} }";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var type = compilation.GetTypeByMetadataName("C") ?? throw new InvalidOperationException();
+        var primaryCtor = type.InstanceConstructors.First(c => c.Parameters.Length == 1);
+        var method = type.GetMembers().OfType<IMethodSymbol>().First(m => m.Name == "M");
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(((ISymbol)primaryCtor).IsPrimaryConstructor(), Is.True);
+            Assert.That(((ISymbol)method).IsPrimaryConstructor(), Is.False);
+        }
+    }
+
+    [Test]
+    public void IsPrimaryConstructorExtensionNamedTypeSymbolReturnsExpectedResults()
+    {
+        var source = "public class C1(int x) {} public class C2 {}";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var compilation = CSharpCompilation.Create("Test", [tree], [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var c1 = compilation.GetTypeByMetadataName("C1") ?? throw new InvalidOperationException();
+        var c2 = compilation.GetTypeByMetadataName("C2") ?? throw new InvalidOperationException();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(c1.IsPrimaryConstructor(), Is.True);
+            Assert.That(c2.IsPrimaryConstructor(), Is.False);
+        }
+    }
+
+    [Test]
+    public void IsPrimaryConstructorExtensionOtherSymbolReturnsFalse()
+    {
+        var symbol = GetSymbol("public class C { public int P { get; set; } }", "P");
+        Assert.That(symbol.IsPrimaryConstructor(), Is.False);
+    }
+
     private static ISymbol GetSymbol(string source, string name)
         => RoslynTestUtils.GetSymbolFromSource(source, name);
 }
