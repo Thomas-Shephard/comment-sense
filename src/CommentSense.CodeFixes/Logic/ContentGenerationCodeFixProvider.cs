@@ -37,7 +37,8 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         internal override async Task<Document> FixDocumentInternalAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            if (root == null) return document;
+            if (root == null)
+                return document;
 
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
@@ -80,7 +81,8 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
             foreach (var diag in list)
             {
                 var member = currentRoot.GetCurrentNode(initialMember);
-                if (member == null) break;
+                if (member == null)
+                    break;
 
                 string? name = GetTargetName(diag);
                 string? tagName = GetTagNameForDiagnostic(diag.Id);
@@ -193,7 +195,8 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root == null) return;
+        if (root == null)
+            return;
 
         foreach (var diagnostic in context.Diagnostics)
         {
