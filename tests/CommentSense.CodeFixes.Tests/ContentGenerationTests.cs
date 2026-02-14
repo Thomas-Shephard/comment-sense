@@ -3,6 +3,7 @@ using CommentSense.CodeFixes.Logic;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -888,6 +889,46 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
 
         var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Summary, null, null, "TODO");
         Assert.That(newTrivia.ToString(), Does.StartWith("/// <summary>TODO</summary>"));
+    }
+
+    [Test]
+    public void GetMemberGroupsWithNullSemanticModelManual()
+    {
+        var tree = CSharpSyntaxTree.ParseText("public class C { public void M() { } }");
+        var root = tree.GetRoot();
+        var member = root.DescendantNodes().OfType<MemberDeclarationSyntax>().First();
+        var diag = Diagnostic.Create(CommentSenseRules.MissingDocumentationRule, Location.Create(tree, member.Span));
+
+        var groups = ContentGenerationCodeFixProvider.GetMemberGroups(root, null, [diag], CancellationToken.None);
+
+        Assert.That(groups, Has.Count.EqualTo(1));
+        Assert.That(groups[0].Symbol, Is.Null);
+    }
+
+    [Test]
+    public void InsertTagToSingleLineDocumentationWithOnlyWhitespaceManual()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.SingleLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText(" ")
+            ]));
+
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Summary, null, null, "TODO");
+        Assert.That(newTrivia.ToString(), Does.StartWith(" <summary>TODO</summary>"));
+    }
+
+    [Test]
+    public void InsertTagToSingleLineDocumentationWithoutPrefixOrWhitespaceManual()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.SingleLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText("some text")
+            ]));
+
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Summary, null, null, "TODO");
+        Assert.That(newTrivia.ToString(), Does.Contain("<summary>TODO</summary>"));
     }
 
     [Test]
