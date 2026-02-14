@@ -92,7 +92,7 @@ internal static class ExceptionAnalyzer
         }
     }
 
-    private static bool IsIgnored(ITypeSymbol type, CommentSenseOptions options)
+    internal static bool IsIgnored(ITypeSymbol type, CommentSenseOptions options)
     {
         if (options.IgnoredExceptions.Contains(type.Name))
             return true;
@@ -110,7 +110,7 @@ internal static class ExceptionAnalyzer
         return options.IgnoredExceptionNamespaces.Any(targetNs => IsInNamespace(ns, targetNs));
     }
 
-    private static bool IsInNamespace(string ns, string targetNamespace)
+    internal static bool IsInNamespace(string ns, string targetNamespace)
     {
         if (ns.Equals(targetNamespace, StringComparison.OrdinalIgnoreCase))
             return true;
@@ -156,7 +156,7 @@ internal static class ExceptionAnalyzer
         };
     }
 
-    private static ITypeSymbol? ResolveExceptionType(string? cref, Compilation compilation)
+    internal static ITypeSymbol? ResolveExceptionType(string? cref, Compilation compilation)
     {
         if (cref == null || string.IsNullOrWhiteSpace(cref))
             return null;

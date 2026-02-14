@@ -2146,56 +2146,54 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     public void InternalMethodsCoverage()
     {
         var compilation = CSharpCompilation.Create("Test", references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
-        var type = typeof(Logic.ExceptionAnalyzer);
-        var flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
 
-        var resolveMethod = type.GetMethod("ResolveExceptionType", flags);
-        Assert.That(resolveMethod, Is.Not.Null);
-
-        // ResolveExceptionType and CrefInfo.Parse
-        resolveMethod.Invoke(null, [null, compilation]);
-        resolveMethod.Invoke(null, ["", compilation]);
-        resolveMethod.Invoke(null, ["T:System.Exception", compilation]); // hits Length >= 2 and cref[1] == ':'
-        resolveMethod.Invoke(null, ["System.Exception", compilation]); // hits Length >= 2 and cref[1] != ':'
-        resolveMethod.Invoke(null, ["M:SomeMethod", compilation]); // hits IsPotentiallyValidException False
-        resolveMethod.Invoke(null, ["!:SomeBadCref", compilation]); // hits IsPotentiallyValidException True (prefix '!')
-        resolveMethod.Invoke(null, ["!", compilation]); // hits Length < 2
-
-        // IsIgnored
-        var isIgnoredMethod = type.GetMethod("IsIgnored", flags);
-        Assert.That(isIgnoredMethod, Is.Not.Null);
+        using (Assert.EnterMultipleScope())
+        {
+            // ResolveExceptionType and CrefInfo.Parse
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType(null, compilation), Is.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("", compilation), Is.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:System.Exception", compilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("System.Exception", compilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("M:SomeMethod", compilation), Is.Null); // hits IsPotentiallyValidException False
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("!:SomeBadCref", compilation), Is.Null); // hits IsPotentiallyValidException True (prefix '!')
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("!", compilation), Is.Null); // hits Length < 2
+        }
 
         var options = CommentSenseOptions.Default;
         var exceptionType = compilation.GetTypeByMetadataName("System.Exception") ?? compilation.GetSpecialType(SpecialType.System_Object);
 
-        // Branch: IgnoredExceptions.Contains(type.Name)
-        isIgnoredMethod.Invoke(null, [exceptionType, options with { IgnoredExceptions = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "Exception") }]);
+        using (Assert.EnterMultipleScope())
+        {
+            // IsIgnored - Branch: IgnoredExceptions.Contains(type.Name)
+            Assert.That(Logic.ExceptionAnalyzer.IsIgnored(exceptionType, options with { IgnoredExceptions = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "Exception") }), Is.True);
+            Assert.That(Logic.ExceptionAnalyzer.IsIgnored(exceptionType, options), Is.False);
 
-        // Branch: IgnoredExceptions.Contains(fullName)
-        isIgnoredMethod.Invoke(null, [exceptionType, options with { IgnoredExceptions = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "System.Exception") }]);
+            // Branch: IgnoredExceptions.Contains(fullName)
+            Assert.That(Logic.ExceptionAnalyzer.IsIgnored(exceptionType, options with { IgnoredExceptions = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "System.Exception") }), Is.True);
+        }
 
         // Branch: Generic exception definition ignore
         var genericType = compilation.GetTypeByMetadataName("System.Collections.Generic.List`1");
         if (genericType != null)
         {
-            isIgnoredMethod.Invoke(null, [genericType, options with { IgnoredExceptions = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "System.Collections.Generic.List<T>") }]);
+            Assert.That(Logic.ExceptionAnalyzer.IsIgnored(genericType, options with { IgnoredExceptions = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "System.Collections.Generic.List<T>") }), Is.True);
         }
 
-        // Branch: IgnoreSystemExceptions
-        isIgnoredMethod.Invoke(null, [exceptionType, options with { IgnoreSystemExceptions = true }]);
-        isIgnoredMethod.Invoke(null, [exceptionType, options with { IgnoreSystemExceptions = false }]);
+        using (Assert.EnterMultipleScope())
+        {
+            // Branch: IgnoreSystemExceptions
+            Assert.That(Logic.ExceptionAnalyzer.IsIgnored(exceptionType, options with { IgnoreSystemExceptions = true }), Is.True);
+            Assert.That(Logic.ExceptionAnalyzer.IsIgnored(exceptionType, options with { IgnoreSystemExceptions = false }), Is.False);
 
-        // Branch: IgnoredExceptionNamespaces
-        isIgnoredMethod.Invoke(null, [exceptionType, options with { IgnoredExceptionNamespaces = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "System") }]);
-        isIgnoredMethod.Invoke(null, [exceptionType, options with { IgnoredExceptionNamespaces = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "Microsoft") }]);
+            // Branch: IgnoredExceptionNamespaces
+            Assert.That(Logic.ExceptionAnalyzer.IsIgnored(exceptionType, options with { IgnoredExceptionNamespaces = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "System") }), Is.True);
+            Assert.That(Logic.ExceptionAnalyzer.IsIgnored(exceptionType, options with { IgnoredExceptionNamespaces = ImmutableHashSet.Create(StringComparer.OrdinalIgnoreCase, "Microsoft") }), Is.False);
 
-        // IsInNamespace
-        var isInNamespaceMethod = type.GetMethod("IsInNamespace", flags);
-        Assert.That(isInNamespaceMethod, Is.Not.Null);
-
-        isInNamespaceMethod.Invoke(null, ["System.IO", "System"]); // hits StartsWith(target + ".")
-        isInNamespaceMethod.Invoke(null, ["System", "System"]); // hits Equals
-        isInNamespaceMethod.Invoke(null, ["Microsoft", "System"]); // hits none
+            // IsInNamespace
+            Assert.That(Logic.ExceptionAnalyzer.IsInNamespace("System.IO", "System"), Is.True); // hits StartsWith(target + ".")
+            Assert.That(Logic.ExceptionAnalyzer.IsInNamespace("System", "System"), Is.True); // hits Equals
+            Assert.That(Logic.ExceptionAnalyzer.IsInNamespace("Microsoft", "System"), Is.False); // hits none
+        }
     }
 
     [Test]
