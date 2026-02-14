@@ -260,7 +260,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
     internal static DocumentationCommentTriviaSyntax InsertTagToTrivia(DocumentationCommentTriviaSyntax docTrivia, string tagName, string? name, ISymbol? symbol, string placeholder = "")
     {
         var member = docTrivia.GetMemberDeclaration();
-        var indentation = member != null ? member.GetIndentation() : string.Empty;
+        var indentation = member?.GetIndentation() ?? string.Empty;
 
         var content = docTrivia.Content;
         var insertionIndex = FindInsertionIndex(content, tagName, name, symbol);
@@ -269,66 +269,70 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         var prefix = docTrivia.GetPrefix();
 
         var newNodes = new List<XmlNodeSyntax>();
-        var isImmediatelyAfterInitialPrefix = false;
-        if (insertionIndex == 1)
-        {
-            if (content.Count > 0)
-            {
-                if (content[0] is XmlTextSyntax initialText)
-                {
-                    var textStr = initialText.ToString();
-                    if (!textStr.Contains(newLine))
-                    {
-                        var trimmedText = textStr.TrimEnd();
-                        var trimmedPrefix = prefix.TrimEnd();
-                        if (trimmedText.EndsWith(trimmedPrefix, StringComparison.Ordinal) || trimmedText.EndsWith("/**", StringComparison.Ordinal) || docTrivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) && string.IsNullOrWhiteSpace(textStr))
-                            isImmediatelyAfterInitialPrefix = true;
-                    }
-                }
-            }
-        }
 
-        if (insertionIndex > 0)
-        {
-            if (!isImmediatelyAfterInitialPrefix)
-            {
-                bool needsInitialNewline = content[insertionIndex - 1] is not XmlTextSyntax textNode || !textNode.ToString().Contains(newLine);
+        if (NeedsLeadingTrivia(docTrivia, content, insertionIndex, prefix, newLine))
+            newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
 
-                if (needsInitialNewline)
-                    newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
-            }
-        }
+        newNodes.Add(CreateTagNode(tagName, name, placeholder));
 
-        if (tagName == DocumentationTags.InheritDoc)
-        {
-            newNodes.Add(SyntaxFactory.XmlEmptyElement(
-                SyntaxFactory.Token(SyntaxKind.LessThanToken),
-                SyntaxFactory.XmlName(DocumentationTags.InheritDoc),
-                SyntaxFactory.List<XmlAttributeSyntax>(),
-                SyntaxFactory.Token(SyntaxKind.SlashGreaterThanToken).WithLeadingTrivia(SyntaxFactory.Whitespace(" "))));
-        }
-        else
-        {
-            newNodes.Add(DocumentationSyntaxExtensions.CreateXmlElement(tagName, name, placeholder));
-        }
-
-        if (insertionIndex < content.Count)
-        {
-            if (content[insertionIndex] is not XmlTextSyntax)
-            {
-                newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
-            }
-        }
-        else if (insertionIndex == content.Count)
-        {
-            if (content.Count == 0 || !content.Last().ToString().Contains(newLine))
-            {
-                newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine));
-            }
-        }
+        AddTrailingTrivia(newNodes, content, insertionIndex, newLine, indentation, prefix);
 
         var newContent = content.InsertRange(insertionIndex, newNodes);
         return docTrivia.WithContent(newContent);
+    }
+
+    private static bool NeedsLeadingTrivia(DocumentationCommentTriviaSyntax docTrivia, SyntaxList<XmlNodeSyntax> content, int insertionIndex, string prefix, string newLine)
+    {
+        if (insertionIndex <= 0)
+            return false;
+
+        if (IsImmediatelyAfterInitialPrefix(docTrivia, content, insertionIndex, prefix, newLine))
+            return false;
+
+        return content[insertionIndex - 1] is not XmlTextSyntax textNode || !textNode.ToString().Contains(newLine);
+    }
+
+    private static bool IsImmediatelyAfterInitialPrefix(DocumentationCommentTriviaSyntax docTrivia, SyntaxList<XmlNodeSyntax> content, int insertionIndex, string prefix, string newLine)
+    {
+        if (insertionIndex != 1 || content.Count == 0 || content[0] is not XmlTextSyntax initialText)
+            return false;
+
+        var textStr = initialText.ToString();
+        if (textStr.Contains(newLine))
+            return false;
+
+        var trimmedText = textStr.TrimEnd();
+        var trimmedPrefix = prefix.TrimEnd();
+
+        return trimmedText.EndsWith(trimmedPrefix, StringComparison.Ordinal) ||
+               trimmedText.EndsWith("/**", StringComparison.Ordinal) ||
+               (docTrivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) && string.IsNullOrWhiteSpace(textStr));
+    }
+
+    private static XmlNodeSyntax CreateTagNode(string tagName, string? name, string placeholder)
+    {
+        if (tagName == DocumentationTags.InheritDoc)
+        {
+            return SyntaxFactory.XmlEmptyElement(
+                SyntaxFactory.Token(SyntaxKind.LessThanToken),
+                SyntaxFactory.XmlName(DocumentationTags.InheritDoc),
+                SyntaxFactory.List<XmlAttributeSyntax>(),
+                SyntaxFactory.Token(SyntaxKind.SlashGreaterThanToken).WithLeadingTrivia(SyntaxFactory.Whitespace(" ")));
+        }
+
+        return DocumentationSyntaxExtensions.CreateXmlElement(tagName, name, placeholder);
+    }
+
+    private static void AddTrailingTrivia(List<XmlNodeSyntax> newNodes, SyntaxList<XmlNodeSyntax> content, int insertionIndex, string newLine, string indentation, string prefix)
+    {
+        if (insertionIndex < content.Count && content[insertionIndex] is not XmlTextSyntax)
+        {
+            newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
+        }
+        else if (insertionIndex == content.Count && (content.Count == 0 || !content.Last().ToString().Contains(newLine)))
+        {
+            newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine));
+        }
     }
 
     private static int FindInsertionIndex(SyntaxList<XmlNodeSyntax> content, string tagName, string? targetName, ISymbol? symbol)

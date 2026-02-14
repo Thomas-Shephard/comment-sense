@@ -347,10 +347,9 @@ internal static class ExceptionAnalyzer
         foreach (var node in nodes)
         {
             var exceptions = GetExceptionsFromNode(node, semanticModel, options, exceptionType, exceptionCache, token);
-            foreach (var type in exceptions.OfType<ITypeSymbol>())
+            foreach (var type in exceptions.OfType<ITypeSymbol>().Where(type => !IsCaughtLocally(node, type, semanticModel)))
             {
-                if (!IsCaughtLocally(node, type, semanticModel))
-                    yield return type;
+                yield return type;
             }
         }
     }
