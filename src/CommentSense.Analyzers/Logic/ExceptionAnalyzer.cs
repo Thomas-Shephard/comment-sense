@@ -35,7 +35,9 @@ internal static class ExceptionAnalyzer
         if (DocumentationXmlExtensions.HasInheritDoc(xml) || DocumentationXmlExtensions.HasAutoValidTag(xml))
             return;
 
-        foreach (var thrownType in thrownTypes.Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) && !IsIgnored(t, options)))
+        foreach (var thrownType in thrownTypes
+            .Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) && !IsIgnored(t, options))
+            .OrderBy(t => t.ToDisplayString(FullNameFormat)))
         {
             var location = symbol.Locations.GetPrimaryLocation();
             var displayName = thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
