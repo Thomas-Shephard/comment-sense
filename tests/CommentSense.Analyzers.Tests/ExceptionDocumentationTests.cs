@@ -2154,9 +2154,12 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("", compilation), Is.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:System.Exception", compilation), Is.Not.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("System.Exception", compilation), Is.Not.Null);
-            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("M:SomeMethod", compilation), Is.Null); // hits IsPotentiallyValidException False
-            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("!:SomeBadCref", compilation), Is.Null); // hits IsPotentiallyValidException True (prefix '!')
-            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("!", compilation), Is.Null); // hits Length < 2
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("M:SomeMethod", compilation), Is.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("!:SomeBadCref", compilation), Is.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("!", compilation), Is.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:", compilation), Is.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("123", compilation), Is.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("System.123", compilation), Is.Null);
         }
 
         var options = CommentSenseOptions.Default;

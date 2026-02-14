@@ -186,6 +186,9 @@ internal static class ExceptionAnalyzer
         if (genericStartIndex != -1)
             simpleName = lastPart.Substring(0, genericStartIndex);
 
+        if (string.IsNullOrWhiteSpace(simpleName) || !SyntaxFacts.IsValidIdentifier(simpleName))
+            return null;
+
         var typeNameWithoutGenerics = RemoveGenerics(normalizedTypeName);
 
         // Try direct lookup (only for non-generic types as GetTypeByMetadataName requires backticks for generics)
