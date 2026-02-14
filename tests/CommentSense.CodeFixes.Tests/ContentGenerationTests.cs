@@ -932,6 +932,19 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
     }
 
     [Test]
+    public void InsertTagToMultiLineDocumentationWithoutPrefixManual()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.MultiLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText("/** some text")
+            ]));
+
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Summary, null, null, "TODO");
+        Assert.That(newTrivia.ToString(), Does.Contain("<summary>TODO</summary>"));
+    }
+
+    [Test]
     public void GetFixInternalAsyncWithInvalidScopeReturnsNull()
     {
         const FixAllScope invalidScope = (FixAllScope)(-1);

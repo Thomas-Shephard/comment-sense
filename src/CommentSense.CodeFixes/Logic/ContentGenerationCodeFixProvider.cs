@@ -51,7 +51,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
 
             var newRoot = root.ReplaceNodes(groupsByMember.Keys, (oldNode, newNode) =>
             {
-                if (newNode is not { } member)
+                if (newNode is not MemberDeclarationSyntax member)
                     return newNode;
 
                 var (_, diagList, symbol) = groupsByMember[oldNode];
@@ -66,6 +66,102 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
             });
 
             return document.WithSyntaxRoot(newRoot);
+        }
+
+        private static MemberDeclarationSyntax ApplyDiagnosticToMember(MemberDeclarationSyntax member, Diagnostic diag, ISymbol? symbol)
+        {
+            string? name = GetTargetName(diag);
+            string? tagName = GetTagNameForDiagnostic(diag.Id);
+
+            var leadingTrivia = member.GetLeadingTrivia();
+            DocumentationCommentTriviaSyntax? docTrivia = null;
+            SyntaxTrivia targetTrivia = default;
+
+            foreach (var trivia in leadingTrivia)
+            {
+                if (trivia.GetStructure() is not DocumentationCommentTriviaSyntax d)
+                    continue;
+
+                docTrivia = d;
+                targetTrivia = trivia;
+                break;
+            }
+
+            if (docTrivia == null)
+                return AddNewDocumentationToMember(member, diag.Id, tagName, name, Resources.DocumentationPlaceholder);
+
+            var effectiveTagName = tagName ?? (diag.Id == CommentSenseDiagnosticIds.MissingInheritDocId ? DocumentationTags.InheritDoc : DocumentationTags.Summary);
+            var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder);
+            return member.WithLeadingTrivia(leadingTrivia.Replace(targetTrivia, SyntaxFactory.Trivia(newDocTrivia)));
+        }
+
+        private static string? GetTargetName(Diagnostic diag)
+        {
+            switch (diag.Id)
+            {
+                case CommentSenseDiagnosticIds.MissingParameterDocumentationId:
+                case CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId:
+                    {
+                        diag.Properties.TryGetValue(DocumentationAttributes.NameProperty, out var name);
+                        return name;
+                    }
+                case CommentSenseDiagnosticIds.MissingExceptionDocumentationId:
+                    {
+                        diag.Properties.TryGetValue(DocumentationAttributes.CrefProperty, out var name);
+                        return name;
+                    }
+                default:
+                    return null;
+            }
+        }
+
+        private static string? GetTagNameForDiagnostic(string diagnosticId)
+        {
+            return diagnosticId switch
+            {
+                CommentSenseDiagnosticIds.MissingDocumentationId => null,
+                CommentSenseDiagnosticIds.MissingParameterDocumentationId => DocumentationTags.Param,
+                CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId => DocumentationTags.TypeParam,
+                CommentSenseDiagnosticIds.MissingReturnValueDocumentationId => DocumentationTags.Returns,
+                CommentSenseDiagnosticIds.MissingValueDocumentationId => DocumentationTags.Value,
+                CommentSenseDiagnosticIds.MissingExceptionDocumentationId => DocumentationTags.Exception,
+                _ => null
+            };
+        }
+
+        private static MemberDeclarationSyntax AddNewDocumentationToMember(MemberDeclarationSyntax member, string diagnosticId, string? tagName, string? name, string placeholder)
+        {
+            var indentation = member.GetIndentation();
+            var newLine = member.GetNewLine();
+
+            var content = new List<XmlNodeSyntax>
+            {
+                // Initial prefix
+                DocumentationSyntaxExtensions.CreateXmlText("/// ")
+            };
+
+            if (diagnosticId == CommentSenseDiagnosticIds.MissingInheritDocId)
+            {
+                content.Add(SyntaxFactory.XmlEmptyElement(
+                    SyntaxFactory.Token(SyntaxKind.LessThanToken),
+                    SyntaxFactory.XmlName(DocumentationTags.InheritDoc),
+                    SyntaxFactory.List<XmlAttributeSyntax>(),
+                    SyntaxFactory.Token(SyntaxKind.SlashGreaterThanToken).WithLeadingTrivia(SyntaxFactory.Whitespace(" "))));
+            }
+            else
+            {
+                content.Add(DocumentationSyntaxExtensions.CreateXmlElement(tagName ?? DocumentationTags.Summary, name, placeholder));
+            }
+
+            // Final newline
+            content.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine));
+
+            var docTrivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia, SyntaxFactory.List(content));
+            var newTrivia = SyntaxFactory.Trivia(docTrivia);
+
+            // [Whitespace][DocTrivia][Whitespace(indentation)]
+            var newLeadingTrivia = member.GetLeadingTrivia().Add(newTrivia).Add(SyntaxFactory.Whitespace(indentation));
+            return member.WithLeadingTrivia(newLeadingTrivia);
         }
     }
 
@@ -82,106 +178,12 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         {
             var member = g.Key;
             if (member != null)
+            {
                 result.Add((member, g.Select(x => x.Diagnostic).ToList(), semanticModel?.GetDeclaredSymbol(member, cancellationToken)));
+            }
         }
 
         return result;
-    }
-
-    private static MemberDeclarationSyntax ApplyDiagnosticToMember(MemberDeclarationSyntax member, Diagnostic diag, ISymbol? symbol)
-    {
-        string? name = GetTargetName(diag);
-        string? tagName = GetTagNameForDiagnostic(diag.Id);
-
-        var leadingTrivia = member.GetLeadingTrivia();
-        DocumentationCommentTriviaSyntax? docTrivia = null;
-        SyntaxTrivia targetTrivia = default;
-
-        foreach (var trivia in leadingTrivia)
-        {
-            if (trivia.GetStructure() is not DocumentationCommentTriviaSyntax d)
-                continue;
-
-            docTrivia = d;
-            targetTrivia = trivia;
-            break;
-        }
-
-        if (docTrivia == null)
-            return AddNewDocumentationToMember(member, diag.Id, tagName, name, Resources.DocumentationPlaceholder);
-
-        var effectiveTagName = tagName ?? (diag.Id == CommentSenseDiagnosticIds.MissingInheritDocId ? DocumentationTags.InheritDoc : DocumentationTags.Summary);
-        var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder);
-        return member.WithLeadingTrivia(leadingTrivia.Replace(targetTrivia, SyntaxFactory.Trivia(newDocTrivia)));
-    }
-
-    private static string? GetTargetName(Diagnostic diag)
-    {
-        switch (diag.Id)
-        {
-            case CommentSenseDiagnosticIds.MissingParameterDocumentationId:
-            case CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId:
-                {
-                    diag.Properties.TryGetValue(DocumentationAttributes.NameProperty, out var name);
-                    return name;
-                }
-            case CommentSenseDiagnosticIds.MissingExceptionDocumentationId:
-                {
-                    diag.Properties.TryGetValue(DocumentationAttributes.CrefProperty, out var name);
-                    return name;
-                }
-            default:
-                return null;
-        }
-    }
-
-    private static string? GetTagNameForDiagnostic(string diagnosticId)
-    {
-        return diagnosticId switch
-        {
-            CommentSenseDiagnosticIds.MissingDocumentationId => null,
-            CommentSenseDiagnosticIds.MissingParameterDocumentationId => DocumentationTags.Param,
-            CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId => DocumentationTags.TypeParam,
-            CommentSenseDiagnosticIds.MissingReturnValueDocumentationId => DocumentationTags.Returns,
-            CommentSenseDiagnosticIds.MissingValueDocumentationId => DocumentationTags.Value,
-            CommentSenseDiagnosticIds.MissingExceptionDocumentationId => DocumentationTags.Exception,
-            _ => null
-        };
-    }
-
-    private static MemberDeclarationSyntax AddNewDocumentationToMember(MemberDeclarationSyntax member, string diagnosticId, string? tagName, string? name, string placeholder)
-    {
-        var indentation = member.GetIndentation();
-        var newLine = member.GetNewLine();
-
-        var content = new List<XmlNodeSyntax>
-        {
-            // Initial prefix
-            DocumentationSyntaxExtensions.CreateXmlText("/// ")
-        };
-
-        if (diagnosticId == CommentSenseDiagnosticIds.MissingInheritDocId)
-        {
-            content.Add(SyntaxFactory.XmlEmptyElement(
-                SyntaxFactory.Token(SyntaxKind.LessThanToken),
-                SyntaxFactory.XmlName(DocumentationTags.InheritDoc),
-                SyntaxFactory.List<XmlAttributeSyntax>(),
-                SyntaxFactory.Token(SyntaxKind.SlashGreaterThanToken).WithLeadingTrivia(SyntaxFactory.Whitespace(" "))));
-        }
-        else
-        {
-            content.Add(DocumentationSyntaxExtensions.CreateXmlElement(tagName ?? DocumentationTags.Summary, name, placeholder));
-        }
-
-        // Final newline
-        content.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine));
-
-        var docTrivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia, SyntaxFactory.List(content));
-        var newTrivia = SyntaxFactory.Trivia(docTrivia);
-
-        // [Whitespace][DocTrivia][Whitespace(indentation)]
-        var newLeadingTrivia = member.GetLeadingTrivia().Add(newTrivia).Add(SyntaxFactory.Whitespace(indentation));
-        return member.WithLeadingTrivia(newLeadingTrivia);
     }
 
     /// <inheritdoc />
