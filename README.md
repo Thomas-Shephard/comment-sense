@@ -40,9 +40,9 @@ For CommentSense to analyze your documentation, your project must have XML docum
 ### Parameters & Type Parameters
 Ensures parameters and type parameters are correctly documented and referenced.
 *   **CSENSE002 / CSENSE004**: Flags parameters or type parameters defined in code but missing from documentation.
-    *   **Code Fix**: An automatic code fix is available to generate missing `<param>` or `<typeparam>` tags with placeholders. This fix supports **Fix All** in document, project, or solution.
+    *   **Code Fix**: An automatic code fix is available to generate missing `<param>` or `<typeparam>` tags with placeholders. **If a fuzzy match is found among stray tags, a fix to rename the stray tag is also offered.** This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE003 / CSENSE005**: Flags "stray" tags referring to parameters that do not exist.
-    *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
+    *   **Code Fix**: An automatic code fix is available to remove stray tags. **If a fuzzy match is found among undocumented symbols, a fix to rename the tag to match the current code signature is also offered.** This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE008 / CSENSE010**: Enforces that the order of parameter tags in documentation matches the method signature.
     *   **Code Fix:** An automatic code fix is available to reorder tags to match the signature. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE009 / CSENSE011**: Flags duplicate tags for the same parameter.
@@ -121,6 +121,12 @@ comment_sense.require_capitalization = true
 # A value of 1.0 only flags documentation identical to the symbol name.
 # Recommended: 0.7 to 0.8
 comment_sense.similarity_threshold = 0.8
+
+# Threshold (0.0 to 1.0) for fuzzy-match renaming of stray documentation tags.
+# Setting this to 0.0 disables rename suggestions.
+# Recommended: 0.5 to 0.7
+# Default: 0.5
+comment_sense.rename_similarity_threshold = 0.5
 ```
 
 ### Langword Analysis

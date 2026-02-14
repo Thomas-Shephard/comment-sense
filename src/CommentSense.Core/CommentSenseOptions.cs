@@ -18,6 +18,7 @@ internal sealed record CommentSenseOptions(
     bool ExcludeConstants,
     bool ExcludeEnums,
     double SimilarityThreshold,
+    double RenameSimilarityThreshold,
     bool EnableConditionalSuppression,
     bool ScanCalledMethodsForExceptions,
     GhostReferenceMode GhostReferenceMode
@@ -37,6 +38,7 @@ internal sealed record CommentSenseOptions(
         ExcludeConstants: false,
         ExcludeEnums: false,
         SimilarityThreshold: 0.0,
+        RenameSimilarityThreshold: 0.5,
         EnableConditionalSuppression: false,
         ScanCalledMethodsForExceptions: false,
         GhostReferenceMode: GhostReferenceMode.Safe

@@ -6,4 +6,8 @@
     <ProjectReference Include="..\CommentSense.TestHelpers\CommentSense.TestHelpers.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Moq" />
+  </ItemGroup>
+
 </Project>
