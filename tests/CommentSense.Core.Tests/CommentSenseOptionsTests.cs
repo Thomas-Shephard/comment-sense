@@ -395,9 +395,24 @@ public class CommentSenseOptionsTests
             Assert.That(o1, Is.EqualTo(o3));
             Assert.That(o1.GetHashCode(), Is.EqualTo(o3.GetHashCode()));
             Assert.That(o1.ToString(), Is.Not.Null);
-            var (_, _, _, _, _, _, _, minSummaryLength, _, _, _, _, _, _, _, _) = o1;
+            var (_, _, _, _, _, _, _, minSummaryLength, _, _, _, _, _, _, _, _, _) = o1;
             Assert.That(minSummaryLength, Is.EqualTo(o1.MinSummaryLength));
         }
+    }
+
+    [Test]
+    public void LoadRenameSimilarityThreshold()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.rename_similarity_threshold"] = "0.75"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>());
+        var provider = new CustomProvider(localOptions, globalOptions);
+
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        var options = CommentSenseOptions.GetOptions(provider, null!);
+        Assert.That(options.RenameSimilarityThreshold, Is.EqualTo(0.75));
     }
 
     private sealed class MapOptions(IDictionary<string, string> map) : AnalyzerConfigOptions

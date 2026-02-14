@@ -93,6 +93,7 @@ The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.require_ending_punctuation`: Boolean to require summaries to end with punctuation.
 *   `comment_sense.require_capitalization`: Boolean to require documentation to start with a capital letter (if it starts with a letter).
 *   `comment_sense.similarity_threshold`: Double (0.0 to 1.0) for similarity analysis threshold.
+*   `comment_sense.rename_similarity_threshold`: Double (0.0 to 1.0) for fuzzy-match renaming of stray documentation tags.
 *   `comment_sense.allow_implicit_inheritdoc`: Boolean to allow skipping documentation for overrides/implementations.
 *   `comment_sense.exclude_constants`: Boolean to skip documentation requirements for constant fields.
 *   `comment_sense.exclude_enums`: Boolean to skip documentation requirements for enum members.
