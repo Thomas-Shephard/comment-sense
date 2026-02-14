@@ -44,81 +44,74 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
 
             // Group diagnostics by member and capture symbol upfront
             var memberGroups = GetMemberGroups(root, semanticModel, diagnostics, cancellationToken);
+            if (memberGroups.Count == 0)
+                return document;
 
-            var membersToReplace = memberGroups.Select(g => g.Member).ToList();
-            var currentRoot = root.TrackNodes(membersToReplace);
+            var groupsByMember = memberGroups.ToDictionary(g => g.Member, g => g);
 
-            currentRoot = memberGroups.Aggregate(currentRoot, ApplyFixesToMember);
+            var newRoot = root.ReplaceNodes(groupsByMember.Keys, (oldNode, newNode) =>
+            {
+                if (newNode is not { } member)
+                    return newNode;
 
-            return document.WithSyntaxRoot(currentRoot);
+                var group = groupsByMember[oldNode];
+                var updatedMember = member;
+
+                foreach (var diag in group.Diagnostics)
+                {
+                    updatedMember = ApplyDiagnosticToMember(updatedMember, diag, group.Symbol);
+                }
+
+                return updatedMember;
+            });
+
+            return document.WithSyntaxRoot(newRoot);
         }
 
         private static List<(MemberDeclarationSyntax Member, List<Diagnostic> Diagnostics, ISymbol? Symbol)> GetMemberGroups(
             SyntaxNode root, SemanticModel? semanticModel, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
         {
-            return [.. diagnostics
-                .Select(d =>
-                {
-                    var memberNode = root.FindNode(d.Location.SourceSpan).FirstAncestorOrSelf<MemberDeclarationSyntax>();
-                    return (Diagnostic: d, Member: memberNode);
-                })
+            var groups = diagnostics
+                .Select(d => (Diagnostic: d, Member: root.FindNode(d.Location.SourceSpan).FirstAncestorOrSelf<MemberDeclarationSyntax>()))
                 .Where(x => x.Member != null)
-                .GroupBy(x => x.Member)
-                .Select(g =>
-                {
-                    var member = g.Key;
-                    if (member == null)
-                        return default;
+                .GroupBy(x => x.Member);
 
-                    return (Member: member, Diagnostics: g.Select(x => x.Diagnostic).ToList(), Symbol: semanticModel?.GetDeclaredSymbol(member, cancellationToken));
-                })
-                .Where(x => x.Member != null)];
-        }
-
-        private static SyntaxNode ApplyFixesToMember(SyntaxNode currentRoot, (MemberDeclarationSyntax Member, List<Diagnostic> Diagnostics, ISymbol? Symbol) group)
-        {
-            var (initialMember, list, symbol) = group;
-            foreach (var diag in list)
+            var result = new List<(MemberDeclarationSyntax Member, List<Diagnostic> Diagnostics, ISymbol? Symbol)>();
+            foreach (var g in groups)
             {
-                var member = currentRoot.GetCurrentNode(initialMember);
-                if (member == null)
-                    break;
-
-                string? name = GetTargetName(diag);
-                string? tagName = GetTagNameForDiagnostic(diag.Id);
-
-                var docTrivia = member.GetLeadingTrivia()
-                    .Select(t => t.GetStructure())
-                    .OfType<DocumentationCommentTriviaSyntax>()
-                    .FirstOrDefault();
-
-                if (docTrivia == null)
-                {
-                    var newMember = AddNewDocumentationToMember(member, diag.Id, tagName, name, Resources.DocumentationPlaceholder);
-                    currentRoot = currentRoot.ReplaceNode(member, newMember);
-                }
-                else
-                {
-                    string effectiveTagName;
-                    if (tagName != null)
-                    {
-                        effectiveTagName = tagName;
-                    }
-                    else if (diag.Id == CommentSenseDiagnosticIds.MissingInheritDocId)
-                    {
-                        effectiveTagName = DocumentationTags.InheritDoc;
-                    }
-                    else
-                    {
-                        effectiveTagName = DocumentationTags.Summary;
-                    }
-
-                    var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder);
-                    currentRoot = currentRoot.ReplaceNode(docTrivia, newDocTrivia);
-                }
+                var member = g.Key;
+                if (member != null)
+                    result.Add((member, g.Select(x => x.Diagnostic).ToList(), semanticModel?.GetDeclaredSymbol(member, cancellationToken)));
             }
 
-            return currentRoot;
+            return result;
+        }
+
+        private static MemberDeclarationSyntax ApplyDiagnosticToMember(MemberDeclarationSyntax member, Diagnostic diag, ISymbol? symbol)
+        {
+            string? name = GetTargetName(diag);
+            string? tagName = GetTagNameForDiagnostic(diag.Id);
+
+            var leadingTrivia = member.GetLeadingTrivia();
+            DocumentationCommentTriviaSyntax? docTrivia = null;
+            SyntaxTrivia targetTrivia = default;
+
+            foreach (var trivia in leadingTrivia)
+            {
+                if (trivia.GetStructure() is not DocumentationCommentTriviaSyntax d)
+                    continue;
+
+                docTrivia = d;
+                targetTrivia = trivia;
+                break;
+            }
+
+            if (docTrivia == null)
+                return AddNewDocumentationToMember(member, diag.Id, tagName, name, Resources.DocumentationPlaceholder);
+
+            var effectiveTagName = tagName ?? (diag.Id == CommentSenseDiagnosticIds.MissingInheritDocId ? DocumentationTags.InheritDoc : DocumentationTags.Summary);
+            var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder);
+            return member.WithLeadingTrivia(leadingTrivia.Replace(targetTrivia, SyntaxFactory.Trivia(newDocTrivia)));
         }
 
         private static string? GetTargetName(Diagnostic diag)
