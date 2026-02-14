@@ -84,28 +84,33 @@ internal static class SymbolExtensions
 
     public static bool InheritsFromOrEquals(this ITypeSymbol type, ITypeSymbol baseType)
     {
-        if (SymbolEqualityComparer.Default.Equals(type, baseType))
-        {
+        if (AreEquivalent(type, baseType))
             return true;
-        }
 
         if (baseType.TypeKind == TypeKind.Interface)
         {
-            return type.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, baseType));
+            return type.AllInterfaces.Any(i => AreEquivalent(i, baseType));
         }
 
         var current = type.BaseType;
         while (current != null)
         {
-            if (SymbolEqualityComparer.Default.Equals(current, baseType))
-            {
+            if (AreEquivalent(current, baseType))
                 return true;
-            }
 
             current = current.BaseType;
         }
 
         return false;
+
+        static bool AreEquivalent(ITypeSymbol t, ITypeSymbol b)
+        {
+            if (SymbolEqualityComparer.Default.Equals(t, b))
+                return true;
+
+            return (b.IsDefinition && SymbolEqualityComparer.Default.Equals(t.OriginalDefinition, b)) ||
+                   (t.IsDefinition && SymbolEqualityComparer.Default.Equals(b.OriginalDefinition, t));
+        }
     }
 
     public static ImmutableArray<string> GetExpectedMemberNames(this ISymbol symbol, string tagName)

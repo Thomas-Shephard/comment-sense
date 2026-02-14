@@ -7,4 +7,5 @@ internal static class DocumentationAttributes
     public const string Langword = "langword";
 
     public const string NameProperty = "Name";
+    public const string CrefProperty = "Cref";
 }

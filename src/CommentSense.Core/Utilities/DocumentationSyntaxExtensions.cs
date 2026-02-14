@@ -150,25 +150,64 @@ internal static class DocumentationSyntaxExtensions
                 SyntaxTriviaList.Empty)));
     }
 
-    public static XmlElementSyntax CreateXmlElement(string tagName, string? name = null, string content = "")
+    public static XmlNodeSyntax CreateXmlElement(string tagName, string? attributeValue = null, string content = "")
     {
-        var nameAttribute = name != null
-            ? SyntaxFactory.XmlNameAttribute(
-                SyntaxFactory.XmlName(SyntaxFactory.Identifier(SyntaxFactory.TriviaList(SyntaxFactory.Whitespace(" ")), DocumentationAttributes.Name, SyntaxTriviaList.Empty)),
-                SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
-                SyntaxFactory.IdentifierName(name),
-                SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken))
-            : null;
+        XmlAttributeSyntax? attribute = null;
+        if (attributeValue != null)
+        {
+            if (tagName is DocumentationTags.Exception or DocumentationTags.See or DocumentationTags.SeeAlso or DocumentationTags.Permission)
+            {
+                var crefText = NormalizeCref(attributeValue);
+
+                attribute = SyntaxFactory.XmlCrefAttribute(
+                    SyntaxFactory.TypeCref(SyntaxFactory.ParseTypeName(crefText)))
+                    .WithLeadingTrivia(SyntaxFactory.Whitespace(" "));
+            }
+            else
+            {
+                attribute = SyntaxFactory.XmlNameAttribute(
+                    SyntaxFactory.XmlName(SyntaxFactory.Identifier(SyntaxFactory.TriviaList(SyntaxFactory.Whitespace(" ")), DocumentationAttributes.Name, SyntaxTriviaList.Empty)),
+                    SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+                    SyntaxFactory.IdentifierName(attributeValue),
+                    SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken));
+            }
+        }
+
+        if (string.IsNullOrEmpty(content) && tagName is DocumentationTags.See or DocumentationTags.SeeAlso)
+        {
+            var emptyElement = SyntaxFactory.XmlEmptyElement(
+                SyntaxFactory.Token(SyntaxKind.LessThanToken),
+                SyntaxFactory.XmlName(tagName),
+                SyntaxFactory.List<XmlAttributeSyntax>(),
+                SyntaxFactory.Token(SyntaxKind.SlashGreaterThanToken).WithLeadingTrivia(SyntaxFactory.Whitespace(" ")));
+
+            if (attribute != null)
+            {
+                emptyElement = emptyElement.AddAttributes(attribute);
+            }
+
+            return emptyElement;
+        }
 
         var startTag = SyntaxFactory.XmlElementStartTag(SyntaxFactory.XmlName(tagName));
-        if (nameAttribute != null)
+        if (attribute != null)
         {
-            startTag = startTag.AddAttributes(nameAttribute);
+            startTag = startTag.AddAttributes(attribute);
         }
 
         return SyntaxFactory.XmlElement(
             startTag,
             SyntaxFactory.XmlElementEndTag(SyntaxFactory.XmlName(tagName)))
             .WithContent(SyntaxFactory.SingletonList<XmlNodeSyntax>(CreateXmlText(content)));
+    }
+
+    public static string NormalizeCref(string cref)
+    {
+        if (string.IsNullOrEmpty(cref))
+            return cref;
+
+        return cref.Contains('{')
+            ? cref.Replace('{', '<').Replace('}', '>')
+            : cref;
     }
 }

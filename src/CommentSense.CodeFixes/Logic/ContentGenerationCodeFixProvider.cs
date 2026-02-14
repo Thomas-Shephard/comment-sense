@@ -25,6 +25,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId,
         CommentSenseDiagnosticIds.MissingReturnValueDocumentationId,
         CommentSenseDiagnosticIds.MissingValueDocumentationId,
+        CommentSenseDiagnosticIds.MissingExceptionDocumentationId,
         CommentSenseDiagnosticIds.MissingInheritDocId
     ];
 
@@ -36,68 +37,82 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         internal override async Task<Document> FixDocumentInternalAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            if (root == null) return document;
+            if (root == null)
+                return document;
 
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
 
             // Group diagnostics by member and capture symbol upfront
-            var memberGroups = diagnostics
-                .Select(d =>
-                {
-                    var memberNode = root.FindNode(d.Location.SourceSpan).FirstAncestorOrSelf<MemberDeclarationSyntax>();
-                    return (Diagnostic: d, Member: memberNode);
-                })
-                .Where(x => x.Member != null)
-                .GroupBy(x => x.Member)
-                .Select(g =>
-                {
-                    var member = g.Key;
-                    if (member == null)
-                        return default;
-                    return (Member: member, Diagnostics: g.Select(x => x.Diagnostic).ToList(), Symbol: semanticModel?.GetDeclaredSymbol(member, cancellationToken));
-                })
-                .Where(x => x.Member != null)
-                .ToList();
+            var memberGroups = GetMemberGroups(root, semanticModel, diagnostics, cancellationToken);
+            if (memberGroups.Count == 0)
+                return document;
 
-            var membersToReplace = memberGroups.Select(g => g.Member).ToList();
-            var currentRoot = root.TrackNodes(membersToReplace);
+            var groupsByMember = memberGroups.ToDictionary(g => g.Member, g => g);
 
-            foreach (var (initialMember, list, symbol) in memberGroups)
+            var newRoot = root.ReplaceNodes(groupsByMember.Keys, (oldNode, newNode) =>
             {
-                foreach (var diag in list)
+                if (newNode is not MemberDeclarationSyntax member)
+                    return newNode;
+
+                var (_, diagList, symbol) = groupsByMember[oldNode];
+                var updatedMember = member;
+
+                foreach (var diag in diagList)
                 {
-                    var member = currentRoot.GetCurrentNode(initialMember);
-                    if (member == null) break;
-
-                    string? name = null;
-                    if (diag.Id == CommentSenseDiagnosticIds.MissingParameterDocumentationId ||
-                        diag.Id == CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId)
-                    {
-                        diag.Properties.TryGetValue(DocumentationAttributes.NameProperty, out name);
-                    }
-
-                    string? tagName = GetTagNameForDiagnostic(diag.Id);
-
-                    var docTrivia = member.GetLeadingTrivia()
-                        .Select(t => t.GetStructure())
-                        .OfType<DocumentationCommentTriviaSyntax>()
-                        .FirstOrDefault();
-
-                    if (docTrivia == null)
-                    {
-                        var newMember = AddNewDocumentationToMember(member, diag.Id, tagName, name, Resources.DocumentationPlaceholder);
-                        currentRoot = currentRoot.ReplaceNode(member, newMember);
-                    }
-                    else
-                    {
-                        var effectiveTagName = tagName ?? (diag.Id == CommentSenseDiagnosticIds.MissingInheritDocId ? DocumentationTags.InheritDoc : DocumentationTags.Summary);
-                        var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder);
-                        currentRoot = currentRoot.ReplaceNode(docTrivia, newDocTrivia);
-                    }
+                    updatedMember = ApplyDiagnosticToMember(updatedMember, diag, symbol);
                 }
+
+                return updatedMember;
+            });
+
+            return document.WithSyntaxRoot(newRoot);
+        }
+
+        private static MemberDeclarationSyntax ApplyDiagnosticToMember(MemberDeclarationSyntax member, Diagnostic diag, ISymbol? symbol)
+        {
+            string? name = GetTargetName(diag);
+            string? tagName = GetTagNameForDiagnostic(diag.Id);
+
+            var leadingTrivia = member.GetLeadingTrivia();
+            DocumentationCommentTriviaSyntax? docTrivia = null;
+            SyntaxTrivia targetTrivia = default;
+
+            foreach (var trivia in leadingTrivia)
+            {
+                if (trivia.GetStructure() is not DocumentationCommentTriviaSyntax d)
+                    continue;
+
+                docTrivia = d;
+                targetTrivia = trivia;
+                break;
             }
 
-            return document.WithSyntaxRoot(currentRoot);
+            if (docTrivia == null)
+                return AddNewDocumentationToMember(member, diag.Id, tagName, name, Resources.DocumentationPlaceholder);
+
+            var effectiveTagName = tagName ?? (diag.Id == CommentSenseDiagnosticIds.MissingInheritDocId ? DocumentationTags.InheritDoc : DocumentationTags.Summary);
+            var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder);
+            return member.WithLeadingTrivia(leadingTrivia.Replace(targetTrivia, SyntaxFactory.Trivia(newDocTrivia)));
+        }
+
+        private static string? GetTargetName(Diagnostic diag)
+        {
+            switch (diag.Id)
+            {
+                case CommentSenseDiagnosticIds.MissingParameterDocumentationId:
+                case CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId:
+                    {
+                        diag.Properties.TryGetValue(DocumentationAttributes.NameProperty, out var name);
+                        return name;
+                    }
+                case CommentSenseDiagnosticIds.MissingExceptionDocumentationId:
+                    {
+                        diag.Properties.TryGetValue(DocumentationAttributes.CrefProperty, out var name);
+                        return name;
+                    }
+                default:
+                    return null;
+            }
         }
 
         private static string? GetTagNameForDiagnostic(string diagnosticId)
@@ -109,6 +124,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
                 CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId => DocumentationTags.TypeParam,
                 CommentSenseDiagnosticIds.MissingReturnValueDocumentationId => DocumentationTags.Returns,
                 CommentSenseDiagnosticIds.MissingValueDocumentationId => DocumentationTags.Value,
+                CommentSenseDiagnosticIds.MissingExceptionDocumentationId => DocumentationTags.Exception,
                 _ => null
             };
         }
@@ -149,11 +165,33 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         }
     }
 
+    internal static List<(MemberDeclarationSyntax Member, List<Diagnostic> Diagnostics, ISymbol? Symbol)> GetMemberGroups(
+        SyntaxNode root, SemanticModel? semanticModel, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
+    {
+        var groups = diagnostics
+            .Select(d => (Diagnostic: d, Member: root.FindNode(d.Location.SourceSpan).FirstAncestorOrSelf<MemberDeclarationSyntax>()))
+            .Where(x => x.Member != null)
+            .GroupBy(x => x.Member);
+
+        var result = new List<(MemberDeclarationSyntax Member, List<Diagnostic> Diagnostics, ISymbol? Symbol)>();
+        foreach (var g in groups)
+        {
+            var member = g.Key;
+            if (member != null)
+            {
+                result.Add((member, g.Select(x => x.Diagnostic).ToList(), semanticModel?.GetDeclaredSymbol(member, cancellationToken)));
+            }
+        }
+
+        return result;
+    }
+
     /// <inheritdoc />
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root == null) return;
+        if (root == null)
+            return;
 
         foreach (var diagnostic in context.Diagnostics)
         {
@@ -190,6 +228,11 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
                     tagName = DocumentationTags.Value;
                     title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingTagTitle, tagName, Resources.DocumentationPlaceholder);
                     break;
+                case CommentSenseDiagnosticIds.MissingExceptionDocumentationId:
+                    tagName = DocumentationTags.Exception;
+                    diagnostic.Properties.TryGetValue(DocumentationAttributes.CrefProperty, out name);
+                    title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingCrefTagTitle, tagName, name ?? string.Empty, Resources.DocumentationPlaceholder);
+                    break;
                 case CommentSenseDiagnosticIds.MissingInheritDocId:
                     title = Resources.AddInheritDocTitle;
                     break;
@@ -215,7 +258,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
     internal static DocumentationCommentTriviaSyntax InsertTagToTrivia(DocumentationCommentTriviaSyntax docTrivia, string tagName, string? name, ISymbol? symbol, string placeholder = "")
     {
         var member = docTrivia.GetMemberDeclaration();
-        var indentation = member != null ? member.GetIndentation() : string.Empty;
+        var indentation = member?.GetIndentation() ?? string.Empty;
 
         var content = docTrivia.Content;
         var insertionIndex = FindInsertionIndex(content, tagName, name, symbol);
@@ -224,31 +267,62 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         var prefix = docTrivia.GetPrefix();
 
         var newNodes = new List<XmlNodeSyntax>();
-        var isImmediatelyAfterInitialPrefix =
-            insertionIndex == 1 &&
-            content.Count > 0 &&
-            content[0] is XmlTextSyntax initialText &&
-            !initialText.ToString().Contains(newLine) &&
-            initialText.ToString().TrimEnd().EndsWith(prefix.TrimEnd(), StringComparison.Ordinal);
 
-        if (insertionIndex > 0 && !isImmediatelyAfterInitialPrefix && (content[insertionIndex - 1] is not XmlTextSyntax textNode || !textNode.ToString().Contains(newLine)))
-        {
+        if (NeedsLeadingTrivia(docTrivia, content, insertionIndex, prefix, newLine))
             newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
-        }
 
+        newNodes.Add(CreateTagNode(tagName, name, placeholder));
+
+        AddTrailingTrivia(newNodes, content, insertionIndex, newLine, indentation, prefix);
+
+        var newContent = content.InsertRange(insertionIndex, newNodes);
+        return docTrivia.WithContent(newContent);
+    }
+
+    private static bool NeedsLeadingTrivia(DocumentationCommentTriviaSyntax docTrivia, SyntaxList<XmlNodeSyntax> content, int insertionIndex, string prefix, string newLine)
+    {
+        if (insertionIndex <= 0)
+            return false;
+
+        if (IsImmediatelyAfterInitialPrefix(docTrivia, content, insertionIndex, prefix, newLine))
+            return false;
+
+        return content[insertionIndex - 1] is not XmlTextSyntax textNode || !textNode.ToString().Contains(newLine);
+    }
+
+    private static bool IsImmediatelyAfterInitialPrefix(DocumentationCommentTriviaSyntax docTrivia, SyntaxList<XmlNodeSyntax> content, int insertionIndex, string prefix, string newLine)
+    {
+        if (insertionIndex != 1 || content.Count == 0 || content[0] is not XmlTextSyntax initialText)
+            return false;
+
+        var textStr = initialText.ToString();
+        if (textStr.Contains(newLine))
+            return false;
+
+        var trimmedText = textStr.TrimEnd();
+        var trimmedPrefix = prefix.TrimEnd();
+
+        return trimmedText.EndsWith(trimmedPrefix, StringComparison.Ordinal) ||
+               trimmedText.EndsWith("/**", StringComparison.Ordinal) ||
+               (docTrivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) && string.IsNullOrWhiteSpace(textStr));
+    }
+
+    private static XmlNodeSyntax CreateTagNode(string tagName, string? name, string placeholder)
+    {
         if (tagName == DocumentationTags.InheritDoc)
         {
-            newNodes.Add(SyntaxFactory.XmlEmptyElement(
+            return SyntaxFactory.XmlEmptyElement(
                 SyntaxFactory.Token(SyntaxKind.LessThanToken),
                 SyntaxFactory.XmlName(DocumentationTags.InheritDoc),
                 SyntaxFactory.List<XmlAttributeSyntax>(),
-                SyntaxFactory.Token(SyntaxKind.SlashGreaterThanToken).WithLeadingTrivia(SyntaxFactory.Whitespace(" "))));
-        }
-        else
-        {
-            newNodes.Add(DocumentationSyntaxExtensions.CreateXmlElement(tagName, name, placeholder));
+                SyntaxFactory.Token(SyntaxKind.SlashGreaterThanToken).WithLeadingTrivia(SyntaxFactory.Whitespace(" ")));
         }
 
+        return DocumentationSyntaxExtensions.CreateXmlElement(tagName, name, placeholder);
+    }
+
+    private static void AddTrailingTrivia(List<XmlNodeSyntax> newNodes, SyntaxList<XmlNodeSyntax> content, int insertionIndex, string newLine, string indentation, string prefix)
+    {
         if (insertionIndex < content.Count && content[insertionIndex] is not XmlTextSyntax)
         {
             newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine + indentation + prefix));
@@ -257,9 +331,6 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         {
             newNodes.Add(DocumentationSyntaxExtensions.CreateXmlText(newLine));
         }
-
-        var newContent = content.InsertRange(insertionIndex, newNodes);
-        return docTrivia.WithContent(newContent);
     }
 
     private static int FindInsertionIndex(SyntaxList<XmlNodeSyntax> content, string tagName, string? targetName, ISymbol? symbol)
@@ -281,14 +352,17 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
             bestIndex = i + 1;
         }
 
-        if (bestIndex != -1) return bestIndex;
+        if (bestIndex != -1)
+            return bestIndex;
 
-        if (content.Count > 0 && content[0] is XmlTextSyntax firstText)
-        {
-            var text = firstText.ToString().TrimStart();
-            if (text.StartsWith("///", StringComparison.Ordinal) || text.StartsWith("/**", StringComparison.Ordinal))
-                return 1;
-        }
+        if (content.Count <= 0 || content[0] is not XmlTextSyntax firstText)
+            return content.Count;
+
+        var text = firstText.ToString().TrimStart();
+        if (text.StartsWith("///", StringComparison.Ordinal))
+            return 1;
+        if (text.StartsWith("/**", StringComparison.Ordinal))
+            return 1;
 
         return content.Count;
     }
@@ -306,7 +380,10 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         if (currentOrder > targetOrder)
             return true;
 
-        if (currentOrder != targetOrder || targetExpectedIndex == -1)
+        if (currentOrder != targetOrder)
+            return false;
+
+        if (targetExpectedIndex == -1)
             return false;
 
         var currentName = node.GetNameAttribute();

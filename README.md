@@ -59,6 +59,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 ### Exceptions
 *   **CSENSE012**: Scans the method body for explicitly thrown exceptions (including static guard clauses like `ArgumentNullException.ThrowIfNull`) and ensures they are documented with `<exception>` tags.
+    *   **Code Fix**: An automatic code fix is available to generate a missing `<exception>` tag with a placeholder. This fix supports **Fix All** in document, project, or solution.
     *   *Configurable:*
         *   Ignore exceptions using `comment_sense.ignored_exceptions`, `comment_sense.ignore_system_exceptions`, and `comment_sense.ignored_exception_namespaces`.
         *   Enable scanning of called methods and constructors for their documented exceptions using `comment_sense.scan_called_methods_for_exceptions = true`.

@@ -3,6 +3,7 @@ using CommentSense.CodeFixes.Logic;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -515,6 +516,103 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
     }
 
     [Test]
+    public async Task AddMissingException()
+    {
+        const string source = """
+            /// <summary>Test class</summary>
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                public void {|CSENSE012:Method|}()
+                {
+                    throw new System.ArgumentNullException();
+                }
+            }
+            """;
+        const string fixedSource = """
+            /// <summary>Test class</summary>
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                /// <exception cref="System.ArgumentNullException">TODO</exception>
+                public void Method()
+                {
+                    throw new System.ArgumentNullException();
+                }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task AddMultipleMissingExceptionsFixAll()
+    {
+        const string source = """
+            /// <summary>Test class</summary>
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                public void {|CSENSE012:{|CSENSE012:Method|}|}()
+                {
+                    if (true) throw new System.ArgumentNullException();
+                    throw new System.InvalidOperationException();
+                }
+            }
+            """;
+        const string fixedSource = """
+            /// <summary>Test class</summary>
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                /// <exception cref="System.ArgumentNullException">TODO</exception>
+                /// <exception cref="System.InvalidOperationException">TODO</exception>
+                public void Method()
+                {
+                    if (true) throw new System.ArgumentNullException();
+                    throw new System.InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyFixAllAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task AddMissingGenericException()
+    {
+        const string source = """
+            public class MyException<T> : System.Exception { }
+
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                /// <typeparam name="T">Type parameter</typeparam>
+                public void {|CSENSE012:Method|}<T>()
+                {
+                    throw new MyException<T>();
+                }
+            }
+            """;
+        const string fixedSource = """
+            public class MyException<T> : System.Exception { }
+
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                /// <typeparam name="T">Type parameter</typeparam>
+                /// <exception cref="MyException{T}">TODO</exception>
+                public void Method<T>()
+                {
+                    throw new MyException<T>();
+                }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
     public void AddMissingParamToDetachedDocumentationManual()
     {
         var trivia = SyntaxFactory.DocumentationCommentTrivia(
@@ -637,6 +735,210 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
         // Should NOT contain a newline before <summary>
         Assert.That(newTrivia.ToString(), Is.EqualTo("/// <summary>TODO</summary>\r\n")
             .Or.EqualTo("/// <summary>TODO</summary>\n"));
+    }
+
+    [Test]
+    public async Task AddMissingSummaryToExistingInvalidDocumentation()
+    {
+        const string source = """
+            /// <summary>Test class</summary>
+            public class Test
+            {
+                /// <unknown />
+                public void {|CSENSE001:Method|}() { }
+            }
+            """;
+        const string fixedSource = """
+            /// <summary>Test class</summary>
+            public class Test
+            {
+                /// <summary>TODO</summary>
+                /// <unknown />
+                public void Method() { }
+            }
+            """;
+
+        var options = new Dictionary<string, string>(DisableUnrelatedRules)
+        {
+            ["dotnet_diagnostic.CSENSE001.severity"] = "warning"
+        };
+
+        await VerifyCodeFixAsync(source, fixedSource, options);
+    }
+
+    [Test]
+    public async Task AddMissingInheritDocToExistingInvalidDocumentation()
+    {
+        const string source = """
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base method</summary>
+                public virtual void Method() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived : Base
+            {
+                /// <unknown />
+                public override void {|CSENSE018:Method|}() { }
+            }
+            """;
+        const string fixedSource = """
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base method</summary>
+                public virtual void Method() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc />
+                /// <unknown />
+                public override void Method() { }
+            }
+            """;
+
+        var options = new Dictionary<string, string>(DisableUnrelatedRules)
+        {
+            { "comment_sense.allow_implicit_inheritdoc", "false" }
+        };
+
+        await VerifyCodeFixAsync(source, fixedSource, options);
+    }
+
+    [Test]
+    public async Task AddMissingParamToMultiLineDocumentationStyle2()
+    {
+        const string source = """
+            /// <summary>Test class</summary>
+            public class Test
+            {
+                /** <summary>Summary</summary> */
+                public void Method(int {|CSENSE002:x|}) { }
+            }
+            """;
+        const string fixedSource = """
+            /// <summary>Test class</summary>
+            public class Test
+            {
+                /** <summary>Summary</summary>
+                 * <param name="x">TODO</param> */
+                public void Method(int x) { }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public void FindInsertionIndexWithMultiLinePrefixManual()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.MultiLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText("/** ")
+            ]));
+
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Summary, null, null, "TODO");
+        Assert.That(newTrivia.ToString(), Does.StartWith("/** <summary>TODO</summary>"));
+    }
+    [Test]
+    public void InsertTagAfterNodeWithNewlineManual()
+    {
+        var newLine = Environment.NewLine;
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.SingleLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText("/// <summary>Summary</summary>" + newLine + "    /// ")
+            ]));
+
+        // insertionIndex should be at the end (1)
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Param, "x", null, "TODO");
+
+        // Since the previous node already contains a newline, it should NOT add another one.
+        var s = newTrivia.ToString();
+        Assert.That(s, Does.Not.Contain(newLine + newLine));
+    }
+
+    [Test]
+    public void FindInsertionIndexWithoutStandardPrefixManual()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.SingleLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText(" <summary>Summary</summary>") // Missing ///
+            ]));
+
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Param, "x", null, "TODO");
+        // Should be inserted at the end
+        Assert.That(newTrivia.ToString(), Does.Contain("<param name=\"x\">TODO</param>"));
+    }
+
+    [Test]
+    public void InsertTagToEmptySingleLineDocumentationManual()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.SingleLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText("/// ")
+            ]));
+
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Summary, null, null, "TODO");
+        Assert.That(newTrivia.ToString(), Does.StartWith("/// <summary>TODO</summary>"));
+    }
+
+    [Test]
+    public void GetMemberGroupsWithNullSemanticModelManual()
+    {
+        var tree = CSharpSyntaxTree.ParseText("public class C { public void M() { } }");
+        var root = tree.GetRoot();
+        var member = root.DescendantNodes().OfType<MemberDeclarationSyntax>().First();
+        var diag = Diagnostic.Create(CommentSenseRules.MissingDocumentationRule, Location.Create(tree, member.Span));
+
+        var groups = ContentGenerationCodeFixProvider.GetMemberGroups(root, null, [diag], CancellationToken.None);
+
+        Assert.That(groups, Has.Count.EqualTo(1));
+        Assert.That(groups[0].Symbol, Is.Null);
+    }
+
+    [Test]
+    public void InsertTagToSingleLineDocumentationWithOnlyWhitespaceManual()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.SingleLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText(" ")
+            ]));
+
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Summary, null, null, "TODO");
+        Assert.That(newTrivia.ToString(), Does.StartWith(" <summary>TODO</summary>"));
+    }
+
+    [Test]
+    public void InsertTagToSingleLineDocumentationWithoutPrefixOrWhitespaceManual()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.SingleLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText("some text")
+            ]));
+
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Summary, null, null, "TODO");
+        Assert.That(newTrivia.ToString(), Does.Contain("<summary>TODO</summary>"));
+    }
+
+    [Test]
+    public void InsertTagToMultiLineDocumentationWithoutPrefixManual()
+    {
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.MultiLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>([
+                DocumentationSyntaxExtensions.CreateXmlText("/** some text")
+            ]));
+
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Summary, null, null, "TODO");
+        Assert.That(newTrivia.ToString(), Does.Contain("<summary>TODO</summary>"));
     }
 
     [Test]
