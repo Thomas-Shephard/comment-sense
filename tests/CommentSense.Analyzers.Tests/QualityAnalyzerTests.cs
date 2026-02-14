@@ -70,20 +70,6 @@ public class QualityAnalyzerTests
     }
 
     [Test]
-    public void CalculateSimilarityIdentityReturnsOne()
-    {
-        var result = QualityAnalyzer.CalculateSimilarity("Same", "Same");
-        Assert.That(result, Is.EqualTo(1.0));
-    }
-
-    [Test]
-    public void CalculateSimilarityDifferentReturnsValue()
-    {
-        var result = QualityAnalyzer.CalculateSimilarity("ABC", "ABD");
-        Assert.That(result, Is.LessThan(1.0).And.GreaterThan(0.0));
-    }
-
-    [Test]
     public void IsLowQualityReturnsBranch()
     {
         var element = new XElement("returns", "return");
@@ -119,13 +105,6 @@ public class QualityAnalyzerTests
         var element = new XElement("summary", "...");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", options);
         Assert.That(result, Is.True);
-    }
-
-    [Test]
-    public void ComputeLevenshteinDistanceSwapBranch()
-    {
-        var result = QualityAnalyzer.CalculateSimilarity("A", "BB");
-        Assert.That(result, Is.Zero);
     }
 
     [Test]

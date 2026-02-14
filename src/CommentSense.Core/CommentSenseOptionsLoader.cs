@@ -40,6 +40,9 @@ internal static class CommentSenseOptionsLoader
         var rawThreshold = GetDoubleOption(options, globalOptions, "similarity_threshold", CommentSenseOptions.Default.SimilarityThreshold);
         var similarityThreshold = Math.Max(0.0, Math.Min(1.0, rawThreshold));
 
+        var rawRenameThreshold = GetDoubleOption(options, globalOptions, "rename_similarity_threshold", CommentSenseOptions.Default.RenameSimilarityThreshold);
+        var renameSimilarityThreshold = Math.Max(0.0, Math.Min(1.0, rawRenameThreshold));
+
         var enableSuppression = GetBoolOption(options, globalOptions, "enable_conditional_suppression", CommentSenseOptions.Default.EnableConditionalSuppression);
         var scanExceptions = GetBoolOption(options, globalOptions, "scan_called_methods_for_exceptions", CommentSenseOptions.Default.ScanCalledMethodsForExceptions);
         var ghostMode = GetEnumOption(options, globalOptions, "ghost_references.mode", CommentSenseOptions.Default.GhostReferenceMode);
@@ -58,6 +61,7 @@ internal static class CommentSenseOptionsLoader
             excludeConstants,
             excludeEnums,
             similarityThreshold,
+            renameSimilarityThreshold,
             enableSuppression,
             scanExceptions,
             ghostMode

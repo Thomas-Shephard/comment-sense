@@ -84,7 +84,7 @@ internal static class DocumentationLocationExtensions
         {
             if (current.HasStructuredTrivia)
             {
-                var trivia = current.GetLeadingTrivia().FirstOrDefault(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) || t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia));
+                var trivia = current.GetLeadingTrivia().LastOrDefault(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) || t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia));
                 if (trivia.GetStructure() is DocumentationCommentTriviaSyntax docTrivia)
                     return docTrivia;
             }

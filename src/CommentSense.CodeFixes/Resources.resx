@@ -97,4 +97,10 @@
   <data name="AddInheritDocTitle" xml:space="preserve">
     <value>Add &lt;inheritdoc /&gt;</value>
   </data>
+  <data name="RenameStrayTagTitle" xml:space="preserve">
+    <value>Rename stray &lt;{0} name="{1}" /&gt; to "{2}"</value>
+  </data>
+  <data name="RenameAllStrayTagsTitle" xml:space="preserve">
+    <value>Rename all fuzzy-matching stray tags</value>
+  </data>
 </root>
