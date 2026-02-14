@@ -393,8 +393,8 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
             SyntaxKind.SingleLineDocumentationCommentTrivia,
             SyntaxFactory.List<XmlNodeSyntax>([
                 DocumentationSyntaxExtensions.CreateXmlText("/// "),
-            DocumentationSyntaxExtensions.CreateXmlElement(DocumentationTags.Summary, content: "S"),
-            DocumentationSyntaxExtensions.CreateXmlText(Environment.NewLine)
+                DocumentationSyntaxExtensions.CreateXmlElement(DocumentationTags.Summary, content: "S"),
+                DocumentationSyntaxExtensions.CreateXmlText(Environment.NewLine)
             ]));
 
         var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.InheritDoc, null, null);
@@ -619,8 +619,8 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
             SyntaxKind.SingleLineDocumentationCommentTrivia,
             SyntaxFactory.List<XmlNodeSyntax>([
                 DocumentationSyntaxExtensions.CreateXmlText("/// "),
-            DocumentationSyntaxExtensions.CreateXmlElement(DocumentationTags.Summary, content: "S"),
-            DocumentationSyntaxExtensions.CreateXmlText(Environment.NewLine)
+                DocumentationSyntaxExtensions.CreateXmlElement(DocumentationTags.Summary, content: "S"),
+                DocumentationSyntaxExtensions.CreateXmlText(Environment.NewLine)
             ]));
 
         var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Param, "x", null, "TODO");
@@ -661,7 +661,7 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
             SyntaxKind.SingleLineDocumentationCommentTrivia,
             SyntaxFactory.List<XmlNodeSyntax>([
                 DocumentationSyntaxExtensions.CreateXmlText("/// "),
-            DocumentationSyntaxExtensions.CreateXmlElement(DocumentationTags.Summary, content: "S")
+                DocumentationSyntaxExtensions.CreateXmlElement(DocumentationTags.Summary, content: "S")
             ]));
 
         var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.Param, "x", null, "TODO");
@@ -713,8 +713,8 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
             SyntaxKind.SingleLineDocumentationCommentTrivia,
             SyntaxFactory.List<XmlNodeSyntax>([
                 DocumentationSyntaxExtensions.CreateXmlText("/// "),
-            DocumentationSyntaxExtensions.CreateXmlElement("unknown", content: "U"),
-            DocumentationSyntaxExtensions.CreateXmlText(Environment.NewLine)
+                DocumentationSyntaxExtensions.CreateXmlElement("unknown", content: "U"),
+                DocumentationSyntaxExtensions.CreateXmlText(Environment.NewLine)
             ]));
 
         var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, "newtag", null, null, "TODO");
