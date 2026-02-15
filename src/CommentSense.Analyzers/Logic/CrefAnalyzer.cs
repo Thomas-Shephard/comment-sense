@@ -49,7 +49,8 @@ internal static class CrefAnalyzer
             else
             {
                 var resolved = ExceptionAnalyzer.ResolveExceptionType(cref.ToString(), context.Compilation);
-                if (resolved != null)
+                var exceptionType = context.Compilation.GetTypeByMetadataName("System.Exception");
+                if (resolved != null && exceptionType != null && resolved.InheritsFromOrEquals(exceptionType))
                     properties = properties.Add(DocumentationAttributes.CrefProperty, resolved.ToCrefString());
             }
         }
@@ -59,6 +60,7 @@ internal static class CrefAnalyzer
 
     private static void HandleExceptionTagCref(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol? resolvedSymbol, CommentSenseOptions options)
     {
+        var exceptionType = context.Compilation.GetTypeByMetadataName("System.Exception");
         if (resolvedSymbol is not ITypeSymbol typeSymbol)
         {
             if (resolvedSymbol is not null)
@@ -69,7 +71,6 @@ internal static class CrefAnalyzer
             return;
         }
 
-        var exceptionType = context.Compilation.GetTypeByMetadataName("System.Exception");
         if (exceptionType != null && !typeSymbol.InheritsFromOrEquals(exceptionType))
         {
             var properties = CreateExceptionProperties(context, associatedSymbol, cref, options);

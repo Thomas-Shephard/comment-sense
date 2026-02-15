@@ -200,8 +200,8 @@ internal static class DocumentationSyntaxExtensions
 
     public static CrefSyntax ParseCref(string cref)
     {
-        if (cref.Contains('<'))
-            return SyntaxFactory.TypeCref(SyntaxFactory.ParseTypeName(NormalizeCref(cref)));
+        if (cref.Contains('<') || cref.Contains('>'))
+            cref = cref.Replace('<', '{').Replace('>', '}');
 
         var tree = CSharpSyntaxTree.ParseText($"/// <see cref=\"{cref}\" />", new CSharpParseOptions(documentationMode: DocumentationMode.Parse));
         var crefAttr = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlCrefAttributeSyntax>().FirstOrDefault();

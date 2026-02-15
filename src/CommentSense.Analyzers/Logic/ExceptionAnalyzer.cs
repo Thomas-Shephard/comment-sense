@@ -324,8 +324,8 @@ internal static class ExceptionAnalyzer
         if (thrownTypes.Count == 1)
         {
             var single = thrownTypes[0];
-            if (single.Name.IndexOf(simpleCrefName, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                simpleCrefName.IndexOf(single.Name, StringComparison.OrdinalIgnoreCase) >= 0 ||
+            if ((simpleCrefName.Length > 2 && (single.Name.IndexOf(simpleCrefName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 simpleCrefName.IndexOf(single.Name, StringComparison.OrdinalIgnoreCase) >= 0)) ||
                 single.Name.CalculateSimilarity(simpleCrefName) >= options.RenameSimilarityThreshold)
             {
                 return single.ToCrefString();
@@ -394,8 +394,7 @@ internal static class ExceptionAnalyzer
                     or IndexerDeclarationSyntax
                     or AccessorListSyntax
                     or AccessorDeclarationSyntax
-                    or EventDeclarationSyntax
-                    or ArrowExpressionClauseSyntax;
+                    or EventDeclarationSyntax;
     }
 
     private static IEnumerable<ITypeSymbol> IdentifyThrownExceptions(IEnumerable<SyntaxNode> nodes, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)

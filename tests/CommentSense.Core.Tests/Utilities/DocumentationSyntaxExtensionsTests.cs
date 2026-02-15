@@ -393,7 +393,7 @@ public class DocumentationSyntaxExtensionsTests
     {
         var result = DocumentationSyntaxExtensions.ParseCref("List<int>");
         Assert.That(result, Is.Not.Null);
-        Assert.That(result.ToString(), Is.EqualTo("List<int>"));
+        Assert.That(result.ToString(), Is.EqualTo("List{int}"));
     }
 
     [Test]
