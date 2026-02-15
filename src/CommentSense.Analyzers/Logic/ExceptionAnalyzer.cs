@@ -339,10 +339,7 @@ internal static class ExceptionAnalyzer
             .OrderByDescending(x => x.Similarity)
             .FirstOrDefault();
 
-        if (bestMatch != null)
-            return bestMatch.Symbol.ToCrefString();
-
-        return null;
+        return bestMatch?.Symbol.ToCrefString();
     }
 
     private static HashSet<ITypeSymbol> GetThrownTypes(Compilation compilation, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options, CancellationToken cancellationToken = default)
