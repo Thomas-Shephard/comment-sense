@@ -129,4 +129,29 @@ public class InvalidExceptionTypeTests : CommentSenseAnalyzerTestBase<CommentSen
         // CSENSE017 is reported because "MyMethod" resolves to a method, not a type.
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task ReferenceToMethodWithNoFuzzyMatchReportsDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>Method.</summary>
+                /// <exception cref="{|CSENSE017:OtherMethod|}">Reference to a method, not a type.</exception>
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE012")]
+                public void MyMethod()
+                {
+                    if (true) throw new ArgumentNullException();
+                    throw new InvalidOperationException();
+                }
+
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE001")]
+                public void OtherMethod() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }

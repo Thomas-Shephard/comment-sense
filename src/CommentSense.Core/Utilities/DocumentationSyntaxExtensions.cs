@@ -157,10 +157,7 @@ internal static class DocumentationSyntaxExtensions
         {
             if (tagName is DocumentationTags.Exception or DocumentationTags.See or DocumentationTags.SeeAlso or DocumentationTags.Permission)
             {
-                var crefText = NormalizeCref(attributeValue);
-
-                attribute = SyntaxFactory.XmlCrefAttribute(
-                    SyntaxFactory.TypeCref(SyntaxFactory.ParseTypeName(crefText)))
+                attribute = SyntaxFactory.XmlCrefAttribute(ParseCref(attributeValue))
                     .WithLeadingTrivia(SyntaxFactory.Whitespace(" "));
             }
             else
@@ -199,6 +196,20 @@ internal static class DocumentationSyntaxExtensions
             startTag,
             SyntaxFactory.XmlElementEndTag(SyntaxFactory.XmlName(tagName)))
             .WithContent(SyntaxFactory.SingletonList<XmlNodeSyntax>(CreateXmlText(content)));
+    }
+
+    public static CrefSyntax ParseCref(string cref)
+    {
+        if (cref.Contains('<') || cref.Contains('>'))
+            cref = cref.Replace('<', '{').Replace('>', '}');
+
+        var tree = CSharpSyntaxTree.ParseText($"/// <see cref=\"{cref}\" />", new CSharpParseOptions(documentationMode: DocumentationMode.Parse));
+        var crefAttr = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlCrefAttributeSyntax>().FirstOrDefault();
+
+        if (crefAttr != null && (cref.Length == 0 || crefAttr.Cref.ToString().Length > 0))
+            return crefAttr.Cref;
+
+        return SyntaxFactory.TypeCref(SyntaxFactory.ParseTypeName(NormalizeCref(cref)));
     }
 
     public static string NormalizeCref(string cref)

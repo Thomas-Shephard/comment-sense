@@ -61,6 +61,9 @@
   <data name="UseLangwordTitle" xml:space="preserve">
     <value>Wrap in &lt;see langword="{0}" /&gt;</value>
   </data>
+  <data name="ExceptionResolutionTitle" xml:space="preserve">
+    <value>Change to '{0}'</value>
+  </data>
   <data name="WrapInParamrefTitle" xml:space="preserve">
     <value>Wrap in &lt;paramref name="{0}" /&gt;</value>
   </data>

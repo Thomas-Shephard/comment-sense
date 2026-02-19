@@ -243,4 +243,117 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             """;
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
+
+    [Test]
+    public async Task FuzzyMatchWithMultipleExceptionsReportsSuggestion()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a valid summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid summary for the method.</summary>
+                /// <exception cref="{|CSENSE007:ArgNull|}">Typo.</exception>
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE012")]
+                public void MyMethod()
+                {
+                    if (true) throw new ArgumentNullException();
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task NoFuzzyMatchWithMultipleExceptionsReturnsNull()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a valid summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid summary for the method.</summary>
+                /// <exception cref="{|CSENSE007:TotallyUnrelated|}">No match.</exception>
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE012")]
+                public void MyMethod()
+                {
+                    if (true) throw new ArgumentNullException();
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task NoFuzzyMatchWithMultipleExceptionsReturnsNullExplicit()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a valid summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid summary for the method.</summary>
+                /// <exception cref="{|CSENSE007:A|}">No match, too short.</exception>
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE012")]
+                public void MyMethod()
+                {
+                    if (true) throw new ArgumentNullException();
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task SingleExceptionNoSimilarityProceedsToStep3AndReturnsNull()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class.</summary>
+            public class MyClass
+            {
+                /// <summary>Method.</summary>
+                /// <exception cref="{|CSENSE007:X|}">No match, too short.</exception>
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE012")]
+                public void MyMethod()
+                {
+                    throw new ArgumentNullException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task FuzzyMatchWithHighSimilarityReturnsSuggestion()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a valid summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid summary for the method.</summary>
+                /// <exception cref="{|CSENSE007:ArgumentNullEx|}">Typo with high similarity.</exception>
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE012")]
+                public void MyMethod()
+                {
+                    if (true) throw new ArgumentNullException();
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }

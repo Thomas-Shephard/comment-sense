@@ -39,6 +39,16 @@ internal static class SymbolExtensions
         return null;
     }
 
+    public static bool IsPrimaryConstructor(this ISymbol symbol)
+    {
+        return symbol switch
+        {
+            IMethodSymbol method => method.IsPrimaryConstructor(),
+            INamedTypeSymbol type => type.GetPrimaryConstructor() != null,
+            _ => false
+        };
+    }
+
     public static bool IsPrimaryConstructor(this IMethodSymbol method)
     {
         if (method.MethodKind != MethodKind.Constructor)

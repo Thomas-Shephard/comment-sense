@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
+using System.Collections.Immutable;
 
 namespace CommentSense.Analyzers.Logic;
 
@@ -27,22 +28,63 @@ internal static class CrefAnalyzer
 
         if (symbolInfo.Symbol is null && symbolInfo.CandidateSymbols.IsEmpty)
         {
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UnresolvedCrefRule, cref.GetLocation(), cref.ToString()));
+            HandleUnresolvedCref(context, crefAttribute, cref, symbol, options);
             return;
         }
 
-        if (!crefAttribute.IsInExceptionTag())
-            return;
+        if (crefAttribute.IsInExceptionTag())
+            HandleExceptionTagCref(context, symbol, cref, symbolInfo.Symbol, options);
+    }
 
-        if (symbolInfo.Symbol is not ITypeSymbol typeSymbol)
+    private static void HandleUnresolvedCref(SyntaxNodeAnalysisContext context, XmlCrefAttributeSyntax crefAttribute, CrefSyntax cref, ISymbol associatedSymbol, CommentSenseOptions options)
+    {
+        var properties = ImmutableDictionary<string, string?>.Empty;
+        if (crefAttribute.IsInExceptionTag())
         {
-            if (symbolInfo.Symbol is not null)
-                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.InvalidExceptionTypeRule, cref.GetLocation(), symbolInfo.Symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+            var suggestion = ExceptionAnalyzer.FindBestMatchingThrownException(associatedSymbol, cref.ToString(), options, context.Compilation, context.CancellationToken);
+            if (suggestion != null)
+            {
+                properties = properties.Add(DocumentationAttributes.CrefProperty, suggestion);
+            }
+            else
+            {
+                var resolved = ExceptionAnalyzer.ResolveExceptionType(cref.ToString(), context.Compilation);
+                var exceptionType = context.Compilation.GetTypeByMetadataName("System.Exception");
+                if (resolved != null && exceptionType != null && resolved.InheritsFromOrEquals(exceptionType))
+                    properties = properties.Add(DocumentationAttributes.CrefProperty, resolved.ToCrefString());
+            }
+        }
+
+        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UnresolvedCrefRule, cref.GetLocation(), properties, cref.ToString()));
+    }
+
+    private static void HandleExceptionTagCref(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol? resolvedSymbol, CommentSenseOptions options)
+    {
+        var exceptionType = context.Compilation.GetTypeByMetadataName("System.Exception");
+        if (resolvedSymbol is not ITypeSymbol typeSymbol)
+        {
+            if (resolvedSymbol is not null)
+            {
+                var properties = CreateExceptionProperties(context, associatedSymbol, cref, options);
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.InvalidExceptionTypeRule, cref.GetLocation(), properties, resolvedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+            }
             return;
         }
 
-        var exceptionType = context.Compilation.GetTypeByMetadataName("System.Exception");
         if (exceptionType != null && !typeSymbol.InheritsFromOrEquals(exceptionType))
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.InvalidExceptionTypeRule, cref.GetLocation(), typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        {
+            var properties = CreateExceptionProperties(context, associatedSymbol, cref, options);
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.InvalidExceptionTypeRule, cref.GetLocation(), properties, typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        }
+    }
+
+    private static ImmutableDictionary<string, string?> CreateExceptionProperties(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, CommentSenseOptions options)
+    {
+        var properties = ImmutableDictionary<string, string?>.Empty;
+        var suggestion = ExceptionAnalyzer.FindBestMatchingThrownException(associatedSymbol, cref.ToString(), options, context.Compilation, context.CancellationToken);
+        if (suggestion != null)
+            properties = properties.Add(DocumentationAttributes.CrefProperty, suggestion);
+
+        return properties;
     }
 }
