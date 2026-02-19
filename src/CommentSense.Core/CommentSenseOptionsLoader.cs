@@ -46,6 +46,7 @@ internal static class CommentSenseOptionsLoader
         var enableSuppression = GetBoolOption(options, globalOptions, "enable_conditional_suppression", CommentSenseOptions.Default.EnableConditionalSuppression);
         var scanExceptions = GetBoolOption(options, globalOptions, "scan_called_methods_for_exceptions", CommentSenseOptions.Default.ScanCalledMethodsForExceptions);
         var ghostMode = GetEnumOption(options, globalOptions, "ghost_references.mode", CommentSenseOptions.Default.GhostReferenceMode);
+        var tagOrder = GetTagOrderOption(options, globalOptions, "tag_order", CommentSenseOptions.Default.TagOrder);
 
         return new CommentSenseOptions(
             visibilityLevel,
@@ -64,8 +65,50 @@ internal static class CommentSenseOptionsLoader
             renameSimilarityThreshold,
             enableSuppression,
             scanExceptions,
-            ghostMode
+            ghostMode,
+            tagOrder
         );
+    }
+
+    internal static IReadOnlyDictionary<string, int> GetTagOrderOption(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name, IReadOnlyDictionary<string, int> defaultValue)
+    {
+        var key = Prefix + name;
+        if (options.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+            return ParseTagOrder(value);
+
+        if (globalOptions.TryGetValue(key, out value) && !string.IsNullOrWhiteSpace(value))
+            return ParseTagOrder(value);
+
+        return defaultValue;
+    }
+
+    private static Dictionary<string, int> ParseTagOrder(string value)
+    {
+        var tags = value.Split(',')
+            .Select(t => t.Trim().ToLowerInvariant())
+            .Where(t => !string.IsNullOrEmpty(t))
+            .ToList();
+
+        var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < tags.Count; i++)
+        {
+            if (!result.ContainsKey(tags[i]))
+            {
+                result[tags[i]] = i;
+            }
+        }
+
+        // Special case: if returns is present but value is not, give value the same priority
+        if (result.TryGetValue(DocumentationTags.Returns, out var returnsOrder) && !result.ContainsKey(DocumentationTags.Value))
+        {
+            result[DocumentationTags.Value] = returnsOrder;
+        }
+        else if (result.TryGetValue(DocumentationTags.Value, out var valueOrder) && !result.ContainsKey(DocumentationTags.Returns))
+        {
+            result[DocumentationTags.Returns] = valueOrder;
+        }
+
+        return result;
     }
 
     internal static bool HasOption(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions, string name)

@@ -100,3 +100,4 @@ The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.enable_conditional_suppression`: Boolean to only suppress compiler warnings for members that are eligible for CommentSense analysis.
 *   `comment_sense.scan_called_methods_for_exceptions`: Boolean to enable scanning of called methods and constructors for their documented exceptions.
 *   `comment_sense.ghost_references.mode`: Enum to set the strictness of ghost reference detection (`Safe`, `Strict`, `Off`).
+*   `comment_sense.tag_order`: Comma-separated list of XML documentation tag names in their desired order.

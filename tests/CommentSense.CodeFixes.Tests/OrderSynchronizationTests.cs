@@ -15,7 +15,8 @@ public class OrderSynchronizationTests : CommentSenseCodeFixTestBase<CommentSens
     private static readonly Dictionary<string, string> DisableUnrelatedRules = new()
     {
         { "dotnet_diagnostic.CSENSE001.severity", "none" },
-        { "dotnet_diagnostic.CSENSE016.severity", "none" }
+        { "dotnet_diagnostic.CSENSE016.severity", "none" },
+        { "dotnet_diagnostic.CSENSE024.severity", "none" }
     };
 
     [Test]

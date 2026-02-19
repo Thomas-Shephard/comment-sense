@@ -249,8 +249,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>A derived class.</summary>
             public class MyClass : BaseClass
             {
-                /// {|CSENSE016:<summary>M</summary>|}
                 /// <inheritdoc/>
+                /// {|CSENSE016:<summary>M</summary>|}
                 public override void M() { }
             }
             """;

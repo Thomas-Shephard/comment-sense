@@ -397,7 +397,7 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
                 DocumentationSyntaxExtensions.CreateXmlText(Environment.NewLine)
             ]));
 
-        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.InheritDoc, null, null);
+        var newTrivia = ContentGenerationCodeFixProvider.InsertTagToTrivia(trivia, DocumentationTags.InheritDoc, null, null, options: CommentSenseOptions.Default);
 
         Assert.That(newTrivia.ToString(), Does.Contain("<inheritdoc />"));
     }

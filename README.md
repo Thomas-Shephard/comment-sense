@@ -36,6 +36,9 @@ For CommentSense to analyze your documentation, your project must have XML docum
 *   **CSENSE019**: Recommends using the `<see langword="..." />` tag for C# keywords (e.g., `true`, `false`, `null`, `void`) instead of plain text.
     *   **Code Fix:** An automatic code fix is available to wrap plain text keywords in `<see langword="..." />`. This fix supports **Fix All** in document, project, or solution.
     *   *Configurable:* Customize the list of keywords using `comment_sense.langwords`. Defaults to `true, false, null, void`. Specifying this option replaces the defaults.
+*   **CSENSE024**: Enforces a standard order for top-level XML documentation tags (e.g., `<summary>` before `<remarks>`).
+    *   **Code Fix:** An automatic code fix is available to reorder tags while preserving formatting. This fix supports **Fix All** in document, project, or solution.
+    *   *Configurable:* Customize the expected order using `comment_sense.tag_order`.
 
 ### Parameters & Type Parameters
 Ensures parameters and type parameters are correctly documented and referenced.
@@ -202,6 +205,15 @@ To disable this behavior and require explicit documentation (e.g., `<inheritdoc 
 ```ini
 [*.cs]
 comment_sense.allow_implicit_inheritdoc = false
+```
+
+### Tag Order Analysis
+Configure the expected order of top-level XML documentation tags. Tags not listed will have the lowest priority.
+```ini
+[*.cs]
+# Comma-separated list of tag names in their desired order.
+# Default: inheritdoc, summary, typeparam, param, returns, value, exception, remarks, example, seealso, permission
+comment_sense.tag_order = inheritdoc, summary, param, returns, exception, remarks
 ```
 
 ## Contributions

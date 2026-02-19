@@ -109,4 +109,7 @@
   <data name="RenameAllStrayTagsTitle" xml:space="preserve">
     <value>Rename all fuzzy-matching stray tags</value>
   </data>
+  <data name="SortDocumentationTagsTitle" xml:space="preserve">
+    <value>Sort documentation tags</value>
+  </data>
 </root>

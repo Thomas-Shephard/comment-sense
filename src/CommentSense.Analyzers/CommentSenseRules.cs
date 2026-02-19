@@ -230,6 +230,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: CreateResourceString(nameof(Resources.StrayExceptionDocumentationDescription)));
 
+    public static readonly DiagnosticDescriptor DocumentationTagOrderMismatchRule = new(
+        CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId,
+        CreateResourceString(nameof(Resources.DocumentationTagOrderMismatchTitle)),
+        CreateResourceString(nameof(Resources.DocumentationTagOrderMismatchMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.DocumentationTagOrderMismatchDescription)));
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =
     [
         DisabledDocumentationParsingRule,
@@ -255,6 +264,7 @@ internal static class CommentSenseRules
         GhostParameterReferenceRule,
         GhostTypeParameterReferenceRule,
         StraySummaryDocumentationRule,
-        StrayExceptionDocumentationRule
+        StrayExceptionDocumentationRule,
+        DocumentationTagOrderMismatchRule
     ];
 }

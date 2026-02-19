@@ -297,20 +297,27 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
-    public async Task NestedParamInsideSummaryDoesNotCountAsPrimaryParamDocumentation()
+    public async Task ReportMissingInheritDocWhenImplicitDisabled()
     {
         const string testCode = """
-            /// <summary>This is a summary for the class.</summary>
-            public class MyClass
-            {
-                /// <summary>
-                /// <para>This is a nested {|CSENSE003:<param name="p1">p1</param>|} tag (flagged as stray).</para>
-                /// </summary>
-                /// {|CSENSE016:<param name="p1">p1</param>|}
-                public void MyMethod(int p1) { }
+            /// <summary>Base.</summary>
+            public class Base {
+                /// <summary>Documentation.</summary>
+                public virtual void M() { }
+            }
+
+            /// <summary>Derived.</summary>
+            public class Derived : Base {
+                public override void {|CSENSE018:M|}() { }
             }
             """;
 
-        await VerifyCSenseAsync(testCode);
+        var config = new Dictionary<string, string>
+        {
+            { "comment_sense.allow_implicit_inheritdoc", "false" },
+            { "dotnet_diagnostic.CSENSE016.severity", "none" }
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
     }
 }
