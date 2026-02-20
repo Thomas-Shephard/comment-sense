@@ -313,4 +313,29 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
 
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task ReportMissingInheritDocWhenImplicitDisabled()
+    {
+        const string testCode = """
+            /// <summary>Base.</summary>
+            public class Base {
+                /// <summary>Documentation.</summary>
+                public virtual void M() { }
+            }
+
+            /// <summary>Derived.</summary>
+            public class Derived : Base {
+                public override void {|CSENSE018:M|}() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            { "comment_sense.allow_implicit_inheritdoc", "false" },
+            { "dotnet_diagnostic.CSENSE016.severity", "none" }
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
 }

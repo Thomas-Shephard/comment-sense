@@ -41,6 +41,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
                 return document;
 
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            var options = CommentSenseOptions.GetOptions(document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider, root.SyntaxTree);
 
             // Group diagnostics by member and capture symbol upfront
             var memberGroups = GetMemberGroups(root, semanticModel, diagnostics, cancellationToken);
@@ -59,7 +60,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
 
                 foreach (var diag in diagList)
                 {
-                    updatedMember = ApplyDiagnosticToMember(updatedMember, diag, symbol);
+                    updatedMember = ApplyDiagnosticToMember(updatedMember, diag, symbol, options);
                 }
 
                 return updatedMember;
@@ -68,7 +69,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
             return document.WithSyntaxRoot(newRoot);
         }
 
-        private static MemberDeclarationSyntax ApplyDiagnosticToMember(MemberDeclarationSyntax member, Diagnostic diag, ISymbol? symbol)
+        private static MemberDeclarationSyntax ApplyDiagnosticToMember(MemberDeclarationSyntax member, Diagnostic diag, ISymbol? symbol, CommentSenseOptions options)
         {
             string? name = GetTargetName(diag);
             string? tagName = GetTagNameForDiagnostic(diag.Id);
@@ -91,7 +92,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
                 return AddNewDocumentationToMember(member, diag.Id, tagName, name, Resources.DocumentationPlaceholder);
 
             var effectiveTagName = tagName ?? (diag.Id == CommentSenseDiagnosticIds.MissingInheritDocId ? DocumentationTags.InheritDoc : DocumentationTags.Summary);
-            var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder);
+            var newDocTrivia = InsertTagToTrivia(docTrivia, effectiveTagName, name, symbol, Resources.DocumentationPlaceholder, options);
             return member.WithLeadingTrivia(leadingTrivia.Replace(targetTrivia, SyntaxFactory.Trivia(newDocTrivia)));
         }
 
@@ -255,13 +256,14 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         return await fixAllProvider.FixDocumentInternalAsync(document, [diagnostic], cancellationToken).ConfigureAwait(false);
     }
 
-    internal static DocumentationCommentTriviaSyntax InsertTagToTrivia(DocumentationCommentTriviaSyntax docTrivia, string tagName, string? name, ISymbol? symbol, string placeholder = "")
+    internal static DocumentationCommentTriviaSyntax InsertTagToTrivia(DocumentationCommentTriviaSyntax docTrivia, string tagName, string? name, ISymbol? symbol, string placeholder = "", CommentSenseOptions? options = null)
     {
+        var effectiveOptions = options ?? CommentSenseOptions.Default;
         var member = docTrivia.GetMemberDeclaration();
         var indentation = member?.GetIndentation() ?? string.Empty;
 
         var content = docTrivia.Content;
-        var insertionIndex = FindInsertionIndex(content, tagName, name, symbol);
+        var insertionIndex = FindInsertionIndex(content, tagName, name, symbol, effectiveOptions);
 
         var newLine = docTrivia.GetNewLine();
         var prefix = docTrivia.GetPrefix();
@@ -333,9 +335,9 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         }
     }
 
-    private static int FindInsertionIndex(SyntaxList<XmlNodeSyntax> content, string tagName, string? targetName, ISymbol? symbol)
+    private static int FindInsertionIndex(SyntaxList<XmlNodeSyntax> content, string tagName, string? targetName, ISymbol? symbol, CommentSenseOptions options)
     {
-        var order = GetTagOrder(tagName);
+        var order = GetTagOrder(tagName, options.TagOrder);
         var expectedNames = symbol?.GetExpectedMemberNames(tagName) ?? [];
         var targetExpectedIndex = targetName != null ? expectedNames.IndexOf(targetName) : -1;
 
@@ -346,7 +348,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
             if (node is not (XmlElementSyntax or XmlEmptyElementSyntax))
                 continue;
 
-            if (ShouldInsertBefore(node, order, targetExpectedIndex, expectedNames))
+            if (ShouldInsertBefore(node, order, targetExpectedIndex, expectedNames, options.TagOrder))
                 return i;
 
             bestIndex = i + 1;
@@ -367,15 +369,15 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
         return content.Count;
     }
 
-    private static int GetTagOrder(string tagName)
+    private static int GetTagOrder(string tagName, IReadOnlyDictionary<string, int> tagOrder)
     {
-        return DocumentationTags.TagOrder.TryGetValue(tagName, out var order) ? order : 10;
+        return tagOrder.TryGetValue(tagName, out var order) ? order : 100;
     }
 
-    private static bool ShouldInsertBefore(XmlNodeSyntax node, int targetOrder, int targetExpectedIndex, ImmutableArray<string> expectedNames)
+    private static bool ShouldInsertBefore(XmlNodeSyntax node, int targetOrder, int targetExpectedIndex, ImmutableArray<string> expectedNames, IReadOnlyDictionary<string, int> tagOrder)
     {
         var currentTagName = node.GetTagName();
-        var currentOrder = GetTagOrder(currentTagName);
+        var currentOrder = GetTagOrder(currentTagName, tagOrder);
 
         if (currentOrder > targetOrder)
             return true;

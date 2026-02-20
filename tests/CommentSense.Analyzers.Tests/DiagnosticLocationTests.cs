@@ -189,10 +189,10 @@ public class DiagnosticLocationTests : CommentSenseAnalyzerTestBase<CommentSense
             /// <summary>Class.</summary>
             public class MyClass
             {
+                /// {|CSENSE016:<summary>MyMethod</summary>|}
                 /// <remarks>
                 /// {|CSENSE022:<summary>Nested summary (should be ignored).</summary>|}
                 /// </remarks>
-                /// {|CSENSE016:<summary>MyMethod</summary>|}
                 public void MyMethod()
                 {
                 }

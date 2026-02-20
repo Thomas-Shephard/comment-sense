@@ -76,36 +76,29 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
 
     private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options)
     {
-        if (!symbol.IsEligibleForAnalysis(options.VisibilityLevel))
+        if (!IsEligibleForAnalysis(symbol, options))
             return;
 
-        if (options.ExcludeConstants && symbol is IFieldSymbol { IsConst: true })
-            return;
-
-        if (options.ExcludeEnums && symbol is IFieldSymbol { ContainingType.TypeKind: TypeKind.Enum })
-            return;
-
-        var isInheriting = symbol.IsInheriting();
         var xml = symbol.GetDocumentationCommentXml();
-
-        if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element) || !DocumentationXmlExtensions.HasValidDocumentation(element))
+        if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))
         {
-            if (options.AllowImplicitInheritDoc && isInheriting && symbol.Kind != SymbolKind.NamedType)
-                return;
+            // Parsing failure (e.g., malformed XML) is treated as missing documentation
+            ReportMissingDocumentation(context, symbol, options);
+            return;
+        }
 
-            if (isInheriting && symbol.Kind != SymbolKind.NamedType)
-            {
-                ReportMissingInheritDoc(context, symbol);
-                return;
-            }
+        TagOrderAnalyzer.Analyze(context, symbol, element, options);
 
-            ReportMissingDocs(context, symbol);
+        if (!DocumentationXmlExtensions.HasValidDocumentation(element))
+        {
+            // Documentation is present but does not contain valid tags (e.g., empty or only unsupported tags)
+            ReportMissingDocumentation(context, symbol, options);
             return;
         }
 
         if (DocumentationXmlExtensions.HasInheritDoc(element) &&
             !DocumentationXmlExtensions.HasInheritDocWithCref(element) &&
-            !isInheriting)
+            !symbol.IsInheriting())
         {
             ReportMissingDocs(context, symbol);
             return;
@@ -113,6 +106,33 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
 
         SummaryAnalyzer.Analyze(context, symbol, element, options);
         AnalyzeSpecificSymbol(context, symbol, element, options);
+    }
+
+    private static bool IsEligibleForAnalysis(ISymbol symbol, CommentSenseOptions options)
+    {
+        if (!symbol.IsEligibleForAnalysis(options.VisibilityLevel))
+            return false;
+
+        if (options.ExcludeConstants && symbol is IFieldSymbol { IsConst: true })
+            return false;
+
+        return !(options.ExcludeEnums && symbol is IFieldSymbol { ContainingType.TypeKind: TypeKind.Enum });
+    }
+
+    private static void ReportMissingDocumentation(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options)
+    {
+        var isInheriting = symbol.IsInheriting();
+
+        if (options.AllowImplicitInheritDoc && isInheriting && symbol.Kind != SymbolKind.NamedType)
+            return;
+
+        if (isInheriting && symbol.Kind != SymbolKind.NamedType)
+        {
+            ReportMissingInheritDoc(context, symbol);
+            return;
+        }
+
+        ReportMissingDocs(context, symbol);
     }
 
     private static void AnalyzeSpecificSymbol(SymbolAnalysisContext context, ISymbol symbol, System.Xml.Linq.XElement element, CommentSenseOptions options)

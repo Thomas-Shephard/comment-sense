@@ -21,7 +21,8 @@ internal sealed record CommentSenseOptions(
     double RenameSimilarityThreshold,
     bool EnableConditionalSuppression,
     bool ScanCalledMethodsForExceptions,
-    GhostReferenceMode GhostReferenceMode
+    GhostReferenceMode GhostReferenceMode,
+    IReadOnlyDictionary<string, int> TagOrder
 )
 {
     public static CommentSenseOptions Default { get; } = new(
@@ -41,7 +42,8 @@ internal sealed record CommentSenseOptions(
         RenameSimilarityThreshold: 0.5,
         EnableConditionalSuppression: false,
         ScanCalledMethodsForExceptions: false,
-        GhostReferenceMode: GhostReferenceMode.Safe
+        GhostReferenceMode: GhostReferenceMode.Safe,
+        TagOrder: DocumentationTags.TagOrder
     );
 
     public static CommentSenseOptions GetOptions(AnalyzerConfigOptionsProvider provider, SyntaxTree tree)

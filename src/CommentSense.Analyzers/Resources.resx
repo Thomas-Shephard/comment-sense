@@ -274,6 +274,15 @@
   <data name="GhostTypeParameterReferenceDescription" xml:space="preserve">
     <value>Type parameter names mentioned in documentation should be wrapped in &lt;typeparamref&gt; tags to ensure they stay in sync during refactoring.</value>
   </data>
+  <data name="DocumentationTagOrderMismatchTitle" xml:space="preserve">
+    <value>XML documentation tags are out of order</value>
+  </data>
+  <data name="DocumentationTagOrderMismatchMessage" xml:space="preserve">
+    <value>The '{0}' tag should appear before the '{1}' tag</value>
+  </data>
+  <data name="DocumentationTagOrderMismatchDescription" xml:space="preserve">
+    <value>XML documentation tags should follow a consistent order (inheritdoc, summary, typeparam, param, returns/value, exception, remarks) to improve readability.</value>
+  </data>
   <data name="SuppressionJustification" xml:space="preserve">
     <value>Handled by CommentSense analyzer.</value>
   </data>

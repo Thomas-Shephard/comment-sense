@@ -395,7 +395,7 @@ public class CommentSenseOptionsTests
             Assert.That(o1, Is.EqualTo(o3));
             Assert.That(o1.GetHashCode(), Is.EqualTo(o3.GetHashCode()));
             Assert.That(o1.ToString(), Is.Not.Null);
-            var (_, _, _, _, _, _, _, minSummaryLength, _, _, _, _, _, _, _, _, _) = o1;
+            var (_, _, _, _, _, _, _, minSummaryLength, _, _, _, _, _, _, _, _, _, _) = o1;
             Assert.That(minSummaryLength, Is.EqualTo(o1.MinSummaryLength));
         }
     }
@@ -413,6 +413,104 @@ public class CommentSenseOptionsTests
         // ReSharper disable once NullableWarningSuppressionIsUsed
         var options = CommentSenseOptions.GetOptions(provider, null!);
         Assert.That(options.RenameSimilarityThreshold, Is.EqualTo(0.75));
+    }
+
+    [Test]
+    public void GetTagOrderOptionReturnsLocalValue()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.tag_order"] = "summary, remarks"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>());
+
+        var order = CommentSenseOptionsLoader.GetTagOrderOption(localOptions, globalOptions, "tag_order", new Dictionary<string, int>());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(order, Contains.Key("summary"));
+            Assert.That(order["summary"], Is.Zero);
+            Assert.That(order, Contains.Key("remarks"));
+            Assert.That(order["remarks"], Is.EqualTo(1));
+        }
+    }
+
+    [Test]
+    public void GetTagOrderOptionFallsBackToGlobalValue()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>());
+        var globalOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.tag_order"] = "summary, param"
+        });
+
+        var order = CommentSenseOptionsLoader.GetTagOrderOption(localOptions, globalOptions, "tag_order", new Dictionary<string, int>());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(order, Contains.Key("summary"));
+            Assert.That(order["summary"], Is.Zero);
+            Assert.That(order, Contains.Key("param"));
+            Assert.That(order["param"], Is.EqualTo(1));
+        }
+    }
+
+    [Test]
+    public void ParseTagOrderHandlesReturnsWithoutValue()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.tag_order"] = "returns"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>());
+
+        var order = CommentSenseOptionsLoader.GetTagOrderOption(localOptions, globalOptions, "tag_order", new Dictionary<string, int>());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(order, Contains.Key("returns"));
+            Assert.That(order, Contains.Key("value"));
+            Assert.That(order["value"], Is.EqualTo(order["returns"]));
+        }
+    }
+
+    [Test]
+    public void ParseTagOrderHandlesValueWithoutReturns()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.tag_order"] = "value"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>());
+
+        var order = CommentSenseOptionsLoader.GetTagOrderOption(localOptions, globalOptions, "tag_order", new Dictionary<string, int>());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(order, Contains.Key("value"));
+            Assert.That(order, Contains.Key("returns"));
+            Assert.That(order["returns"], Is.EqualTo(order["value"]));
+        }
+    }
+
+    [Test]
+    public void ParseTagOrderHandlesBothReturnsAndValue()
+    {
+        var localOptions = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.tag_order"] = "returns, value"
+        });
+        var globalOptions = new MapOptions(new Dictionary<string, string>());
+
+        var order = CommentSenseOptionsLoader.GetTagOrderOption(localOptions, globalOptions, "tag_order", new Dictionary<string, int>());
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(order, Contains.Key("returns"));
+            Assert.That(order, Contains.Key("value"));
+            Assert.That(order["returns"], Is.Zero);
+            Assert.That(order["value"], Is.EqualTo(1));
+        }
     }
 
     private sealed class MapOptions(IDictionary<string, string> map) : AnalyzerConfigOptions
