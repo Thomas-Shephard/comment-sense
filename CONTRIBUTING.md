@@ -41,9 +41,9 @@ To ensure that changes work as expected, follow these steps:
 
 ## Performance Guidelines
 Maintaining high performance is critical for a Roslyn analyzer.
-- **Run Benchmarks:** If you modify logic in `CommentSense.Analyzers/Logic`, run the performance suite.
+- **Run Benchmarks:** If you modify logic in `src/CommentSense.Analyzers/Logic`, run the performance suite.
   ```bash
-  dotnet run -c Release --project tests/CommentSense.PerformanceTests
+  dotnet run -c Release --project benchmarks
   ```
 - **Avoid Regressions:** Ensure your changes do not significantly increase memory allocations or execution time.
 - **Dogfooding:** Use the `DogfoodBenchmarks` to verify impact on the real codebase.

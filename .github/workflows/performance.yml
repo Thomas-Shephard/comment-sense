@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'src/**'
-      - 'tests/CommentSense.PerformanceTests/**'
+      - 'benchmarks/**'
   push:
     branches: [ main ]
 
@@ -37,28 +37,59 @@ jobs:
       - name: Restore Tools
         run: dotnet tool restore
 
-      - name: Run Benchmarks
+      - name: Ensure gh-pages branch exists
+        if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
         run: |
-          dotnet run -c Release --project tests/CommentSense.PerformanceTests/CommentSense.PerformanceTests.csproj -- --filter '*' --exporters JSON
+          if ! git fetch origin gh-pages --depth=1; then
+            echo "gh-pages branch missing. Initializing..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout --orphan gh-pages
+            git rm -rf .
+            git commit --allow-empty -m "Initial benchmark data storage"
+            git push origin gh-pages
+            git checkout ${{ github.ref_name }}
+          fi
 
-      - name: Locate and Rename Result
+      - name: Cleanup previous results
+        run: rm -rf BenchmarkDotNet.Artifacts/results
+
+      - name: Run Benchmarks
+        run: dotnet run -c Release --project benchmarks/CommentSense.PerformanceTests.csproj -- --filter '*' --exporters BriefJson --job Short
+
+      - name: Merge Benchmark Results
         run: |
-          # Find the first JSON report and rename it to combined-report.json
-          REPORT_FILE=$(find BenchmarkDotNet.Artifacts/results/ -name "*report.json" | head -n 1)
-          if [ -z "$REPORT_FILE" ]; then
-            echo "No benchmark report found!"
+          # Merge all class-specific reports into a single combined report
+          # BenchmarkDotNet exports one JSON per class. This script takes the first JSON's metadata and combines all Benchmarks arrays.
+          shopt -s nullglob
+          JSON_FILES=(BenchmarkDotNet.Artifacts/results/*-report-brief.json)
+          if [ ${#JSON_FILES[@]} -eq 0 ]; then
+            echo "No benchmark reports found!"
             exit 1
           fi
-          cp "$REPORT_FILE" BenchmarkDotNet.Artifacts/results/combined-report.json
+
+          # Use jq to merge results if multiple exist, otherwise just copy the single file
+          if [ ${#JSON_FILES[@]} -gt 1 ]; then
+            # map(select(type == "object")) ensures we only process valid JSON objects
+            # .[0] + {Benchmarks: map(.Benchmarks // []) | add} merges all Benchmarks arrays into the first object's structure
+            # Defensive selection: only objects with a Benchmarks array are combined
+            jq -s 'map(select(type == "object" and .Benchmarks and (.Benchmarks | type) == "array")) | .[0] + {Benchmarks: map(.Benchmarks) | add}' BenchmarkDotNet.Artifacts/results/*-report-brief.json > BenchmarkDotNet.Artifacts/results/combined-report.json
+          else
+            cp "${JSON_FILES[0]}" BenchmarkDotNet.Artifacts/results/combined-report.json
+          fi
 
       - name: Store Benchmark Result
-        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+        # benchmark-action/github-action-benchmark@v1.20.7
+        uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b
         with:
           name: CommentSense Performance
           tool: 'benchmarkdotnet'
           output-file-path: BenchmarkDotNet.Artifacts/results/combined-report.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
+          auto-push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          summary-always: true
+          comment-always: true
           # Show alert in the PR comment if there is a regression
           alert-threshold: '120%'
           comment-on-alert: true

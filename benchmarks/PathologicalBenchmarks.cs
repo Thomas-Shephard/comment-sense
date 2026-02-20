@@ -9,7 +9,7 @@ namespace CommentSense.PerformanceTests;
 [MemoryDiagnoser]
 public class PathologicalBenchmarks : BenchmarkBase
 {
-    [Params(10, 20)]
+    [Params(10)]
     public int DocSizeMultiplier { get; set; }
 
     public override void Setup()

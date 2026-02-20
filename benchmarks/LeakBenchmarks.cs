@@ -20,7 +20,7 @@ public class LeakBenchmarks : BenchmarkBase
     {
         base.Setup();
         _parseOptions = new CSharpParseOptions().WithDocumentationMode(DocumentationMode.Parse);
-        _references = [..GetMetadataReferences()];
+        _references = [.. GetMetadataReferences()];
     }
 
     protected override string GetSourceCode() => "";
@@ -30,7 +30,7 @@ public class LeakBenchmarks : BenchmarkBase
     {
         // Simulate a developer editing code and triggering multiple analysis runs
         // If our ConditionalWeakTable or other caches have leaks, memory will grow here
-        for (int i = 0; i < 200; i++)
+        for (int i = 0; i < 50; i++)
         {
             var source = string.Create(CultureInfo.InvariantCulture, $$"""
                                                                         /// <summary> Test {{i}} </summary>

@@ -8,10 +8,12 @@ using System.Globalization;
 namespace CommentSense.PerformanceTests;
 
 [MemoryDiagnoser]
+#if WINDOWS
 [ThreadingDiagnoser]
+#endif
 public class ParallelBenchmarks : BenchmarkBase
 {
-    [Params(100, 500)]
+    [Params(100)]
     public int FileCount { get; set; }
 
     protected override IEnumerable<SyntaxTree> GetSyntaxTrees()

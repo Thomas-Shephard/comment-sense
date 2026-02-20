@@ -14,11 +14,14 @@ public class DogfoodBenchmarks : BenchmarkBase
     protected override IEnumerable<SyntaxTree> GetSyntaxTrees()
     {
         var rootPath = GetSourceRoot();
-        var files = Directory.GetFiles(rootPath, "*.cs", SearchOption.AllDirectories);
+        var files = Directory.GetFiles(rootPath, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains(Path.DirectorySeparatorChar + ".git" + Path.DirectorySeparatorChar) &&
+                        !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) &&
+                        !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar));
 
         return files.Select(f =>
             CSharpSyntaxTree.ParseText(File.ReadAllText(f), new CSharpParseOptions().WithDocumentationMode(DocumentationMode.Parse))
-        );
+        ).ToList();
     }
 
     public override void Setup()

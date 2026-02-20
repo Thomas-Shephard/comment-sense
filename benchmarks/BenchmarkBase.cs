@@ -46,20 +46,18 @@ public abstract class BenchmarkBase
 
     protected static IEnumerable<MetadataReference> GetMetadataReferences()
     {
-        // Use explicit references to ensure a clean benchmark environment
-        return new[]
-        {
-            typeof(object).Assembly,
-            typeof(Enumerable).Assembly,
-            typeof(Compilation).Assembly,
-            typeof(CSharpCompilation).Assembly,
-            typeof(CommentSenseAnalyzer).Assembly
-        }
-        .Select(a => MetadataReference.CreateFromFile(a.Location));
+        return AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
+            .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))
+            .ToList();
     }
 
     protected static string GetSourceRoot()
     {
+        var envRoot = Environment.GetEnvironmentVariable("COMMENT_SENSE_SOURCE_ROOT");
+        if (!string.IsNullOrEmpty(envRoot))
+            return envRoot;
+
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current != null && !File.Exists(Path.Combine(current.FullName, "CommentSense.slnx")))
         {
@@ -74,7 +72,7 @@ public abstract class BenchmarkBase
         await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
     }
 
-    protected class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+    protected sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
     {
         public override AnalyzerConfigOptions GlobalOptions { get; } = new TestAnalyzerConfigOptions();
         public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => GlobalOptions;
@@ -83,7 +81,7 @@ public abstract class BenchmarkBase
         public void SetOption(string key, string value) => ((TestAnalyzerConfigOptions)GlobalOptions).Set(key, value);
     }
 
-    protected class TestAnalyzerConfigOptions : AnalyzerConfigOptions
+    private sealed class TestAnalyzerConfigOptions : AnalyzerConfigOptions
     {
         private readonly Dictionary<string, string> _options = [];
         public void Set(string key, string value) => _options[key] = value;

@@ -8,16 +8,16 @@ namespace CommentSense.PerformanceTests;
 [MemoryDiagnoser]
 public class AnalyzerBenchmarks : BenchmarkBase
 {
-    [Params(100, 500)]
+    [Params(100)]
     public int MethodCount { get; set; }
 
-    [Params(false, true)]
+    [Params(true)]
     public bool ScanCalledMethods { get; set; }
 
-    [Params("safe", "strict")]
-    public string GhostReferenceMode { get; set; } = "safe";
+    [Params("strict")]
+    public string GhostReferenceMode { get; set; } = "strict";
 
-    [Params(0.0, 0.8)]
+    [Params(0.8)]
     public double SimilarityThreshold { get; set; }
 
     protected override string GetSourceCode()

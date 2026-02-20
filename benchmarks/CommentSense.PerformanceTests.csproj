@@ -7,6 +7,7 @@
     <IsTestProject>false</IsTestProject>
     <ImplicitUsings>disable</ImplicitUsings>
     <StartupObject>CommentSense.PerformanceTests.Program</StartupObject>
+    <DefineConstants Condition="'$(OS)' == 'Windows_NT'">$(DefineConstants);WINDOWS</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,8 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\CommentSense.Analyzers\CommentSense.Analyzers.csproj" />
-    <ProjectReference Include="..\CommentSense.TestHelpers\CommentSense.TestHelpers.csproj" />
+    <ProjectReference Include="..\src\CommentSense.Analyzers\CommentSense.Analyzers.csproj" />
+    <ProjectReference Include="..\tests\CommentSense.TestHelpers\CommentSense.TestHelpers.csproj" />
   </ItemGroup>
 
 </Project>
