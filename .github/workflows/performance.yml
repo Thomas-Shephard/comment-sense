@@ -1,0 +1,90 @@
+name: Performance Benchmarks
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'benchmarks/**'
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          cache: true
+          cache-dependency-path: |
+            CommentSense.slnx
+            global.json
+            .config/dotnet-tools.json
+            **/Directory.Build.props
+            **/Directory.Packages.props
+            **/*.csproj
+
+      - name: Restore Tools
+        run: dotnet tool restore
+
+      - name: Ensure gh-pages branch exists
+        if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+        run: |
+          if ! git fetch origin gh-pages --depth=1; then
+            echo "gh-pages branch missing. Initializing..."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout --orphan gh-pages
+            git rm -rf .
+            git commit --allow-empty -m "Initial benchmark data storage"
+            git push origin gh-pages
+            git checkout ${{ github.ref_name }}
+          fi
+
+      - name: Cleanup previous results
+        run: rm -rf BenchmarkDotNet.Artifacts/results
+
+      - name: Run Benchmarks
+        run: dotnet run -c Release --project benchmarks/CommentSense.PerformanceTests.csproj -- --filter '*' --exporters BriefJson --job Short
+
+      - name: Merge Benchmark Results
+        run: |
+          # Merge all class-specific reports into a single combined report
+          shopt -s nullglob
+          JSON_FILES=(BenchmarkDotNet.Artifacts/results/*-report-brief.json)
+          if [ ${#JSON_FILES[@]} -eq 0 ]; then
+            echo "No benchmark reports found!"
+            exit 1
+          fi
+
+          if [ ${#JSON_FILES[@]} -gt 1 ]; then
+            jq -s 'map(select(type == "object" and .Benchmarks and (.Benchmarks | type) == "array")) | .[0] + {Benchmarks: map(.Benchmarks) | add}' BenchmarkDotNet.Artifacts/results/*-report-brief.json > BenchmarkDotNet.Artifacts/results/combined-report.json
+          else
+            cp "${JSON_FILES[0]}" BenchmarkDotNet.Artifacts/results/combined-report.json
+          fi
+
+      - name: Store Benchmark Result
+        if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+        # benchmark-action/github-action-benchmark@v1.20.7
+        uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b
+        with:
+          name: CommentSense Performance
+          tool: 'benchmarkdotnet'
+          output-file-path: BenchmarkDotNet.Artifacts/results/combined-report.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          summary-always: true
+          comment-always: true
+          alert-threshold: '120%'
+          comment-on-alert: true
+          fail-on-alert: true

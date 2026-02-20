@@ -24,6 +24,10 @@
     <RepositoryUrl>https://github.com/Thomas-Shephard/comment-sense</RepositoryUrl>
     <IsPackable>false</IsPackable>
     <MinVerTagPrefix>v</MinVerTagPrefix>
+
+    <!-- Shared Target Frameworks -->
+    <LatestTargetFramework>net10.0</LatestTargetFramework>
+    <SupportedTargetFrameworks>net8.0;net9.0;$(LatestTargetFramework)</SupportedTargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
