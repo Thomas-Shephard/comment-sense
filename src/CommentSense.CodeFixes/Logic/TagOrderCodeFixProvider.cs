@@ -85,7 +85,7 @@ public class TagOrderCodeFixProvider : CodeFixProviderBase
         return document.WithSyntaxRoot(root.ReplaceNode(docTrivia, newDocTrivia));
     }
 
-    private static int GetTagPriority(XmlNodeSyntax tag, IReadOnlyDictionary<string, int> tagOrder)
+    internal static int GetTagPriority(XmlNodeSyntax tag, IReadOnlyDictionary<string, int> tagOrder)
     {
         var tagName = tag.GetTagName().ToLowerInvariant();
         if (string.IsNullOrEmpty(tagName))

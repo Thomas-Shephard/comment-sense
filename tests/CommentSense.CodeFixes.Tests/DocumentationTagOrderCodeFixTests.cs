@@ -1,7 +1,9 @@
+using System.Collections.Immutable;
 using CommentSense.Analyzers;
 using CommentSense.CodeFixes.Logic;
 using CommentSense.Core;
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
@@ -190,5 +192,28 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
             .WithArguments("summary", "remarks");
 
         await VerifyCodeFixAsync(testCode, fixedCode, DisableUnrelatedRules, expectedDiagnostics: [expected]);
+    }
+
+    [Test]
+    public void GetTagPriorityEmptyTagNameReturnsDefaultPriority()
+    {
+        var name = SyntaxFactory.XmlName(SyntaxFactory.Identifier(""));
+        var tag = SyntaxFactory.XmlEmptyElement(name);
+        var tagOrder = new Dictionary<string, int>().ToImmutableDictionary();
+
+        var priority = TagOrderCodeFixProvider.GetTagPriority(tag, tagOrder);
+
+        Assert.That(priority, Is.EqualTo(100));
+    }
+
+    [Test]
+    public void GetTagPriorityUnknownTagNameReturnsDefaultPriority()
+    {
+        var tag = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("unknown"));
+        var tagOrder = new Dictionary<string, int>().ToImmutableDictionary();
+
+        var priority = TagOrderCodeFixProvider.GetTagPriority(tag, tagOrder);
+
+        Assert.That(priority, Is.EqualTo(100));
     }
 }
