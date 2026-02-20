@@ -8,12 +8,12 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class SummaryAnalyzer
 {
-    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, DocumentationLocationCache locationCache)
     {
         var seenSummary = false;
         var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
         // Check for low-quality documentation against multiple symbol formats (e.g., friendly name and qualified name)
-        foreach (var (summaryElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Summary, topLevelOnly: false))
+        foreach (var (summaryElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Summary, locationCache, topLevelOnly: false))
         {
             bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, summaryElement, effectiveTarget);
 

@@ -25,14 +25,14 @@ internal static class ExceptionAnalyzer
 
     private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>> CompilationExceptionCache = new();
 
-    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, DocumentationLocationCache locationCache, bool isPrimaryCtor = false)
     {
         var documentedExceptionElements = DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception);
         var documentedTypes = GetDocumentedExceptionTypes(context, documentedExceptionElements);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor, options);
 
         ReportMissingExceptions(context, symbol, xml, options, thrownTypes, documentedTypes);
-        ReportLowQualityExceptions(context, symbol, xml, options);
+        ReportLowQualityExceptions(context, symbol, xml, options, locationCache);
     }
 
     private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, HashSet<ITypeSymbol> documentedTypes)
@@ -53,7 +53,7 @@ internal static class ExceptionAnalyzer
         }
     }
 
-    private static void ReportLowQualityExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
+    private static void ReportLowQualityExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, DocumentationLocationCache locationCache)
     {
         // CSENSE016: Low Quality Exception Documentation
         // CSENSE023: Stray Exception Documentation
@@ -61,7 +61,7 @@ internal static class ExceptionAnalyzer
         var seenUnresolvedCrefs = new HashSet<string>(StringComparer.Ordinal);
         var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
 
-        foreach (var (exceptionElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Exception, topLevelOnly: false))
+        foreach (var (exceptionElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Exception, locationCache, topLevelOnly: false))
         {
             var cref = exceptionElement.Attribute(DocumentationAttributes.Cref)?.Value;
 

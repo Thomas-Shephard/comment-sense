@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Xml.Linq;
 using CommentSense.Core;
+using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -15,8 +16,8 @@ internal static class TypeParameterAnalyzer
         CommentSenseRules.DuplicateTypeParameterDocumentationRule,
         CommentSenseRules.TypeParameterOrderMismatchRule);
 
-    public static void Analyze(SymbolAnalysisContext context, ImmutableArray<ITypeParameterSymbol> typeParameters, ISymbol symbol, XElement xml, CommentSenseOptions options)
+    public static void Analyze(SymbolAnalysisContext context, ImmutableArray<ITypeParameterSymbol> typeParameters, ISymbol symbol, XElement xml, CommentSenseOptions options, DocumentationLocationCache locationCache)
     {
-        CollectionDocumentationAnalyzer.Analyze(context, typeParameters, symbol, xml, options, Rules);
+        CollectionDocumentationAnalyzer.Analyze(context, typeParameters, symbol, xml, options, Rules, locationCache);
     }
 }

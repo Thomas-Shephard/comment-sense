@@ -7,8 +7,18 @@ internal static class StringExtensions
         if (source.Equals(target, StringComparison.OrdinalIgnoreCase))
             return 1.0;
 
+        int n = source.Length;
+        int m = target.Length;
+
+        // Early exit if the length difference itself makes it impossible to reach a reasonable similarity.
+        // If one string is more than 2x the length of the other, similarity is at most 0.5.
+        if (n > m * 2 || m > n * 2)
+        {
+            return (double)Math.Min(n, m) / Math.Max(n, m); // This is an upper bound on similarity for many algorithms
+        }
+
         var distance = ComputeLevenshteinDistance(source.AsSpan(), target.AsSpan());
-        return 1.0 - (double)distance / Math.Max(source.Length, target.Length);
+        return 1.0 - (double)distance / Math.Max(n, m);
     }
 
     private static int ComputeLevenshteinDistance(ReadOnlySpan<char> s, ReadOnlySpan<char> t)

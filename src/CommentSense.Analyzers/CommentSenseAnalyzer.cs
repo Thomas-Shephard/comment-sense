@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 using CommentSense.Analyzers.Logic;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
@@ -49,8 +51,9 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 return;
 
             var analyzedNodes = new ConcurrentDictionary<XmlTextSyntax, bool>();
+            var documentationCache = new ConcurrentDictionary<ISymbol, XElement>(SymbolEqualityComparer.Default);
 
-            compilationContext.RegisterSymbolAction(AnalyzeSymbol,
+            compilationContext.RegisterSymbolAction(c => AnalyzeSymbol(c, documentationCache),
                 SymbolKind.NamedType,
                 SymbolKind.Method,
                 SymbolKind.Property,
@@ -62,7 +65,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         });
     }
 
-    private static void AnalyzeSymbol(SymbolAnalysisContext context)
+    private static void AnalyzeSymbol(SymbolAnalysisContext context, ConcurrentDictionary<ISymbol, XElement> documentationCache)
     {
         var symbol = context.Symbol;
         SyntaxTree? tree = (from location in symbol.Locations where !location.SourceTree.IsDocumentationModeNone() select location.SourceTree).FirstOrDefault();
@@ -71,23 +74,29 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             return;
 
         var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
-        AnalyzeSymbolCore(context, symbol, options);
+        var locationCache = new DocumentationLocationCache();
+        AnalyzeSymbolCore(context, symbol, options, documentationCache, locationCache);
     }
 
-    private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options)
+    private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options, ConcurrentDictionary<ISymbol, XElement> documentationCache, DocumentationLocationCache locationCache)
     {
         if (!IsEligibleForAnalysis(symbol, options))
             return;
 
-        var xml = symbol.GetDocumentationCommentXml();
-        if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))
+        if (!documentationCache.TryGetValue(symbol, out var element))
         {
-            // Parsing failure (e.g., malformed XML) is treated as missing documentation
-            ReportMissingDocumentation(context, symbol, options);
-            return;
+            var xml = symbol.GetDocumentationCommentXml();
+            if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out element))
+            {
+                // Parsing failure (e.g., malformed XML) is treated as missing documentation
+                ReportMissingDocumentation(context, symbol, options);
+                return;
+            }
+
+            documentationCache.TryAdd(symbol, element);
         }
 
-        TagOrderAnalyzer.Analyze(context, symbol, element, options);
+        TagOrderAnalyzer.Analyze(context, symbol, element, options, locationCache);
 
         if (!DocumentationXmlExtensions.HasValidDocumentation(element))
         {
@@ -104,8 +113,8 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        SummaryAnalyzer.Analyze(context, symbol, element, options);
-        AnalyzeSpecificSymbol(context, symbol, element, options);
+        SummaryAnalyzer.Analyze(context, symbol, element, options, locationCache);
+        AnalyzeSpecificSymbol(context, symbol, element, options, locationCache);
     }
 
     private static bool IsEligibleForAnalysis(ISymbol symbol, CommentSenseOptions options)
@@ -135,37 +144,37 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         ReportMissingDocs(context, symbol);
     }
 
-    private static void AnalyzeSpecificSymbol(SymbolAnalysisContext context, ISymbol symbol, System.Xml.Linq.XElement element, CommentSenseOptions options)
+    private static void AnalyzeSpecificSymbol(SymbolAnalysisContext context, ISymbol symbol, System.Xml.Linq.XElement element, CommentSenseOptions options, DocumentationLocationCache locationCache)
     {
         switch (symbol)
         {
             case IMethodSymbol methodSymbol:
-                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element, options);
-                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element, options);
-                ReturnValueAnalyzer.Analyze(context, methodSymbol, element, options);
-                ExceptionAnalyzer.Analyze(context, methodSymbol, element, options, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
+                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element, options, locationCache);
+                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element, options, locationCache);
+                ReturnValueAnalyzer.Analyze(context, methodSymbol, element, options, locationCache);
+                ExceptionAnalyzer.Analyze(context, methodSymbol, element, options, locationCache, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
                 break;
             case IPropertySymbol propertySymbol:
                 if (propertySymbol.IsIndexer)
                 {
-                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element, options);
+                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element, options, locationCache);
                 }
-                ReturnValueAnalyzer.Analyze(context, propertySymbol, element, options);
-                ExceptionAnalyzer.Analyze(context, propertySymbol, element, options);
+                ReturnValueAnalyzer.Analyze(context, propertySymbol, element, options, locationCache);
+                ExceptionAnalyzer.Analyze(context, propertySymbol, element, options, locationCache);
                 break;
             case INamedTypeSymbol namedTypeSymbol:
-                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element, options);
+                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element, options, locationCache);
                 if (namedTypeSymbol is { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null })
                 {
-                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element, options);
-                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element, options);
+                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element, options, locationCache);
+                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element, options, locationCache);
                 }
 
                 if (namedTypeSymbol.GetPrimaryConstructor() is { } primaryCtor)
                 {
-                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element, options);
-                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, options);
-                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, options, isPrimaryCtor: true);
+                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element, options, locationCache);
+                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, options, locationCache);
+                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, options, locationCache, isPrimaryCtor: true);
                 }
                 break;
         }

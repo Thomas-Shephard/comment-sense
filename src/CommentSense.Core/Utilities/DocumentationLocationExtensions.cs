@@ -6,11 +6,43 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CommentSense.Core.Utilities;
 
+internal sealed class DocumentationLocationCache
+{
+    private readonly Dictionary<string, List<Location>> _cache = new(StringComparer.OrdinalIgnoreCase);
+
+    public ImmutableArray<Location> GetLocations(ISymbol symbol, string tagName)
+    {
+        if (_cache.TryGetValue(tagName, out var locations))
+            return [.. locations];
+
+        var result = symbol.GetDocumentationLocations(tagName, topLevelOnly: false);
+        _cache[tagName] = [.. result];
+        return result;
+    }
+
+    public Location GetLocation(ISymbol symbol, string tagName, int occurrence = 0)
+    {
+        var locations = GetLocations(symbol, tagName);
+        if (locations.IsDefaultOrEmpty || occurrence < 0 || occurrence >= locations.Length)
+            return DocumentationLocationExtensions.GetSymbolLocation(symbol);
+
+        return locations[occurrence];
+    }
+
+    public static Location GetLocationWithAttribute(ISymbol symbol, string tagName, string attributeValue, string attributeName = DocumentationAttributes.Name)
+    {
+        return symbol.GetDocumentationLocation(tagName, attributeValue, occurrence: 0, attributeName, topLevelOnly: false);
+    }
+}
+
 internal static class DocumentationLocationExtensions
 {
-    public static IEnumerable<(XElement Element, Location Location)> GetTargetElementsWithLocations(this ISymbol symbol, XElement xml, string tagName, bool topLevelOnly = true)
+    public static IEnumerable<(XElement Element, Location Location)> GetTargetElementsWithLocations(this ISymbol symbol, XElement xml, string tagName, DocumentationLocationCache? cache = null, bool topLevelOnly = true)
     {
-        var locations = symbol.GetDocumentationLocations(tagName, topLevelOnly: topLevelOnly);
+        var locations = cache != null
+            ? cache.GetLocations(symbol, tagName)
+            : symbol.GetDocumentationLocations(tagName, topLevelOnly: topLevelOnly);
+
         var elements = DocumentationXmlExtensions.GetTargetElements(xml, tagName, recursive: !topLevelOnly).ToList();
 
         for (int i = 0; i < Math.Min(locations.Length, elements.Count); i++)
