@@ -249,8 +249,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>A derived class.</summary>
             public class MyClass : BaseClass
             {
-                /// {|CSENSE016:<summary>M</summary>|}
                 /// <inheritdoc/>
+                /// {|CSENSE016:<summary>M</summary>|}
                 public override void M() { }
             }
             """;
@@ -593,7 +593,7 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
     [Test]
     public async Task InheritDocOnRefReturnPropertyMatchingValueReturnInterfaceReportsDiagnostic()
     {
-         // Issue 2: Property check for IsInheriting (Ref return).
+        // Issue 2: Property check for IsInheriting (Ref return).
         const string testCode = """
             /// <summary>Interface IBase.</summary>
             public interface IBase {

@@ -1,7 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" />
+    </ItemGroup>
+
+    <ItemGroup>
         <InternalsVisibleTo Include="CommentSense.Analyzers"/>
+        <InternalsVisibleTo Include="CommentSense.CodeFixes"/>
+        <InternalsVisibleTo Include="CommentSense.Core.Tests"/>
     </ItemGroup>
 
 </Project>

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CommentSense.Analyzers\CommentSense.Analyzers.csproj" />
+    <ProjectReference Include="..\..\src\CommentSense.CodeFixes\CommentSense.CodeFixes.csproj" />
+    <ProjectReference Include="..\CommentSense.TestHelpers\CommentSense.TestHelpers.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Moq" />
+  </ItemGroup>
+
+</Project>

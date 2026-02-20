@@ -184,10 +184,10 @@ public class AdvancedExceptionTests : CommentSenseAnalyzerTestBase<CommentSenseA
             }
             """;
 
-        await VerifyCSenseAsync(testCode, configOptions: new Dictionary<string, string> 
-        { 
+        await VerifyCSenseAsync(testCode, configOptions: new Dictionary<string, string>
+        {
             ["comment_sense.ignore_system_exceptions"] = "true",
-            ["comment_sense.ignored_exception_namespaces"] = "OtherNamespace" 
+            ["comment_sense.ignored_exception_namespaces"] = "OtherNamespace"
         }, expectDiagnostic: true);
     }
 }

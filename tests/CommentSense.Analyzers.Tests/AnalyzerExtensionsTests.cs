@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using CommentSense.Core;
+using CommentSense.Core.Utilities;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -10,10 +11,9 @@ namespace CommentSense.Analyzers.Tests;
 
 public class AnalyzerExtensionsTests
 {
-    private static readonly List<MetadataReference> CachedReferences = AppDomain.CurrentDomain.GetAssemblies()
+    private static readonly List<MetadataReference> CachedReferences = [.. AppDomain.CurrentDomain.GetAssemblies()
         .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
-        .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))
-        .ToList();
+        .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))];
 
     [Test]
     public void GetPrimaryLocationReturnsLocationNoneForEmptyArray()
@@ -1188,10 +1188,76 @@ public class AnalyzerExtensionsTests
     }
 
     [Test]
-    public void MatchAttributeReturnsFalseForNullAttribute()
+    public void GetMemberDeclarationReturnsMemberForNodeInDocumentation()
     {
-        // ReSharper disable once NullableWarningSuppressionIsUsed
-        Assert.That(AnalyzerExtensions.MatchAttribute(null!, "name", "value"), Is.False);
+        const string source = """
+            /// <summary>Summary.</summary>
+            public class C {}
+            """;
+        var tree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(documentationMode: DocumentationMode.Parse));
+        var xmlText = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+
+        var member = xmlText.GetMemberDeclaration();
+
+        Assert.That(member, Is.InstanceOf<ClassDeclarationSyntax>());
+    }
+
+    [Test]
+    public void GetMemberDeclarationReturnsMemberForMemberNodeItself()
+    {
+        const string source = "public class C {}";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var classDecl = tree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().First();
+
+        var member = classDecl.GetMemberDeclaration();
+
+        Assert.That(member, Is.EqualTo(classDecl));
+    }
+
+    [Test]
+    public void GetMemberDeclarationReturnsNullForNodeWithoutMember()
+    {
+        const string source = "using System;";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var usingDirective = tree.GetRoot().DescendantNodes().OfType<UsingDirectiveSyntax>().First();
+
+        var member = usingDirective.GetMemberDeclaration();
+
+        Assert.That(member, Is.Null);
+    }
+
+    [Test]
+    public void GetMemberDeclarationReturnsNullForNullNode()
+    {
+        SyntaxNode? node = null;
+        Assert.That(node.GetMemberDeclaration(), Is.Null);
+    }
+
+    [Test]
+    public void GetMemberDeclarationReturnsNullForOrphanDocumentation()
+    {
+        var docTrivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia);
+        var result = docTrivia.GetMemberDeclaration();
+        Assert.That(result, Is.Null);
+    }
+
+    [Test]
+    public void GetAssociatedSymbolReturnsCorrectSymbolForMultiVariableField()
+    {
+        const string source = "public class Test { public int x, y; }";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var compilation = CSharpCompilation.Create("Test", [tree], CachedReferences);
+        var semanticModel = compilation.GetSemanticModel(tree);
+
+        var variables = tree.GetRoot().DescendantNodes().OfType<VariableDeclaratorSyntax>().ToList();
+        var xVar = variables.First(v => v.Identifier.Text == "x");
+        var yVar = variables.First(v => v.Identifier.Text == "y");
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(xVar.GetAssociatedSymbol(semanticModel)?.Name, Is.EqualTo("x"));
+            Assert.That(yVar.GetAssociatedSymbol(semanticModel)?.Name, Is.EqualTo("y"));
+        }
     }
 
     private static (ISymbol symbol, Compilation compilation) GetSymbolsFromSource(string source, string symbolName)

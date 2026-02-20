@@ -80,10 +80,10 @@
     <value>Stray parameter documentation</value>
   </data>
   <data name="StrayParameterDocumentationMessage" xml:space="preserve">
-    <value>The parameter '{0}' in the documentation does not exist in the signature</value>
+    <value>The parameter '{0}' is misplaced or does not exist in the signature</value>
   </data>
   <data name="StrayParameterDocumentationDescription" xml:space="preserve">
-    <value>Documentation should not contain &lt;param&gt; tags for parameters that do not exist.</value>
+    <value>Documentation should not contain &lt;param&gt; tags for parameters that do not exist or are misplaced.</value>
   </data>
   <data name="MissingTypeParameterDocumentationTitle" xml:space="preserve">
     <value>Missing type parameter documentation</value>
@@ -98,10 +98,10 @@
     <value>Stray type parameter documentation</value>
   </data>
   <data name="StrayTypeParameterDocumentationMessage" xml:space="preserve">
-    <value>The type parameter '{0}' in the documentation does not exist in the signature</value>
+    <value>The type parameter '{0}' is misplaced or does not exist in the signature</value>
   </data>
   <data name="StrayTypeParameterDocumentationDescription" xml:space="preserve">
-    <value>Documentation should not contain &lt;typeparam&gt; tags for type parameters that do not exist.</value>
+    <value>Documentation should not contain &lt;typeparam&gt; tags for type parameters that do not exist or are misplaced.</value>
   </data>
   <data name="MissingReturnValueDocumentationTitle" xml:space="preserve">
     <value>Missing return value documentation</value>
@@ -170,10 +170,10 @@
     <value>Stray return value documentation</value>
   </data>
   <data name="StrayReturnValueDocumentationMessage" xml:space="preserve">
-    <value>The symbol '{0}' should not have return value documentation</value>
+    <value>The &lt;returns&gt; tag for '{0}' is misplaced, duplicated, or invalid</value>
   </data>
   <data name="StrayReturnValueDocumentationDescription" xml:space="preserve">
-    <value>Documentation should not contain &lt;returns&gt; tags for members that do not return a value or for properties/indexers.</value>
+    <value>Documentation should not contain &lt;returns&gt; tags for members that do not return a value, for properties/indexers, or if duplicated.</value>
   </data>
   <data name="MissingValueDocumentationTitle" xml:space="preserve">
     <value>Missing value documentation</value>
@@ -188,10 +188,28 @@
     <value>Stray value documentation</value>
   </data>
   <data name="StrayValueDocumentationMessage" xml:space="preserve">
-    <value>The symbol '{0}' should not have value documentation</value>
+    <value>The &lt;value&gt; tag for '{0}' is misplaced, duplicated, or invalid</value>
   </data>
   <data name="StrayValueDocumentationDescription" xml:space="preserve">
-    <value>Documentation should not contain &lt;value&gt; tags for methods.</value>
+    <value>Documentation should not contain &lt;value&gt; tags for methods, or if duplicated.</value>
+  </data>
+  <data name="StraySummaryDocumentationTitle" xml:space="preserve">
+    <value>Stray summary documentation</value>
+  </data>
+  <data name="StraySummaryDocumentationMessage" xml:space="preserve">
+      <value>The &lt;summary&gt; tag for '{0}' is misplaced, duplicated, or invalid</value>
+    </data>
+  <data name="StraySummaryDocumentationDescription" xml:space="preserve">
+      <value>Documentation should only contain a single top-level &lt;summary&gt; tag.</value>
+    </data>
+  <data name="StrayExceptionDocumentationTitle" xml:space="preserve">
+      <value>Stray exception documentation</value>
+    </data>
+  <data name="StrayExceptionDocumentationMessage" xml:space="preserve">
+      <value>The &lt;exception&gt; tag for '{0}' is misplaced, duplicated, or invalid</value>
+    </data>
+  <data name="StrayExceptionDocumentationDescription" xml:space="preserve">
+    <value>Documentation should only contain top-level &lt;exception&gt; tags, and each exception type should be documented only once.</value>
   </data>
   <data name="LowQualityDocumentationTitle" xml:space="preserve">
     <value>Low-quality documentation</value>
@@ -233,16 +251,16 @@
     <value>Use langword for keywords</value>
   </data>
   <data name="UseLangwordMessage" xml:space="preserve">
-    <value>The word '{0}' should be replaced with &lt;see langword="{0}"/&gt;</value>
+    <value>The word '{0}' should be replaced with &lt;see langword="{0}" /&gt;</value>
   </data>
   <data name="UseLangwordDescription" xml:space="preserve">
-    <value>C# keywords should be referenced using the &lt;see langword="..."/&gt; tag in documentation.</value>
+    <value>C# keywords should be referenced using the &lt;see langword="..." /&gt; tag in documentation.</value>
   </data>
   <data name="GhostParameterReferenceTitle" xml:space="preserve">
     <value>Potential ghost parameter reference in documentation</value>
   </data>
   <data name="GhostParameterReferenceMessage" xml:space="preserve">
-    <value>The word '{0}' matches a parameter name and should be wrapped in &lt;paramref name="{1}"/&gt;</value>
+    <value>The word '{0}' matches a parameter name and should be wrapped in &lt;paramref name="{1}" /&gt;</value>
   </data>
   <data name="GhostParameterReferenceDescription" xml:space="preserve">
     <value>Parameter names mentioned in documentation should be wrapped in &lt;paramref&gt; tags to ensure they stay in sync during refactoring.</value>
@@ -251,10 +269,19 @@
     <value>Potential ghost type parameter reference in documentation</value>
   </data>
   <data name="GhostTypeParameterReferenceMessage" xml:space="preserve">
-    <value>The word '{0}' matches a type parameter name and should be wrapped in &lt;typeparamref name="{1}"/&gt;</value>
+    <value>The word '{0}' matches a type parameter name and should be wrapped in &lt;typeparamref name="{1}" /&gt;</value>
   </data>
   <data name="GhostTypeParameterReferenceDescription" xml:space="preserve">
     <value>Type parameter names mentioned in documentation should be wrapped in &lt;typeparamref&gt; tags to ensure they stay in sync during refactoring.</value>
+  </data>
+  <data name="DocumentationTagOrderMismatchTitle" xml:space="preserve">
+    <value>XML documentation tags are out of order</value>
+  </data>
+  <data name="DocumentationTagOrderMismatchMessage" xml:space="preserve">
+    <value>The '{0}' tag should appear before the '{1}' tag</value>
+  </data>
+  <data name="DocumentationTagOrderMismatchDescription" xml:space="preserve">
+    <value>XML documentation tags should follow a consistent order (inheritdoc, summary, typeparam, param, returns/value, exception, remarks) to improve readability.</value>
   </data>
   <data name="SuppressionJustification" xml:space="preserve">
     <value>Handled by CommentSense analyzer.</value>

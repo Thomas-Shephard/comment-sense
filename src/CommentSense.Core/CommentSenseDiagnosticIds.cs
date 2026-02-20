@@ -25,6 +25,9 @@ internal static class CommentSenseDiagnosticIds
     public const string UseLangwordId = "CSENSE019";
     public const string GhostParameterReferenceId = "CSENSE020";
     public const string GhostTypeParameterReferenceId = "CSENSE021";
+    public const string StraySummaryDocumentationId = "CSENSE022";
+    public const string StrayExceptionDocumentationId = "CSENSE023";
+    public const string DocumentationTagOrderMismatchId = "CSENSE024";
 
     // Suppressions
     public const string SuppressMissingXmlCommentId = "CSENSESUP001";

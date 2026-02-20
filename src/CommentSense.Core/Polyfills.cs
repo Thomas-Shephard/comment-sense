@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
 #pragma warning disable IDE0130
-// ReSharper disable once CheckNamespace
 namespace System.Diagnostics.CodeAnalysis
 {
     [AttributeUsage(AttributeTargets.Parameter)]
@@ -18,5 +17,4 @@ namespace System.Runtime.CompilerServices
     [ExcludeFromCodeCoverage]
     internal static class IsExternalInit { }
 }
-
 #pragma warning restore IDE0130

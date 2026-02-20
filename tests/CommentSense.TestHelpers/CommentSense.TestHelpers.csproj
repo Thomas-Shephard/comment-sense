@@ -11,6 +11,7 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing"/>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces"/>
         <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common"/>
     </ItemGroup>

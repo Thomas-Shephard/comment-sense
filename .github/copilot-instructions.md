@@ -22,10 +22,12 @@ Always verify changes using these commands.
 ## 3. Project Layout
 *   **`src/CommentSense.Analyzers/`**: The main analyzer project. Contains the diagnostic analyzer implementations, rule definitions, and specialized analyzer logic.
     *   **`CommentSenseSuppressor.cs`**: Automatically silences overlapping built-in compiler diagnostics.
+*   **`src/CommentSense.CodeFixes/`**: The code fix provider project. Contains implementations for automatically fixing diagnostics.
 *   **`src/CommentSense.Core/`**: Shared core logic. Contains common utilities for accessibility checks and XML documentation parsing.
 *   **`tests/CommentSense.Analyzers.Tests/`**: Integration tests for the diagnostic rules.
+*   **`tests/CommentSense.CodeFixes.Tests/`**: Integration tests for the code fix providers.
 *   **`tests/CommentSense.Core.Tests/`**: Unit tests for the core utilities.
-*   **`tests/CommentSense.TestHelpers/`**: Shared testing infrastructure, including `CommentSenseAnalyzerTestBase<T>` and `RoslynTestUtils`.
+*   **`tests/CommentSense.TestHelpers/`**: Shared testing infrastructure, including `CommentSenseAnalyzerTestBase<T>`, `CommentSenseCodeFixTestBase<T1, T2>`, and `RoslynTestUtils`.
 *   **`artifacts/`**: Unified build output location (bin, obj, package) configured via `Directory.Build.props`.
 *   **`.github/workflows/`**: CI/CD pipelines for building, testing, linting, and publishing.
 
@@ -36,20 +38,32 @@ Always verify changes using these commands.
     *   Avoid state in the analyzer class itself (use the `AnalysisContext`).
     *   Use `DiagnosticSuppressor` to handle overlapping compiler diagnostics.
 *   **Testing:**
-    *   Use `Microsoft.CodeAnalysis.CSharp.Analyzer.Testing` with `NUnit`.
-    *   Inherit from `CommentSenseAnalyzerTestBase<T>` for analyzer tests.
+    *   Use `Microsoft.CodeAnalysis.CSharp.Analyzer.Testing` and `Microsoft.CodeAnalysis.CSharp.CodeFix.Testing` with `NUnit`.
+    *   Inherit from `CommentSenseAnalyzerTestBase<T>` for analyzer tests and `CommentSenseCodeFixTestBase<TAnalyzer, TCodeFix>` for code fix tests.
     *   Tests should verify both positive (diagnostic reported) and negative (no diagnostic) cases.
     *   Use `[| ... |]` markup in test strings to indicate expected diagnostic locations.
 *   **XML Parsing:**
-    *   Use `DocumentationExtensions` for parsing XML comments to ensure resilience against malformed XML.
+    *   Use `DocumentationXmlExtensions` for parsing XML comments to ensure resilience against malformed XML.
+    *   Always use `DocumentationSyntaxExtensions.GetNameAttribute()` to extract name attributes from XML nodes, as it handles both `XmlNameAttributeSyntax` and `XmlTextAttributeSyntax`.
     *   Handle `inheritdoc` and `include` tags gracefully (currently treated as "valid" without deep validation).
+    *   **Scan Strategy**: Differentiate between documentation *presence/quality* and *redundancy/strays*:
+        *   **Recursive Scan**: Use `recursive: true` or `topLevelOnly: false` to identify ALL occurrences of a tag. Flag nested or extra tags as **Stray** or **Duplicate**.
+        *   **Top-Level Only Scan**: Use `recursive: false` or `topLevelOnly: true` to determine if a symbol is properly documented. Nested tags do NOT count towards fulfilling documentation requirements and should NOT undergo quality analysis (they are already flagged as stray).
+*   **Deduplication:**
+    *   Use `SymbolExtensions.GetParameters()` and `SymbolExtensions.GetTypeParameters()` for extracting parameter names from symbols. Do not re-implement this logic in analyzers.
+    *   Use `node.GetAssociatedSymbol(semanticModel)` to find the symbol associated with an XML documentation node or member declaration (it correctly handles fields).
+    *   Use `symbol.GetTargetElementsWithLocations(xml, tagName)` to iterate over XML elements and their source locations simultaneously.
+    *   Use `CodeFixProviderBase.FindXmlNode()` and `CodeFixProviderBase.FindXmlText()` in code fix providers to locate target nodes.
+    *   Pass necessary metadata (like original names or canonical keywords) from Analyzers to CodeFixers via `Diagnostic.Properties` to avoid redundant calculations or option fetching in the code fix layer.
+    *   Use `DocumentationTags` constants for all XML tag name strings.
+    *   Use `DocumentationAttributes` constants for all XML attribute name strings (`name`, `cref`, `langword`).
 *   **Style:**
     *   **Namespaces:** Use file-scoped namespaces (e.g., `namespace CommentSense.Analyzers;`).
     *   **Formatting:** 4 spaces indentation, CRLF line endings.
-    *   **Naming:** PascalCase for types and members.
+    *   **Naming:** PascalCase for types and members. Do not use underscores in test method names.
 
 ## 5. Security Guidelines
-*   **XML Processing:** Be cautious when expanding XML parsing logic. Use safe parsing settings (handled in `DocumentationExtensions`) to prevent XXE.
+*   **XML Processing:** Be cautious when expanding XML parsing logic. Use safe parsing settings (handled in `DocumentationXmlExtensions`) to prevent XXE.
 *   **Dependencies:** Check `Directory.Packages.props` for versions. Do not introduce vulnerable dependencies.
 
 ## 6. Review Checklist
@@ -77,10 +91,13 @@ The analyzer supports the following `.editorconfig` options:
 *   `comment_sense.analyze_internal`: (DEPRECATED) Boolean to enable analysis of internal members. Use `visibility_level = Internal` instead.
 *   `comment_sense.min_summary_length`: Integer for minimum length of summary text.
 *   `comment_sense.require_ending_punctuation`: Boolean to require summaries to end with punctuation.
+*   `comment_sense.require_capitalization`: Boolean to require documentation to start with a capital letter (if it starts with a letter).
 *   `comment_sense.similarity_threshold`: Double (0.0 to 1.0) for similarity analysis threshold.
+*   `comment_sense.rename_similarity_threshold`: Double (0.0 to 1.0) for fuzzy-match renaming of stray documentation tags.
 *   `comment_sense.allow_implicit_inheritdoc`: Boolean to allow skipping documentation for overrides/implementations.
 *   `comment_sense.exclude_constants`: Boolean to skip documentation requirements for constant fields.
 *   `comment_sense.exclude_enums`: Boolean to skip documentation requirements for enum members.
 *   `comment_sense.enable_conditional_suppression`: Boolean to only suppress compiler warnings for members that are eligible for CommentSense analysis.
 *   `comment_sense.scan_called_methods_for_exceptions`: Boolean to enable scanning of called methods and constructors for their documented exceptions.
 *   `comment_sense.ghost_references.mode`: Enum to set the strictness of ghost reference detection (`Safe`, `Strict`, `Off`).
+*   `comment_sense.tag_order`: Comma-separated list of XML documentation tag names in their desired order.

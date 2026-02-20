@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="UseLangwordTitle" xml:space="preserve">
+    <value>Wrap in &lt;see langword="{0}" /&gt;</value>
+  </data>
+  <data name="ExceptionResolutionTitle" xml:space="preserve">
+    <value>Change to '{0}'</value>
+  </data>
+  <data name="WrapInParamrefTitle" xml:space="preserve">
+    <value>Wrap in &lt;paramref name="{0}" /&gt;</value>
+  </data>
+  <data name="WrapInTypeparamrefTitle" xml:space="preserve">
+    <value>Wrap in &lt;typeparamref name="{0}" /&gt;</value>
+  </data>
+  <data name="RemoveRedundantNamedTagTitle" xml:space="preserve">
+    <value>Remove redundant &lt;{0} name="{1}" /&gt;</value>
+  </data>
+  <data name="RemoveRedundantTagTitle" xml:space="preserve">
+    <value>Remove redundant &lt;{0} /&gt;</value>
+  </data>
+  <data name="RemoveAllRedundantTitle" xml:space="preserve">
+    <value>Remove all redundant documentation</value>
+  </data>
+  <data name="SortTagsTitle" xml:space="preserve">
+    <value>Sort &lt;{0}&gt; tags</value>
+  </data>
+  <data name="ImproveDocumentationQualityTitle" xml:space="preserve">
+    <value>Improve &lt;{0}&gt; documentation quality</value>
+  </data>
+  <data name="AddMissingTagTitle" xml:space="preserve">
+    <value>Add missing &lt;{0}&gt;{1}&lt;/{0}&gt;</value>
+  </data>
+  <data name="AddMissingNamedTagTitle" xml:space="preserve">
+    <value>Add missing &lt;{0} name="{1}"&gt;{2}&lt;/{0}&gt;</value>
+  </data>
+  <data name="AddMissingCrefTagTitle" xml:space="preserve">
+    <value>Add missing &lt;{0} cref="{1}"&gt;{2}&lt;/{0}&gt;</value>
+  </data>
+  <data name="DocumentationPlaceholder" xml:space="preserve">
+    <value>TODO</value>
+  </data>
+  <data name="AddMissingTagsTitle" xml:space="preserve">
+    <value>Add all missing documentation tags</value>
+  </data>
+  <data name="AddInheritDocTitle" xml:space="preserve">
+    <value>Add &lt;inheritdoc /&gt;</value>
+  </data>
+  <data name="RenameStrayTagTitle" xml:space="preserve">
+    <value>Rename stray &lt;{0} name="{1}" /&gt; to "{2}"</value>
+  </data>
+  <data name="RenameAllStrayTagsTitle" xml:space="preserve">
+    <value>Rename all fuzzy-matching stray tags</value>
+  </data>
+  <data name="SortDocumentationTagsTitle" xml:space="preserve">
+    <value>Sort documentation tags</value>
+  </data>
+</root>

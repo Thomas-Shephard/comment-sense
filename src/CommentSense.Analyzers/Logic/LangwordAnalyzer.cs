@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
+using CommentSense.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -30,7 +31,11 @@ internal static class LangwordAnalyzer
         {
             var start = result.token.SpanStart + result.match.Index;
             var location = Location.Create(context.Node.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, result.match.Length));
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UseLangwordRule, location, result.match.Value));
+            var matchedText = result.match.Value;
+            var canonical = options.Langwords.FirstOrDefault(w => string.Equals(w, matchedText, StringComparison.OrdinalIgnoreCase)) ?? matchedText;
+            var properties = System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty.Add("canonical", canonical);
+
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UseLangwordRule, location, properties, matchedText));
         }
     }
 

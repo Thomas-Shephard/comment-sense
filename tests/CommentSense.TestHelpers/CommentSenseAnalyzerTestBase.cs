@@ -13,7 +13,7 @@ public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
     {
         var tester = new CustomAnalyzerTest(additionalAnalyzers)
         {
-            TestCode = source,
+            TestCode = source.NormalizeLineEndings(),
             MarkupOptions = MarkupOptions.UseFirstDescriptor,
             CompilerDiagnostics = compilerDiagnostics
         };
@@ -24,24 +24,7 @@ public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
         if (solutionTransform != null)
             tester.SolutionTransforms.Add(solutionTransform);
 
-        tester.SolutionTransforms.Add((solution, projectId) =>
-        {
-            var project = solution.GetProject(projectId);
-            if (project == null) return solution;
-
-            if (project.ParseOptions is Microsoft.CodeAnalysis.CSharp.CSharpParseOptions parseOptions)
-            {
-                return solution.WithProjectParseOptions(projectId, parseOptions.WithDocumentationMode(documentationMode));
-            }
-
-            return solution;
-        });
-
-        if (configOptions != null)
-        {
-            var configText = "is_global = true\n" + string.Join("\n", configOptions.Select(kv => $"{kv.Key} = {kv.Value}"));
-            tester.TestState.AnalyzerConfigFiles.Add(("/.editorconfig", configText));
-        }
+        tester.ApplyCommonConfiguration(configOptions, documentationMode, expectedDiagnostics);
 
         if (diagnosticOptions != null)
         {
@@ -60,11 +43,6 @@ public abstract class CommentSenseAnalyzerTestBase<TAnalyzer>
                     return solution.WithProjectCompilationOptions(projectId, compilationOptions);
                 });
             }
-        }
-
-        if (expectedDiagnostics != null)
-        {
-            tester.ExpectedDiagnostics.AddRange(expectedDiagnostics);
         }
 
         if (expectDiagnostic && !source.Contains("{|") && expectedDiagnostics == null)

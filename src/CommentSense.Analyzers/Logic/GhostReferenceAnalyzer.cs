@@ -2,10 +2,12 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 using CommentSense.Core;
+using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
 
 namespace CommentSense.Analyzers.Logic;
 
@@ -23,42 +25,55 @@ internal static class GhostReferenceAnalyzer
         if (IsIgnoredTag(containingTag))
             return;
 
-        var parameters = GetParameters(symbol);
-        var typeParameters = GetTypeParameters(symbol);
+        var parameters = symbol.GetParameters().Select(p => p.Name).ToImmutableArray();
+        var typeParameters = symbol.GetTypeParameters().Select(p => p.Name).ToImmutableArray();
 
         if (parameters.IsEmpty && typeParameters.IsEmpty)
             return;
 
-        AnalyzeReferences(context, xmlText, parameters, CommentSenseRules.GhostParameterReferenceRule, options, containingTag, nameValue);
-        AnalyzeReferences(context, xmlText, typeParameters, CommentSenseRules.GhostTypeParameterReferenceRule, options, containingTag, nameValue);
+        var reportedSpans = new HashSet<TextSpan>();
+        var analysisContext = new GhostReferenceContext(context, xmlText, options, containingTag, nameValue, reportedSpans);
+
+        AnalyzeReferences(analysisContext, parameters, CommentSenseRules.GhostParameterReferenceRule);
+        AnalyzeReferences(analysisContext, typeParameters, CommentSenseRules.GhostTypeParameterReferenceRule);
     }
 
+    private readonly record struct GhostReferenceContext(
+        SyntaxNodeAnalysisContext AnalysisContext,
+        XmlTextSyntax XmlText,
+        CommentSenseOptions Options,
+        string? ContainingTag,
+        string? NameValue,
+        HashSet<TextSpan> ReportedSpans);
+
     private static void AnalyzeReferences(
-        SyntaxNodeAnalysisContext context,
-        XmlTextSyntax xmlText,
+        GhostReferenceContext context,
         ImmutableArray<string> names,
-        DiagnosticDescriptor rule,
-        CommentSenseOptions options,
-        string? containingTag,
-        string? nameValue)
+        DiagnosticDescriptor rule)
     {
         if (names.IsEmpty)
             return;
 
         var regex = GetRegex(names);
-        foreach (var token in xmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
+        foreach (var token in context.XmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
         {
             foreach (Match match in regex.Matches(token.Text))
             {
                 var matchedText = match.Value;
                 var originalName = ResolveOriginalName(matchedText, names);
 
-                if (originalName == null || !IsGhostReference(matchedText, originalName, options, containingTag, nameValue))
+                if (originalName == null || !IsGhostReference(matchedText, originalName, context.Options, context.ContainingTag, context.NameValue))
                     continue;
 
                 var start = token.SpanStart + match.Index;
-                var location = Location.Create(context.Node.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, match.Length));
-                context.ReportDiagnostic(Diagnostic.Create(rule, location, matchedText, originalName));
+                var span = new TextSpan(start, match.Length);
+
+                if (!context.ReportedSpans.Add(span))
+                    continue;
+
+                var location = Location.Create(context.AnalysisContext.Node.SyntaxTree, span);
+                var properties = ImmutableDictionary<string, string?>.Empty.Add("originalName", originalName);
+                context.AnalysisContext.ReportDiagnostic(Diagnostic.Create(rule, location, properties, matchedText, originalName));
             }
         }
     }
@@ -77,8 +92,8 @@ internal static class GhostReferenceAnalyzer
 
         if (options.GhostReferenceMode == GhostReferenceMode.Safe)
         {
-            if (containingTag == "param" && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
-            if (containingTag == "typeparam" && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
+            if (containingTag == DocumentationTags.Param && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
+            if (containingTag == DocumentationTags.TypeParam && string.Equals(originalName, nameValue, StringComparison.Ordinal)) return false;
         }
 
         return true;
@@ -106,7 +121,7 @@ internal static class GhostReferenceAnalyzer
 
     private static bool IsIgnoredTag(string? tagName)
     {
-        return tagName is "code" or "c" or "paramref" or "typeparamref" or "see";
+        return tagName is DocumentationTags.Code or DocumentationTags.C or DocumentationTags.ParamRef or DocumentationTags.TypeParamRef or DocumentationTags.See;
     }
 
     private static (string? TagName, string? NameValue) GetContainingTagInfo(XmlTextSyntax xmlText)
@@ -120,8 +135,8 @@ internal static class GhostReferenceAnalyzer
             var tagName = element.StartTag.Name.LocalName.ValueText;
             innermostTag ??= tagName;
 
-            var nameValue = GetNameAttributeValue(element);
-            if (nameValue != null && tagName is "param" or "typeparam")
+            var nameValue = element.GetNameAttribute();
+            if (nameValue != null && tagName is DocumentationTags.Param or DocumentationTags.TypeParam)
                 return (tagName, nameValue);
 
             if (IsIgnoredTag(tagName))
@@ -129,44 +144,5 @@ internal static class GhostReferenceAnalyzer
         }
 
         return (innermostTag, null);
-    }
-
-    private static string? GetNameAttributeValue(XmlElementSyntax element)
-    {
-        foreach (var attribute in element.StartTag.Attributes)
-        {
-            if (attribute is XmlNameAttributeSyntax { Name.LocalName.ValueText: "name" } nameAttr)
-                return nameAttr.Identifier.Identifier.ValueText;
-
-            if (attribute is XmlTextAttributeSyntax { Name.LocalName.ValueText: "name" } textAttr)
-            {
-                return textAttr.TextTokens
-                    .FirstOrDefault(t => t.IsKind(SyntaxKind.XmlTextLiteralToken))
-                    .Text;
-            }
-        }
-
-        return null;
-    }
-
-    private static ImmutableArray<string> GetParameters(ISymbol symbol)
-    {
-        return symbol switch
-        {
-            IMethodSymbol m => [.. m.Parameters.Select(p => p.Name)],
-            IPropertySymbol { IsIndexer: true } p => [.. p.Parameters.Select(param => param.Name)],
-            INamedTypeSymbol { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null } n => [.. n.DelegateInvokeMethod.Parameters.Select(p => p.Name)],
-            _ => []
-        };
-    }
-
-    private static ImmutableArray<string> GetTypeParameters(ISymbol symbol)
-    {
-        return symbol switch
-        {
-            IMethodSymbol m => [.. m.TypeParameters.Select(p => p.Name)],
-            INamedTypeSymbol n => [.. n.TypeParameters.Select(p => p.Name)],
-            _ => []
-        };
     }
 }

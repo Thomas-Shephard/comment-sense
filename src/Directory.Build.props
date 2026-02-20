@@ -11,5 +11,6 @@
   <ItemGroup>
     <InternalsVisibleTo Include="CommentSense.Core.Tests"/>
     <InternalsVisibleTo Include="CommentSense.Analyzers.Tests"/>
+    <InternalsVisibleTo Include="CommentSense.CodeFixes.Tests"/>
   </ItemGroup>
 </Project>
