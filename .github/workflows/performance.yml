@@ -60,7 +60,6 @@ jobs:
       - name: Merge Benchmark Results
         run: |
           # Merge all class-specific reports into a single combined report
-          # BenchmarkDotNet exports one JSON per class. This script takes the first JSON's metadata and combines all Benchmarks arrays.
           shopt -s nullglob
           JSON_FILES=(BenchmarkDotNet.Artifacts/results/*-report-brief.json)
           if [ ${#JSON_FILES[@]} -eq 0 ]; then
@@ -68,11 +67,7 @@ jobs:
             exit 1
           fi
 
-          # Use jq to merge results if multiple exist, otherwise just copy the single file
           if [ ${#JSON_FILES[@]} -gt 1 ]; then
-            # map(select(type == "object")) ensures we only process valid JSON objects
-            # .[0] + {Benchmarks: map(.Benchmarks // []) | add} merges all Benchmarks arrays into the first object's structure
-            # Defensive selection: only objects with a Benchmarks array are combined
             jq -s 'map(select(type == "object" and .Benchmarks and (.Benchmarks | type) == "array")) | .[0] + {Benchmarks: map(.Benchmarks) | add}' BenchmarkDotNet.Artifacts/results/*-report-brief.json > BenchmarkDotNet.Artifacts/results/combined-report.json
           else
             cp "${JSON_FILES[0]}" BenchmarkDotNet.Artifacts/results/combined-report.json
@@ -90,7 +85,6 @@ jobs:
           auto-push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           summary-always: true
           comment-always: true
-          # Show alert in the PR comment if there is a regression
           alert-threshold: '120%'
           comment-on-alert: true
           fail-on-alert: true
