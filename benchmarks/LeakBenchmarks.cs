@@ -19,6 +19,7 @@ public class LeakBenchmarks : BenchmarkBase
     public override void Setup()
     {
         base.Setup();
+
         _parseOptions = new CSharpParseOptions().WithDocumentationMode(DocumentationMode.Parse);
         _references = [.. GetMetadataReferences()];
     }

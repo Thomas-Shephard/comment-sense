@@ -15,7 +15,7 @@ public class PathologicalBenchmarks : BenchmarkBase
     public override void Setup()
     {
         base.Setup();
-        // Force Levenshtein calculation and deep scanning on every summary
+
         OptionsProvider.SetOption("comment_sense.similarity_threshold", "0.1");
         OptionsProvider.SetOption("comment_sense.scan_called_methods_for_exceptions", "true");
     }
@@ -29,7 +29,6 @@ public class PathologicalBenchmarks : BenchmarkBase
 
         for (int m = 0; m < 10; m++)
         {
-            // Generate a method with significant documentation
             sb.AppendLine("/// <summary>");
             for (int i = 0; i < DocSizeMultiplier * 100; i++)
             {
