@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,12 +13,13 @@ using CommentSense.Analyzers;
 
 namespace CommentSense.PerformanceTests;
 
+[SuppressMessage("ReSharper", "NullableWarningSuppressionIsUsed")]
 public abstract class BenchmarkBase
 {
-    protected Compilation Compilation { get; set; } = null!;
-    protected ImmutableArray<DiagnosticAnalyzer> Analyzers { get; set; }
-    protected AnalyzerOptions Options { get; set; } = null!;
-    protected TestAnalyzerConfigOptionsProvider OptionsProvider { get; set; } = null!;
+    private Compilation Compilation { get; set; } = null!;
+    protected ImmutableArray<DiagnosticAnalyzer> Analyzers { get; private set; }
+    private AnalyzerOptions Options { get; set; } = null!;
+    protected TestAnalyzerConfigOptionsProvider OptionsProvider { get; private set; } = null!;
 
     [GlobalSetup]
     public virtual void Setup()
@@ -42,14 +44,13 @@ public abstract class BenchmarkBase
 
     protected abstract string GetSourceCode();
 
-    protected virtual IEnumerable<SyntaxTree> GetSyntaxTrees() => Array.Empty<SyntaxTree>();
+    protected virtual IEnumerable<SyntaxTree> GetSyntaxTrees() => [];
 
     protected static IEnumerable<MetadataReference> GetMetadataReferences()
     {
-        return AppDomain.CurrentDomain.GetAssemblies()
+        return [.. AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
-            .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))
-            .ToList();
+            .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))];
     }
 
     protected static string GetSourceRoot()
@@ -63,6 +64,7 @@ public abstract class BenchmarkBase
         {
             current = current.Parent;
         }
+
         return Path.Combine(current?.FullName ?? throw new InvalidOperationException("Could not find solution root"), "src");
     }
 
@@ -85,6 +87,6 @@ public abstract class BenchmarkBase
     {
         private readonly Dictionary<string, string> _options = [];
         public void Set(string key, string value) => _options[key] = value;
-        public override bool TryGetValue(string key, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? value) => _options.TryGetValue(key, out value);
+        public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value) => _options.TryGetValue(key, out value);
     }
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Threading.Tasks;
@@ -6,6 +7,7 @@ using BenchmarkDotNet.Attributes;
 namespace CommentSense.PerformanceTests;
 
 [MemoryDiagnoser]
+[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 public class AnalyzerBenchmarks : BenchmarkBase
 {
     [Params(100)]
@@ -29,7 +31,6 @@ public class AnalyzerBenchmarks : BenchmarkBase
 
         for (int i = 0; i < MethodCount; i++)
         {
-            // Mixing in ghost references and potential similarity triggers
             sb.AppendLine(CultureInfo.InvariantCulture, $$"""
                 /// <summary> This is a summary for Method {{i}} that might repeat Method{{i}} name. </summary>
                 /// <param name="arg">The argument named arg.</param>

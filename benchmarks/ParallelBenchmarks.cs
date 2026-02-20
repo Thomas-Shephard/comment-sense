@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -10,6 +11,7 @@ namespace CommentSense.PerformanceTests;
 [MemoryDiagnoser]
 #if WINDOWS
 [ThreadingDiagnoser]
+[SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 #endif
 public class ParallelBenchmarks : BenchmarkBase
 {
@@ -45,7 +47,6 @@ public class ParallelBenchmarks : BenchmarkBase
     [Benchmark]
     public async Task ConcurrentAnalysis()
     {
-        // By default, Roslyn parallelizes analysis because we called context.EnableConcurrentExecution()
         await RunAnalysisAsync();
     }
 }

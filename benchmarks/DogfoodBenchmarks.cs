@@ -19,22 +19,21 @@ public class DogfoodBenchmarks : BenchmarkBase
                         !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) &&
                         !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar));
 
-        return files.Select(f =>
+        return [.. files.Select(f =>
             CSharpSyntaxTree.ParseText(File.ReadAllText(f), new CSharpParseOptions().WithDocumentationMode(DocumentationMode.Parse))
-        ).ToList();
+        )];
     }
 
     public override void Setup()
     {
         base.Setup();
 
-        // Enable heavy features for dogfooding
         OptionsProvider.SetOption("comment_sense.scan_called_methods_for_exceptions", "true");
         OptionsProvider.SetOption("comment_sense.ghost_references.mode", "strict");
         OptionsProvider.SetOption("comment_sense.similarity_threshold", "0.8");
     }
 
-    protected override string GetSourceCode() => ""; // Not used for dogfood
+    protected override string GetSourceCode() => "";
 
     [Benchmark]
     public async Task AnalyzeProject()

@@ -1,6 +1,5 @@
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -11,6 +10,7 @@ using System.Globalization;
 namespace CommentSense.PerformanceTests;
 
 [MemoryDiagnoser]
+[SuppressMessage("ReSharper", "NullableWarningSuppressionIsUsed")]
 public class LeakBenchmarks : BenchmarkBase
 {
     private CSharpParseOptions _parseOptions = null!;
@@ -28,8 +28,6 @@ public class LeakBenchmarks : BenchmarkBase
     [Benchmark]
     public async Task SimulateLongSession()
     {
-        // Simulate a developer editing code and triggering multiple analysis runs
-        // If our ConditionalWeakTable or other caches have leaks, memory will grow here
         for (int i = 0; i < 50; i++)
         {
             var source = string.Create(CultureInfo.InvariantCulture, $$"""
@@ -39,9 +37,8 @@ public class LeakBenchmarks : BenchmarkBase
             var tree = CSharpSyntaxTree.ParseText(source, _parseOptions);
             var compilation = CSharpCompilation.Create($"LeakTest{i}", [tree], _references);
 
-            // Create new options provider and options to stress the static OptionsCache
             var optionsProvider = new TestAnalyzerConfigOptionsProvider();
-            var analyzerOptions = new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty, optionsProvider);
+            var analyzerOptions = new AnalyzerOptions([], optionsProvider);
 
             var compilationWithAnalyzers = compilation.WithAnalyzers(Analyzers, analyzerOptions);
             await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
