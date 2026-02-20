@@ -44,7 +44,7 @@ internal static class TagOrderAnalyzer
         }
     }
 
-    private static int GetOccurrence(List<XElement> elements, XElement target)
+    internal static int GetOccurrence(List<XElement> elements, XElement target)
     {
         int occurrence = 0;
         var tagName = target.Name.LocalName;
