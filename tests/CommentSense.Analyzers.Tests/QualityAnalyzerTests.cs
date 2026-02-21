@@ -114,4 +114,20 @@ public class QualityAnalyzerTests
         var result = QualityAnalyzer.IsLowQuality(new XElement("summary", "Different"), "Symbol", options);
         Assert.That(result, Is.False);
     }
+
+    [Test]
+    public void IsLowQualityEmptySymbolNameReturnsFalse()
+    {
+        var options = CommentSenseOptions.Default with { SimilarityThreshold = 0.5 };
+        var result = QualityAnalyzer.IsLowQuality("Content", string.Empty, options);
+        Assert.That(result, Is.False);
+    }
+
+    [Test]
+    public void IsLowQualityLengthDifferenceEarlyExit()
+    {
+        var options = CommentSenseOptions.Default with { SimilarityThreshold = 0.8 };
+        var result = QualityAnalyzer.IsLowQuality("Short", "VeryLongSymbolName", options);
+        Assert.That(result, Is.False);
+    }
 }
