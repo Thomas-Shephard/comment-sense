@@ -1,8 +1,20 @@
+using System.Buffers;
+
 namespace CommentSense.Core.Utilities;
 
 internal static class StringExtensions
 {
     public static double CalculateSimilarity(this string source, string target)
+    {
+        return CalculateSimilarity(source.AsSpan(), target.AsSpan());
+    }
+
+    public static double CalculateSimilarity(this ReadOnlySpan<char> source, string target)
+    {
+        return CalculateSimilarity(source, target.AsSpan());
+    }
+
+    public static double CalculateSimilarity(this ReadOnlySpan<char> source, ReadOnlySpan<char> target)
     {
         if (source.Equals(target, StringComparison.OrdinalIgnoreCase))
             return 1.0;
@@ -13,7 +25,11 @@ internal static class StringExtensions
         if (n == 0 || m == 0)
             return 0.0;
 
-        var distance = ComputeLevenshteinDistance(source.AsSpan(), target.AsSpan());
+        // Cap length to avoid excessive memory pressure for similarity checks
+        if (n > 2048 || m > 2048)
+            return 0.0;
+
+        var distance = ComputeLevenshteinDistance(source, target);
         return 1.0 - (double)distance / Math.Max(n, m);
     }
 
@@ -26,16 +42,56 @@ internal static class StringExtensions
             t = temp;
         }
 
-        int n = s.Length;
         int m = t.Length;
 
         const int maxStackLimit = 256;
         var rowSize = m + 1;
-        Span<int> previousRow = rowSize <= maxStackLimit ? stackalloc int[rowSize] : new int[rowSize];
-        Span<int> currentRow = rowSize <= maxStackLimit ? stackalloc int[rowSize] : new int[rowSize];
+
+        int[]? previousRowArray = null;
+        int[]? currentRowArray = null;
+        char[]? tUpperArray = null;
+
+        bool useStack = rowSize <= maxStackLimit;
+        if (!useStack)
+        {
+            previousRowArray = ArrayPool<int>.Shared.Rent(rowSize);
+            currentRowArray = ArrayPool<int>.Shared.Rent(rowSize);
+            tUpperArray = ArrayPool<char>.Shared.Rent(m);
+        }
+
+        try
+        {
+            Span<int> previousRow = useStack
+                ? stackalloc int[rowSize]
+                : previousRowArray.AsSpan(0, rowSize);
+
+            Span<int> currentRow = useStack
+                ? stackalloc int[rowSize]
+                : currentRowArray.AsSpan(0, rowSize);
+
+            Span<char> tUpper = m <= maxStackLimit
+                ? stackalloc char[m]
+                : tUpperArray.AsSpan(0, m);
+
+            return ComputeLevenshteinDistanceInternal(s, t, previousRow, currentRow, tUpper);
+        }
+        finally
+        {
+            if (previousRowArray != null)
+                ArrayPool<int>.Shared.Return(previousRowArray, clearArray: false);
+            if (currentRowArray != null)
+                ArrayPool<int>.Shared.Return(currentRowArray, clearArray: false);
+            if (tUpperArray != null)
+                ArrayPool<char>.Shared.Return(tUpperArray, clearArray: false);
+        }
+    }
+
+    private static int ComputeLevenshteinDistanceInternal(ReadOnlySpan<char> s, ReadOnlySpan<char> t, Span<int> previousRow, Span<int> currentRow, Span<char> tUpper)
+    {
+        int n = s.Length;
+        int m = t.Length;
 
         // Pre-compute upper-case version of the shorter string to avoid redundant calls in the inner loop.
-        Span<char> tUpper = m <= maxStackLimit ? stackalloc char[m] : new char[m];
         for (var j = 0; j < m; j++)
         {
             tUpper[j] = char.ToUpperInvariant(t[j]);

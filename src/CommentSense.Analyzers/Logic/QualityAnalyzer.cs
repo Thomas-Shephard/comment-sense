@@ -53,46 +53,53 @@ internal static class QualityAnalyzer
 
     public static bool IsLowQuality(string? content, string symbolName, CommentSenseOptions options, string? tagName = null)
     {
-        if (content is null || string.IsNullOrWhiteSpace(content))
+        if (string.IsNullOrWhiteSpace(content))
             return true;
 
+        var contentSpan = content.AsSpan();
+        if (IsPoorlyFormatted(contentSpan, options))
+            return true;
+
+        var normalized = contentSpan.Trim().TrimEnd(TrimChars);
+        if (normalized.IsEmpty)
+            return true;
+
+        if (CheckBasicQuality(normalized, symbolName, options.MinSummaryLength, tagName))
+            return true;
+
+        foreach (var term in options.LowQualityTerms)
+        {
+            if (normalized.Equals(term.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return CheckSimilarity(normalized, symbolName, options.SimilarityThreshold);
+    }
+
+    private static bool IsPoorlyFormatted(ReadOnlySpan<char> content, CommentSenseOptions options)
+    {
         if (options.RequireCapitalization && DocumentationQualityExtensions.StartsWithLowercase(content))
             return true;
 
         if (options.RequireEndingPunctuation && !DocumentationQualityExtensions.EndsWithPunctuation(content, trimEnd: true))
             return true;
 
-        var trimmed = content.Trim();
-        var normalized = trimmed.TrimEnd(TrimChars);
-        if (string.IsNullOrEmpty(normalized))
-            return true;
+        return false;
+    }
 
-        if (CheckBasicQuality(normalized, symbolName, options.MinSummaryLength, tagName))
-            return true;
-
-        if (options.LowQualityTerms.Contains(normalized))
-            return true;
-
-        if (options.SimilarityThreshold <= 0.0)
-            return false;
-
-        int n = normalized.Length;
-        int m = symbolName.Length;
-
-        if (m <= 0)
+    private static bool CheckSimilarity(ReadOnlySpan<char> normalized, string symbolName, double threshold)
+    {
+        if (threshold <= 0.0 || symbolName.Length == 0)
             return false;
 
         // Distance is at least the absolute difference in lengths.
         // Similarity = 1 - distance / maxLen.
         // Max possible similarity = 1 - abs(n - m) / maxLen = minLen / maxLen.
-        double maxPossibleSimilarity = (double)Math.Min(n, m) / Math.Max(n, m);
-        if (maxPossibleSimilarity < options.SimilarityThreshold)
+        double maxPossibleSimilarity = (double)Math.Min(normalized.Length, symbolName.Length) / Math.Max(normalized.Length, symbolName.Length);
+        if (maxPossibleSimilarity < threshold)
             return false;
 
-        if (normalized.CalculateSimilarity(symbolName) >= options.SimilarityThreshold)
-            return true;
-
-        return false;
+        return normalized.CalculateSimilarity(symbolName) >= threshold;
     }
 
     public static bool IsLowQualityForAnyFormat(XElement element, ISymbol symbol, CommentSenseOptions options, string? tagName = null)
@@ -113,20 +120,20 @@ internal static class QualityAnalyzer
         return minimallyQualifiedName != displayName && IsLowQuality(content, minimallyQualifiedName, options, tagName: tagName);
     }
 
-    private static bool CheckBasicQuality(string normalized, string symbolName, int minLength, string? tagName)
+    private static bool CheckBasicQuality(ReadOnlySpan<char> normalized, string symbolName, int minLength, string? tagName)
     {
         // Use normalized length to ensure trailing punctuation doesn't artificially satisfy the requirement
         if (normalized.Length < minLength)
             return true;
 
-        if (string.Equals(normalized, symbolName, StringComparison.OrdinalIgnoreCase))
+        if (normalized.Equals(symbolName.AsSpan(), StringComparison.OrdinalIgnoreCase))
             return true;
 
-        if (tagName != null && string.Equals(normalized, tagName, StringComparison.OrdinalIgnoreCase))
+        if (tagName != null && normalized.Equals(tagName.AsSpan(), StringComparison.OrdinalIgnoreCase))
             return true;
 
         // The word "return" is treated as low-quality only when documenting the <returns> tag
-        return tagName == DocumentationTags.Returns && string.Equals(normalized, "return", StringComparison.OrdinalIgnoreCase);
+        return tagName == DocumentationTags.Returns && normalized.Equals("return".AsSpan(), StringComparison.OrdinalIgnoreCase);
     }
 
     public static void Report(SymbolAnalysisContext context, Location location, string tagName, string targetName)

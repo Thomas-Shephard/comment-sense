@@ -379,6 +379,71 @@ public class DocumentationLocationExtensionsTests
         Assert.That(locations.GetLocationOrDefault(0, mockSymbol.Object), Is.EqualTo(Location.None));
     }
 
+    [Test]
+    public void GetDocumentationCommentTriviaWithMixedTriviaReturnsTrivia()
+    {
+        const string source = "#if true\n/// <summary>S</summary>\npublic class C {}\n#endif";
+        var tree = CSharpSyntaxTree.ParseText(source);
+        var node = tree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().First();
+        Assert.That(DocumentationLocationExtensions.GetDocumentationCommentTrivia(node), Is.Not.Null);
+    }
+
+    [Test]
+    public void MatchAttributeCrefWithOtherPrefixReturnsFalse()
+    {
+        var cref = SyntaxFactory.TypeCref(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword)));
+        var attr = SyntaxFactory.XmlCrefAttribute(cref);
+        Assert.That(DocumentationLocationExtensions.MatchAttribute(attr, "cref", "M:int"), Is.False);
+    }
+
+    [Test]
+    public void MatchAttributeCrefShortValueReturnsFalse()
+    {
+        var cref = SyntaxFactory.TypeCref(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.IntKeyword)));
+        var attr = SyntaxFactory.XmlCrefAttribute(cref);
+        Assert.That(DocumentationLocationExtensions.MatchAttribute(attr, "cref", "T"), Is.False);
+    }
+
+    [Test]
+    public void MatchAttributeTextAttributeMultipleTokensLengthMismatchReturnsFalse()
+    {
+        var attr = SyntaxFactory.XmlTextAttribute(
+            SyntaxFactory.XmlName("name"),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+            SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("a"), SyntaxFactory.XmlTextLiteral("b")),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken));
+        Assert.That(DocumentationLocationExtensions.MatchAttribute(attr, "name", "abc"), Is.False);
+    }
+
+    [Test]
+    public void MatchAttributeTextAttributeMultipleTokensSuccessfulMatchReturnsTrue()
+    {
+        var attr = SyntaxFactory.XmlTextAttribute(
+            SyntaxFactory.XmlName("name"),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+            SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("a"), SyntaxFactory.XmlTextLiteral("b")),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken));
+        Assert.That(DocumentationLocationExtensions.MatchAttribute(attr, "name", "ab"), Is.True);
+    }
+
+    [Test]
+    public void MatchAttributeTextAttributeMultipleTokensContentMismatchReturnsFalse()
+    {
+        var attr = SyntaxFactory.XmlTextAttribute(
+            SyntaxFactory.XmlName("name"),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+            SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("a"), SyntaxFactory.XmlTextLiteral("c")),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken));
+        Assert.That(DocumentationLocationExtensions.MatchAttribute(attr, "name", "ab"), Is.False);
+    }
+
+    [Test]
+    public void MatchAttributeNullReturnsFalse()
+    {
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        Assert.That(DocumentationLocationExtensions.MatchAttribute(null!, "name", "value"), Is.False);
+    }
+
     private static ISymbol GetSymbolFromSource(string source, string symbolName)
     {
         return RoslynTestUtils.GetSymbolFromSource(source, symbolName, parseDocumentation: true);

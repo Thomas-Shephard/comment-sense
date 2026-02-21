@@ -23,9 +23,7 @@ internal static class DocumentationXmlExtensions
 
     public static bool HasValidDocumentation(XElement root)
     {
-        return GetTargetElements(root)
-            .Select(element => element.Name.LocalName)
-            .Any(name => AutoValidTags.Contains(name) || ContentRequiredTags.Contains(name));
+        return GetTargetElements(root).Any(element => AutoValidTags.Contains(element.Name.LocalName) || ContentRequiredTags.Contains(element.Name.LocalName));
     }
 
     public static bool TryParseDocumentation(string? xml, out XElement element)
@@ -146,9 +144,11 @@ internal static class DocumentationXmlExtensions
     {
         var elements = GetTargetElements(root, tagName, recursive: !topLevelOnly);
 
-        return elements
-               .Select(d => d.Attribute(attributeName)?.Value)
-               .Where(v => !string.IsNullOrWhiteSpace(v))
-               .OfType<string>();
+        foreach (var d in elements)
+        {
+            var value = d.Attribute(attributeName)?.Value;
+            if (value is not null && !string.IsNullOrWhiteSpace(value))
+                yield return value;
+        }
     }
 }

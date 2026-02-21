@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using CommentSense.Core;
+using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,6 +12,7 @@ namespace CommentSense.Analyzers.Logic;
 internal static class LangwordAnalyzer
 {
     private static readonly ConcurrentDictionary<string, Regex> RegexCache = new();
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<System.Collections.Immutable.IImmutableSet<string>, Regex> RegexCacheBySet = new();
 
     public static void Analyze(SyntaxNodeAnalysisContext context, XmlTextSyntax xmlText, CommentSenseOptions options)
     {
@@ -23,31 +25,66 @@ internal static class LangwordAnalyzer
 
         var regex = GetRegex(options.Langwords);
 
-        var matches = xmlText.TextTokens
-            .Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken))
-            .SelectMany(token => regex.Matches(token.Text).Cast<Match>(), (token, match) => new { token, match });
-
-        foreach (var result in matches)
+        foreach (var token in xmlText.TextTokens)
         {
-            var start = result.token.SpanStart + result.match.Index;
-            var location = Location.Create(context.Node.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, result.match.Length));
-            var matchedText = result.match.Value;
-            var canonical = options.Langwords.FirstOrDefault(w => string.Equals(w, matchedText, StringComparison.OrdinalIgnoreCase)) ?? matchedText;
-            var properties = System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty.Add("canonical", canonical);
+            if (!token.IsKind(SyntaxKind.XmlTextLiteralToken))
+                continue;
 
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UseLangwordRule, location, properties, matchedText));
+            var text = token.Text;
+            var matches = regex.Matches(text);
+            foreach (Match match in matches)
+            {
+                var start = token.SpanStart + match.Index;
+                var location = Location.Create(context.Node.SyntaxTree, new Microsoft.CodeAnalysis.Text.TextSpan(start, match.Length));
+                var matchedText = match.Value;
+
+                // Find canonical form without LINQ.
+                // Using a manual loop here is O(N), but Langwords is typically very small.
+                string? canonical = null;
+                foreach (var word in options.Langwords)
+                {
+                    if (!string.Equals(word, matchedText, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    canonical = word;
+                    break;
+                }
+                canonical ??= matchedText;
+
+                var properties = System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty.Add("canonical", canonical);
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UseLangwordRule, location, properties, matchedText));
+            }
         }
     }
 
-    private static Regex GetRegex(IEnumerable<string> langwords)
+    private static Regex GetRegex(System.Collections.Immutable.IImmutableSet<string> langwords)
     {
-        var sortedWords = langwords.OrderBy(w => w, StringComparer.OrdinalIgnoreCase).ToList();
-        var key = string.Join("|", sortedWords);
-
-        return RegexCache.GetOrAdd(key, _ =>
+        return RegexCacheBySet.GetValue(langwords, l =>
         {
-            var pattern = $@"\b({string.Join("|", sortedWords.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
-            return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+            var sortedWords = l.OrderBy(w => w, StringComparer.OrdinalIgnoreCase).ToList();
+
+            var sb = new System.Text.StringBuilder();
+            foreach (var word in sortedWords)
+            {
+                if (sb.Length > 0) sb.Append('|');
+                sb.Append(word);
+            }
+            var key = sb.ToString();
+
+            return RegexCache.GetOrAdd(key, _ =>
+            {
+                var patternSb = new System.Text.StringBuilder(@"\b(");
+                bool first = true;
+                foreach (var word in sortedWords.OrderByDescending(w => w.Length))
+                {
+                    if (!first) patternSb.Append('|');
+                    patternSb.Append(Regex.Escape(word));
+                    first = false;
+                }
+                patternSb.Append(@")\b");
+
+                return new Regex(patternSb.ToString(), RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+            });
         });
     }
 
@@ -56,9 +93,9 @@ internal static class LangwordAnalyzer
         var parent = xmlText.Parent;
         while (parent != null)
         {
-            if (parent is XmlElementSyntax element)
+            if (parent is XmlNodeSyntax node)
             {
-                var name = element.StartTag.Name.LocalName.ValueText;
+                var name = node.GetTagName();
                 if (name is "code" or "c")
                     return true;
             }

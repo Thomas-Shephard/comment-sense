@@ -41,16 +41,44 @@ internal static class ExceptionAnalyzer
         if (DocumentationXmlExtensions.HasInheritDoc(xml) || DocumentationXmlExtensions.HasAutoValidTag(xml))
             return;
 
-        foreach (var thrownType in thrownTypes
-            .Where(t => !documentedTypes.Any(t.InheritsFromOrEquals) && !IsIgnored(t, options))
-            .OrderBy(t => t.ToDisplayString(FullNameFormat)))
+        var filteredThrownTypes = new List<ITypeSymbol>();
+        foreach (var thrownType in thrownTypes)
+        {
+            if (IsIgnored(thrownType, options))
+                continue;
+
+            if (!IsExceptionDocumented(thrownType, documentedTypes))
+                filteredThrownTypes.Add(thrownType);
+        }
+
+        if (filteredThrownTypes.Count == 0)
+            return;
+
+        var sortedThrownTypes = filteredThrownTypes
+            .Select(t => (Symbol: t, Cref: t.ToCrefString()))
+            .OrderBy(x => x.Cref);
+
+        foreach (var (thrownType, crefValue) in sortedThrownTypes)
         {
             var location = symbol.Locations.GetPrimaryLocation();
             var displayName = thrownType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-            var crefValue = thrownType.ToDisplayString(FullNameFormat).Replace('<', '{').Replace('>', '}');
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.CrefProperty, crefValue);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, properties, displayName));
         }
+    }
+
+    private static bool IsExceptionDocumented(ITypeSymbol thrownType, HashSet<ITypeSymbol> documentedTypes)
+    {
+        if (documentedTypes.Contains(thrownType))
+            return true;
+
+        foreach (var documentedType in documentedTypes)
+        {
+            if (thrownType.InheritsFromOrEquals(documentedType))
+                return true;
+        }
+
+        return false;
     }
 
     private static void ReportLowQualityExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
@@ -105,17 +133,32 @@ internal static class ExceptionAnalyzer
         if (options.IgnoredExceptions.Contains(type.Name))
             return true;
 
-        if (options.IgnoredExceptions.Contains(type.ToDisplayString(FullNameFormat)))
+        var fullName = type.ToDisplayString(FullNameFormat);
+        if (options.IgnoredExceptions.Contains(fullName))
             return true;
 
-        if (type is INamedTypeSymbol { IsGenericType: true } named && options.IgnoredExceptions.Contains(named.OriginalDefinition.ToDisplayString(FullNameFormat)))
-            return true;
+        if (type is INamedTypeSymbol { IsGenericType: true } named)
+        {
+            var originalFullName = named.OriginalDefinition.ToDisplayString(FullNameFormat);
+            if (options.IgnoredExceptions.Contains(originalFullName))
+                return true;
+        }
 
-        var ns = type.ContainingNamespace.ToDisplayString();
+        var nsSymbol = type.ContainingNamespace;
+        if (nsSymbol is null || nsSymbol.IsGlobalNamespace)
+            return false;
+
+        var ns = nsSymbol.ToDisplayString();
         if (options.IgnoreSystemExceptions && IsInNamespace(ns, "System"))
             return true;
 
-        return options.IgnoredExceptionNamespaces.Any(targetNs => IsInNamespace(ns, targetNs));
+        foreach (var targetNs in options.IgnoredExceptionNamespaces)
+        {
+            if (IsInNamespace(ns, targetNs))
+                return true;
+        }
+
+        return false;
     }
 
     internal static bool IsInNamespace(string ns, string targetNamespace)
@@ -123,7 +166,10 @@ internal static class ExceptionAnalyzer
         if (ns.Equals(targetNamespace, StringComparison.OrdinalIgnoreCase))
             return true;
 
-        return ns.StartsWith(targetNamespace + ".", StringComparison.OrdinalIgnoreCase);
+        if (ns.Length <= targetNamespace.Length)
+            return false;
+
+        return ns.StartsWith(targetNamespace, StringComparison.OrdinalIgnoreCase) && ns[targetNamespace.Length] == '.';
     }
 
     private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(SymbolAnalysisContext context, IEnumerable<XElement> exceptionElements)
@@ -185,21 +231,22 @@ internal static class ExceptionAnalyzer
             return null;
 
         var normalizedTypeName = DocumentationSyntaxExtensions.NormalizeCref(info.TypeName);
-        var typeNameWithoutGenerics = RemoveGenerics(normalizedTypeName);
+        var typeNameWithoutGenerics = RemoveGenerics(normalizedTypeName.AsSpan());
 
         // Extract simple name of the target type to use fast lookup (ignoring generic arguments)
-        var parts = normalizedTypeName.Split('.');
-        var lastPart = parts[parts.Length - 1];
-        var simpleName = lastPart;
-        var genericStartIndex = lastPart.IndexOf('<');
-        if (genericStartIndex != -1)
-            simpleName = lastPart.Substring(0, genericStartIndex);
+        var nameSpan = normalizedTypeName.AsSpan();
+        int lastDotIndex = nameSpan.LastIndexOf('.');
+        var lastPart = lastDotIndex == -1 ? nameSpan : nameSpan.Slice(lastDotIndex + 1);
+        int genericStartIndex = lastPart.IndexOf('<');
+        var simpleNameSpan = genericStartIndex == -1 ? lastPart : lastPart.Slice(0, genericStartIndex);
+
+        var simpleName = simpleNameSpan.ToString();
 
         if (string.IsNullOrWhiteSpace(simpleName) || !SyntaxFacts.IsValidIdentifier(simpleName))
             return null;
 
         // Try direct lookup (only for non-generic types as GetTypeByMetadataName requires backticks for generics)
-        if (!normalizedTypeName.Contains('<'))
+        if (genericStartIndex == -1 && !normalizedTypeName.Contains('<'))
         {
             var type = compilation.GetTypeByMetadataName(normalizedTypeName);
             if (type != null)
@@ -260,7 +307,7 @@ internal static class ExceptionAnalyzer
             if (t is not INamedTypeSymbol { IsGenericType: true } named)
                 continue;
 
-            var definitionFull = RemoveGenerics(named.OriginalDefinition.ToDisplayString(FullNameFormat));
+            var definitionFull = RemoveGenerics(named.OriginalDefinition.ToDisplayString(FullNameFormat).AsSpan());
             var definitionMin = named.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
             if (definitionMin.Contains('<'))
@@ -273,11 +320,14 @@ internal static class ExceptionAnalyzer
         return genericFallback;
     }
 
-    private static string RemoveGenerics(string typeName)
+    private static string RemoveGenerics(ReadOnlySpan<char> span)
     {
-        var result = new System.Text.StringBuilder();
+        if (span.IndexOfAny('<', '{') == -1)
+            return span.ToString();
+
+        var result = new System.Text.StringBuilder(span.Length);
         int depth = 0;
-        foreach (char c in typeName)
+        foreach (char c in span)
         {
             switch (c)
             {
@@ -307,39 +357,69 @@ internal static class ExceptionAnalyzer
             return null;
 
         var isPrimaryCtor = symbol.IsPrimaryConstructor();
-        var thrownTypes = GetThrownTypes(compilation, symbol, isPrimaryCtor, options, cancellationToken).ToList();
+        var thrownTypes = GetThrownTypes(compilation, symbol, isPrimaryCtor, options, cancellationToken);
         if (thrownTypes.Count == 0)
             return null;
 
-        var normalizedCref = DocumentationSyntaxExtensions.NormalizeCref(crefText);
-        var crefParts = normalizedCref.Split('.');
-        var simpleCrefName = RemoveGenerics(crefParts[crefParts.Length - 1]);
+        var simpleCrefName = GetSimpleCrefName(crefText);
 
         // 1. Exact name match
-        var exactMatch = thrownTypes.FirstOrDefault(t => t.Name.Equals(simpleCrefName, StringComparison.OrdinalIgnoreCase));
-        if (exactMatch != null)
-            return exactMatch.ToCrefString();
+        foreach (var t in thrownTypes)
+        {
+            if (t.Name.Equals(simpleCrefName, StringComparison.OrdinalIgnoreCase))
+                return t.ToCrefString();
+        }
 
         // 2. If only one exception is thrown, suggest it if there's any similarity
         if (thrownTypes.Count == 1)
         {
-            var single = thrownTypes[0];
-            if ((simpleCrefName.Length > 2 && (single.Name.IndexOf(simpleCrefName, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                 simpleCrefName.IndexOf(single.Name, StringComparison.OrdinalIgnoreCase) >= 0)) ||
-                single.Name.CalculateSimilarity(simpleCrefName) >= options.RenameSimilarityThreshold)
+            var single = thrownTypes.First();
+            if (IsSingleExceptionMatch(single, simpleCrefName, options.RenameSimilarityThreshold))
             {
                 return single.ToCrefString();
             }
         }
 
         // 3. Fuzzy match by name similarity
-        var bestMatch = thrownTypes
-            .Select(t => new { Symbol = t, Similarity = t.Name.CalculateSimilarity(simpleCrefName) })
-            .Where(x => x.Similarity >= options.RenameSimilarityThreshold)
-            .OrderByDescending(x => x.Similarity)
-            .FirstOrDefault();
+        return FindFuzzyExceptionMatch(thrownTypes, simpleCrefName, options.RenameSimilarityThreshold);
+    }
 
-        return bestMatch?.Symbol.ToCrefString();
+    private static string GetSimpleCrefName(string crefText)
+    {
+        var normalizedCref = DocumentationSyntaxExtensions.NormalizeCref(crefText);
+        var crefSpan = normalizedCref.AsSpan();
+        int lastDotIndex = crefSpan.LastIndexOf('.');
+        var lastPart = lastDotIndex == -1 ? crefSpan : crefSpan.Slice(lastDotIndex + 1);
+        return RemoveGenerics(lastPart);
+    }
+
+    private static bool IsSingleExceptionMatch(ITypeSymbol single, string simpleCrefName, double threshold)
+    {
+        if (simpleCrefName.Length > 2 && (single.Name.IndexOf(simpleCrefName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+             simpleCrefName.IndexOf(single.Name, StringComparison.OrdinalIgnoreCase) >= 0))
+        {
+            return true;
+        }
+
+        return single.Name.CalculateSimilarity(simpleCrefName) >= threshold;
+    }
+
+    private static string? FindFuzzyExceptionMatch(HashSet<ITypeSymbol> thrownTypes, string simpleCrefName, double threshold)
+    {
+        ITypeSymbol? bestMatch = null;
+        double bestSimilarity = -1.0;
+
+        foreach (var t in thrownTypes)
+        {
+            double similarity = t.Name.CalculateSimilarity(simpleCrefName);
+            if (similarity < threshold || similarity <= bestSimilarity)
+                continue;
+
+            bestSimilarity = similarity;
+            bestMatch = t;
+        }
+
+        return bestMatch?.ToCrefString();
     }
 
     private static HashSet<ITypeSymbol> GetThrownTypes(Compilation compilation, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options, CancellationToken cancellationToken = default)
@@ -406,9 +486,12 @@ internal static class ExceptionAnalyzer
         foreach (var node in nodes)
         {
             var exceptions = GetExceptionsFromNode(node, semanticModel, options, exceptionType, exceptionCache, token);
-            foreach (var type in exceptions.OfType<ITypeSymbol>().Where(type => !IsCaughtLocally(node, type, semanticModel)))
+            foreach (var exception in exceptions)
             {
-                yield return type;
+                if (exception != null && !IsCaughtLocally(node, exception, semanticModel))
+                {
+                    yield return exception;
+                }
             }
         }
     }
@@ -509,16 +592,18 @@ internal static class ExceptionAnalyzer
         var symbol = semanticModel.GetSymbolInfo(invocation, token).Symbol;
 
         var guardException = GetExceptionTypeFromGuardClause(invocation, symbol, exceptionType);
+        var exceptions = GetExceptionsFromSymbol(symbol, semanticModel.Compilation, exceptionCache);
 
-        foreach (var exception in GetExceptionsFromSymbol(symbol, semanticModel.Compilation, exceptionCache))
+        bool guardExceptionFound = false;
+        foreach (var exception in exceptions)
         {
             if (guardException != null && SymbolEqualityComparer.Default.Equals(exception, guardException))
-                guardException = null;
+                guardExceptionFound = true;
 
             yield return exception;
         }
 
-        if (guardException != null)
+        if (guardException != null && !guardExceptionFound)
             yield return guardException;
     }
 
@@ -537,9 +622,13 @@ internal static class ExceptionAnalyzer
             symbol = delegateMethod.ContainingType;
         }
 
-        return DocumentationXmlExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml())
-                                      .Select(cref => ResolveExceptionType(cref, compilation))
-                                      .OfType<ITypeSymbol>();
+        foreach (var cref in DocumentationXmlExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml()))
+        {
+            if (ResolveExceptionType(cref, compilation) is { } resolved)
+            {
+                yield return resolved;
+            }
+        }
     }
 
     private static ITypeSymbol? GetExceptionTypeFromGuardClause(InvocationExpressionSyntax invocation, ISymbol? symbol, ITypeSymbol exceptionType)

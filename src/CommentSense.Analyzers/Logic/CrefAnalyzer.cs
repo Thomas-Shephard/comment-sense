@@ -28,44 +28,44 @@ internal static class CrefAnalyzer
 
         if (symbolInfo.Symbol is null && symbolInfo.CandidateSymbols.IsEmpty)
         {
-            HandleUnresolvedCref(context, crefAttribute, cref, symbol, options);
+            HandleUnresolvedCref(context, crefAttribute, cref.ToString(), cref.GetLocation(), symbol, options);
             return;
         }
 
         if (crefAttribute.IsInExceptionTag())
-            HandleExceptionTagCref(context, symbol, cref, symbolInfo.Symbol, options);
+            HandleExceptionTagCref(context, symbol, cref, cref.ToString(), symbolInfo.Symbol, options);
     }
 
-    private static void HandleUnresolvedCref(SyntaxNodeAnalysisContext context, XmlCrefAttributeSyntax crefAttribute, CrefSyntax cref, ISymbol associatedSymbol, CommentSenseOptions options)
+    private static void HandleUnresolvedCref(SyntaxNodeAnalysisContext context, XmlCrefAttributeSyntax crefAttribute, string crefText, Location location, ISymbol associatedSymbol, CommentSenseOptions options)
     {
         var properties = ImmutableDictionary<string, string?>.Empty;
         if (crefAttribute.IsInExceptionTag())
         {
-            var suggestion = ExceptionAnalyzer.FindBestMatchingThrownException(associatedSymbol, cref.ToString(), options, context.Compilation, context.CancellationToken);
+            var suggestion = ExceptionAnalyzer.FindBestMatchingThrownException(associatedSymbol, crefText, options, context.Compilation, context.CancellationToken);
             if (suggestion != null)
             {
                 properties = properties.Add(DocumentationAttributes.CrefProperty, suggestion);
             }
             else
             {
-                var resolved = ExceptionAnalyzer.ResolveExceptionType(cref.ToString(), context.Compilation);
+                var resolved = ExceptionAnalyzer.ResolveExceptionType(crefText, context.Compilation);
                 var exceptionType = context.Compilation.GetTypeByMetadataName("System.Exception");
                 if (resolved != null && exceptionType != null && resolved.InheritsFromOrEquals(exceptionType))
                     properties = properties.Add(DocumentationAttributes.CrefProperty, resolved.ToCrefString());
             }
         }
 
-        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UnresolvedCrefRule, cref.GetLocation(), properties, cref.ToString()));
+        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.UnresolvedCrefRule, location, properties, crefText));
     }
 
-    private static void HandleExceptionTagCref(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol? resolvedSymbol, CommentSenseOptions options)
+    private static void HandleExceptionTagCref(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, string crefText, ISymbol? resolvedSymbol, CommentSenseOptions options)
     {
         var exceptionType = context.Compilation.GetTypeByMetadataName("System.Exception");
         if (resolvedSymbol is not ITypeSymbol typeSymbol)
         {
             if (resolvedSymbol is not null)
             {
-                var properties = CreateExceptionProperties(context, associatedSymbol, cref, options);
+                var properties = CreateExceptionProperties(context, associatedSymbol, crefText, options);
                 context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.InvalidExceptionTypeRule, cref.GetLocation(), properties, resolvedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
             }
             return;
@@ -73,15 +73,15 @@ internal static class CrefAnalyzer
 
         if (exceptionType != null && !typeSymbol.InheritsFromOrEquals(exceptionType))
         {
-            var properties = CreateExceptionProperties(context, associatedSymbol, cref, options);
+            var properties = CreateExceptionProperties(context, associatedSymbol, crefText, options);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.InvalidExceptionTypeRule, cref.GetLocation(), properties, typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
         }
     }
 
-    private static ImmutableDictionary<string, string?> CreateExceptionProperties(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, CommentSenseOptions options)
+    private static ImmutableDictionary<string, string?> CreateExceptionProperties(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, string crefText, CommentSenseOptions options)
     {
         var properties = ImmutableDictionary<string, string?>.Empty;
-        var suggestion = ExceptionAnalyzer.FindBestMatchingThrownException(associatedSymbol, cref.ToString(), options, context.Compilation, context.CancellationToken);
+        var suggestion = ExceptionAnalyzer.FindBestMatchingThrownException(associatedSymbol, crefText, options, context.Compilation, context.CancellationToken);
         if (suggestion != null)
             properties = properties.Add(DocumentationAttributes.CrefProperty, suggestion);
 

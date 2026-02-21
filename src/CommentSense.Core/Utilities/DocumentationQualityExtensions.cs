@@ -5,13 +5,13 @@ namespace CommentSense.Core.Utilities;
 
 internal static class DocumentationQualityExtensions
 {
-    private static readonly char[] SentenceTerminators = ['.', '!', '?'];
-
     public enum PunctuationState { Yes, No, Meaningless }
 
     public static bool EndsWithPunctuation(this SyntaxList<XmlNodeSyntax> content) => content.GetPunctuationState() == PunctuationState.Yes;
 
-    public static bool EndsWithPunctuation(string content, bool trimEnd = true) => GetPunctuationState(content, trimEnd) == PunctuationState.Yes;
+    public static bool EndsWithPunctuation(string content, bool trimEnd = true) => EndsWithPunctuation(content.AsSpan(), trimEnd);
+
+    public static bool EndsWithPunctuation(ReadOnlySpan<char> content, bool trimEnd = true) => GetPunctuationState(content, trimEnd) == PunctuationState.Yes;
 
     public static PunctuationState GetPunctuationState(this SyntaxList<XmlNodeSyntax> content)
     {
@@ -32,7 +32,7 @@ internal static class DocumentationQualityExtensions
             var tokens = node.GetTextTokens();
             for (int j = tokens.Count - 1; j >= 0; j--)
             {
-                var state = GetPunctuationState(tokens[j].ValueText, trimEnd: true);
+                var state = GetPunctuationState(tokens[j].ValueText.AsSpan(), trimEnd: true);
                 if (state != PunctuationState.Meaningless)
                     return state;
             }
@@ -49,9 +49,11 @@ internal static class DocumentationQualityExtensions
         return PunctuationState.Meaningless;
     }
 
-    public static PunctuationState GetPunctuationState(string content, bool trimEnd = true)
+    public static PunctuationState GetPunctuationState(string content, bool trimEnd = true) => GetPunctuationState(content.AsSpan(), trimEnd);
+
+    public static PunctuationState GetPunctuationState(ReadOnlySpan<char> content, bool trimEnd = true)
     {
-        if (string.IsNullOrEmpty(content))
+        if (content.IsEmpty)
             return PunctuationState.Meaningless;
 
         int index = content.Length - 1;
@@ -66,34 +68,55 @@ internal static class DocumentationQualityExtensions
         if (index < 0)
             return PunctuationState.Meaningless;
 
-        return SentenceTerminators.Contains(content[index])
-            ? PunctuationState.Yes
-            : PunctuationState.No;
+        return content[index] switch
+        {
+            '.' or '!' or '?' => PunctuationState.Yes,
+            _ => PunctuationState.No
+        };
     }
 
     public static bool HasAnyLetter(this SyntaxList<XmlNodeSyntax> content)
     {
         foreach (var node in content)
         {
-            switch (node)
+            if (node is XmlTextSyntax or XmlCDataSectionSyntax)
             {
-                case XmlTextSyntax or XmlCDataSectionSyntax when node.GetTextTokens().Any(token => token.ValueText.Any(char.IsLetter)):
-                case XmlElementSyntax xmlElement when xmlElement.Content.HasAnyLetter():
-                    return true;
+                foreach (var token in node.GetTextTokens())
+                {
+                    if (HasAnyLetter(token.ValueText.AsSpan()))
+                        return true;
+                }
+            }
+            else if (node is XmlElementSyntax xmlElement && xmlElement.Content.HasAnyLetter())
+            {
+                return true;
             }
         }
 
         return false;
     }
 
-    public static bool StartsWithLowercase(string content)
+    private static bool HasAnyLetter(ReadOnlySpan<char> content)
     {
-        for (int i = 0; i < content.Length; i++)
+        foreach (char c in content)
         {
-            if (char.IsWhiteSpace(content[i]))
+            if (char.IsLetter(c))
+                return true;
+        }
+
+        return false;
+    }
+
+    public static bool StartsWithLowercase(string content) => StartsWithLowercase(content.AsSpan());
+
+    public static bool StartsWithLowercase(ReadOnlySpan<char> content)
+    {
+        foreach (char c in content)
+        {
+            if (char.IsWhiteSpace(c))
                 continue;
 
-            return char.IsLetter(content, i) && char.IsLower(content, i);
+            return char.IsLetter(c) && char.IsLower(c);
         }
 
         return false;
