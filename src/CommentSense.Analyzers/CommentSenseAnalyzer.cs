@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
-using System.Xml.Linq;
 using CommentSense.Analyzers.Logic;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
@@ -51,9 +49,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 return;
 
             var analyzedNodes = new ConcurrentDictionary<XmlTextSyntax, bool>();
-            var documentationCache = new ConcurrentDictionary<ISymbol, XElement>(SymbolEqualityComparer.Default);
-
-            compilationContext.RegisterSymbolAction(c => AnalyzeSymbol(c, documentationCache),
+            compilationContext.RegisterSymbolAction(AnalyzeSymbol,
                 SymbolKind.NamedType,
                 SymbolKind.Method,
                 SymbolKind.Property,
@@ -65,7 +61,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         });
     }
 
-    private static void AnalyzeSymbol(SymbolAnalysisContext context, ConcurrentDictionary<ISymbol, XElement> documentationCache)
+    private static void AnalyzeSymbol(SymbolAnalysisContext context)
     {
         var symbol = context.Symbol;
         SyntaxTree? tree = (from location in symbol.Locations where !location.SourceTree.IsDocumentationModeNone() select location.SourceTree).FirstOrDefault();
@@ -75,25 +71,20 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
 
         var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
         var locationCache = new DocumentationLocationCache();
-        AnalyzeSymbolCore(context, symbol, options, documentationCache, locationCache);
+        AnalyzeSymbolCore(context, symbol, options, locationCache);
     }
 
-    private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options, ConcurrentDictionary<ISymbol, XElement> documentationCache, DocumentationLocationCache locationCache)
+    private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options, DocumentationLocationCache locationCache)
     {
         if (!IsEligibleForAnalysis(symbol, options))
             return;
 
-        if (!documentationCache.TryGetValue(symbol, out var element))
+        var xml = symbol.GetDocumentationCommentXml();
+        if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))
         {
-            var xml = symbol.GetDocumentationCommentXml();
-            if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out element))
-            {
-                // Parsing failure (e.g., malformed XML) is treated as missing documentation
-                ReportMissingDocumentation(context, symbol, options);
-                return;
-            }
-
-            documentationCache.TryAdd(symbol, element);
+            // Parsing failure (e.g., malformed XML) is treated as missing documentation
+            ReportMissingDocumentation(context, symbol, options);
+            return;
         }
 
         TagOrderAnalyzer.Analyze(context, symbol, element, options, locationCache);

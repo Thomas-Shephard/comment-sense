@@ -30,7 +30,7 @@ internal static class TagOrderAnalyzer
             if (currentPriority < lastPriority && lastElement != null)
             {
                 var occurrence = GetOccurrence(topLevelElements, element);
-                var location = locationCache.GetLocation(symbol, tagName, occurrence: occurrence);
+                var location = locationCache.GetLocation(symbol, tagName, topLevelOnly: true, occurrence: occurrence);
                 context.ReportDiagnostic(Diagnostic.Create(
                     CommentSenseRules.DocumentationTagOrderMismatchRule,
                     location,

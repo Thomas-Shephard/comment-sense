@@ -23,11 +23,23 @@ public class DocumentationLocationCacheTests
         var cache = new DocumentationLocationCache();
         var symbol = RoslynTestUtils.GetSymbolFromSource(TestSource, "M", parseDocumentation: true);
 
-        var locations1 = cache.GetLocations(symbol, "summary");
+        var locations1 = cache.GetLocations(symbol, "summary", topLevelOnly: false);
         Assert.That(locations1, Has.Length.EqualTo(2));
 
-        var locations2 = cache.GetLocations(symbol, "summary");
+        var locations2 = cache.GetLocations(symbol, "summary", topLevelOnly: false);
         Assert.That(locations2, Is.EqualTo(locations1));
+    }
+
+    [Test]
+    public void GetLocationsRespectsTopLevelOnly()
+    {
+        var cache = new DocumentationLocationCache();
+        var symbol = RoslynTestUtils.GetSymbolFromSource(TestSource, "M", parseDocumentation: true);
+
+        var locationsRecursive = cache.GetLocations(symbol, "summary", topLevelOnly: false);
+        var locationsTopLevel = cache.GetLocations(symbol, "summary", topLevelOnly: true);
+
+        Assert.That(locationsRecursive, Is.Not.EqualTo(locationsTopLevel));
     }
 
     [Test]
@@ -36,8 +48,8 @@ public class DocumentationLocationCacheTests
         var cache = new DocumentationLocationCache();
         var symbol = RoslynTestUtils.GetSymbolFromSource(TestSource, "M", parseDocumentation: true);
 
-        var loc0 = cache.GetLocation(symbol, "summary");
-        var loc1 = cache.GetLocation(symbol, "summary", 1);
+        var loc0 = cache.GetLocation(symbol, "summary", topLevelOnly: false);
+        var loc1 = cache.GetLocation(symbol, "summary", topLevelOnly: false, occurrence: 1);
 
         using (Assert.EnterMultipleScope())
         {
@@ -53,7 +65,7 @@ public class DocumentationLocationCacheTests
         var cache = new DocumentationLocationCache();
         var symbol = RoslynTestUtils.GetSymbolFromSource(TestSource, "M", parseDocumentation: true);
 
-        var loc = cache.GetLocation(symbol, "summary", -1);
+        var loc = cache.GetLocation(symbol, "summary", topLevelOnly: false, occurrence: -1);
         Assert.That(loc, Is.EqualTo(DocumentationLocationExtensions.GetSymbolLocation(symbol)));
     }
 
@@ -63,7 +75,7 @@ public class DocumentationLocationCacheTests
         var cache = new DocumentationLocationCache();
         var symbol = RoslynTestUtils.GetSymbolFromSource(TestSource, "M", parseDocumentation: true);
 
-        var loc = cache.GetLocation(symbol, "summary", 2);
+        var loc = cache.GetLocation(symbol, "summary", topLevelOnly: false, occurrence: 2);
         Assert.That(loc, Is.EqualTo(DocumentationLocationExtensions.GetSymbolLocation(symbol)));
     }
 
@@ -73,7 +85,7 @@ public class DocumentationLocationCacheTests
         var cache = new DocumentationLocationCache();
         var symbol = RoslynTestUtils.GetSymbolFromSource(TestSource, "M", parseDocumentation: true);
 
-        var loc = cache.GetLocation(symbol, "nonexistent");
+        var loc = cache.GetLocation(symbol, "nonexistent", topLevelOnly: false);
         Assert.That(loc, Is.EqualTo(DocumentationLocationExtensions.GetSymbolLocation(symbol)));
     }
 

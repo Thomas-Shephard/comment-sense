@@ -8,21 +8,21 @@ namespace CommentSense.Core.Utilities;
 
 internal sealed class DocumentationLocationCache
 {
-    private readonly Dictionary<string, List<Location>> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<(string TagName, bool TopLevelOnly), ImmutableArray<Location>> _cache = new();
 
-    public ImmutableArray<Location> GetLocations(ISymbol symbol, string tagName)
+    public ImmutableArray<Location> GetLocations(ISymbol symbol, string tagName, bool topLevelOnly)
     {
-        if (_cache.TryGetValue(tagName, out var locations))
-            return [.. locations];
+        if (_cache.TryGetValue((tagName, topLevelOnly), out var locations))
+            return locations;
 
-        var result = symbol.GetDocumentationLocations(tagName, topLevelOnly: false);
-        _cache[tagName] = [.. result];
+        var result = symbol.GetDocumentationLocations(tagName, topLevelOnly: topLevelOnly);
+        _cache[(tagName, topLevelOnly)] = result;
         return result;
     }
 
-    public Location GetLocation(ISymbol symbol, string tagName, int occurrence = 0)
+    public Location GetLocation(ISymbol symbol, string tagName, bool topLevelOnly = false, int occurrence = 0)
     {
-        var locations = GetLocations(symbol, tagName);
+        var locations = GetLocations(symbol, tagName, topLevelOnly);
         if (locations.IsDefaultOrEmpty || occurrence < 0 || occurrence >= locations.Length)
             return DocumentationLocationExtensions.GetSymbolLocation(symbol);
 
@@ -39,9 +39,7 @@ internal static class DocumentationLocationExtensions
 {
     public static IEnumerable<(XElement Element, Location Location)> GetTargetElementsWithLocations(this ISymbol symbol, XElement xml, string tagName, DocumentationLocationCache? cache = null, bool topLevelOnly = true)
     {
-        var locations = cache != null
-            ? cache.GetLocations(symbol, tagName)
-            : symbol.GetDocumentationLocations(tagName, topLevelOnly: topLevelOnly);
+        var locations = cache?.GetLocations(symbol, tagName, topLevelOnly) ?? symbol.GetDocumentationLocations(tagName, topLevelOnly: topLevelOnly);
 
         var elements = DocumentationXmlExtensions.GetTargetElements(xml, tagName, recursive: !topLevelOnly).ToList();
 
