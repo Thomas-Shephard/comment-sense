@@ -79,7 +79,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (!IsEligibleForAnalysis(symbol, options))
             return;
 
-        var xml = symbol.GetDocumentationCommentXml();
+        var xml = symbol.GetDocumentationCommentXml(expandIncludes: true, cancellationToken: context.CancellationToken);
         if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))
         {
             // Parsing failure (e.g., malformed XML) is treated as missing documentation
@@ -167,6 +167,9 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                     ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, options);
                     ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, options, isPrimaryCtor: true);
                 }
+                break;
+            case IEventSymbol eventSymbol:
+                ExceptionAnalyzer.Analyze(context, eventSymbol, element, options);
                 break;
         }
     }

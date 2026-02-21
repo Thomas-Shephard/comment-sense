@@ -24,6 +24,7 @@ internal static class ExceptionAnalyzer
     }
 
     private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>> CompilationExceptionCache = new();
+    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, IImmutableSet<ITypeSymbol>>> DocumentedExceptionCache = new();
 
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
@@ -38,8 +39,16 @@ internal static class ExceptionAnalyzer
     private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, HashSet<ITypeSymbol> documentedTypes)
     {
         // CSENSE012: Missing Exception Documentation
-        if (DocumentationXmlExtensions.HasInheritDoc(xml) || DocumentationXmlExtensions.HasAutoValidTag(xml))
+        bool hasInheritDoc = DocumentationXmlExtensions.HasTopLevelInheritDoc(xml);
+
+        if (DocumentationXmlExtensions.HasAutoValidTag(xml) && !hasInheritDoc)
             return;
+
+        if (hasInheritDoc)
+        {
+            HashSet<ISymbol> visited = new(SymbolEqualityComparer.Default) { symbol };
+            AddInheritedExceptions(xml, symbol, context.Compilation, documentedTypes, visited, context.CancellationToken);
+        }
 
         var filteredThrownTypes = new List<ITypeSymbol>();
         foreach (var thrownType in thrownTypes)
@@ -689,6 +698,152 @@ internal static class ExceptionAnalyzer
         }
 
         return false;
+    }
+
+    private static void AddInheritedExceptions(XElement xml, ISymbol symbol, Compilation compilation, HashSet<ITypeSymbol> result, HashSet<ISymbol> visited, CancellationToken cancellationToken)
+    {
+        foreach (var inheritDoc in DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.InheritDoc))
+        {
+            var cref = inheritDoc.Attribute(DocumentationAttributes.Cref)?.Value;
+            if (cref != null && !string.IsNullOrEmpty(cref))
+            {
+                var resolved = ResolveSymbolFromCref(cref, compilation);
+                if (resolved != null)
+                {
+                    result.UnionWith(GetDocumentedExceptionsCached(resolved, compilation, visited, cancellationToken));
+                }
+            }
+            else
+            {
+                foreach (var baseMember in GetDefaultInheritDocTargets(symbol))
+                {
+                    result.UnionWith(GetDocumentedExceptionsCached(baseMember, compilation, visited, cancellationToken));
+                }
+            }
+        }
+    }
+
+    private static ISymbol? ResolveSymbolFromCref(string cref, Compilation compilation)
+    {
+        cref = cref.Trim();
+
+        var resolved = DocumentationCommentId.GetFirstSymbolForDeclarationId(cref, compilation);
+        if (resolved != null)
+            return resolved;
+
+        if (cref.Length >= 2 && cref[1] == ':')
+            return null;
+
+        string[] prefixes = ["T:", "M:", "P:"];
+        foreach (var prefix in prefixes)
+        {
+            resolved = DocumentationCommentId.GetFirstSymbolForDeclarationId(prefix + cref, compilation);
+            if (resolved != null)
+                return resolved;
+        }
+
+        return null;
+    }
+
+    private static IImmutableSet<ITypeSymbol> GetDocumentedExceptionsCached(ISymbol symbol, Compilation compilation, HashSet<ISymbol> visited, CancellationToken cancellationToken)
+    {
+        var cache = DocumentedExceptionCache.GetValue(compilation, _ => new ConcurrentDictionary<ISymbol, IImmutableSet<ITypeSymbol>>(SymbolEqualityComparer.Default));
+
+        if (cache.TryGetValue(symbol, out var cached))
+            return cached;
+
+        if (!visited.Add(symbol))
+            return ImmutableHashSet<ITypeSymbol>.Empty;
+
+        try
+        {
+            var result = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+            var xmlString = symbol.GetDocumentationCommentXml(expandIncludes: true, cancellationToken: cancellationToken);
+            if (DocumentationXmlExtensions.TryParseDocumentation(xmlString, out var element))
+            {
+                // Current member's exceptions
+                foreach (var cref in DocumentationXmlExtensions.GetExceptionCrefs(element))
+                {
+                    if (ResolveExceptionType(cref, compilation) is { } resolved)
+                        result.Add(resolved);
+                }
+
+                // Inherited exceptions if it has inheritdoc
+                AddInheritedExceptions(element, symbol, compilation, result, visited, cancellationToken);
+            }
+
+            var finalResult = result.ToImmutableHashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+            cache.TryAdd(symbol, finalResult);
+            return finalResult;
+        }
+        finally
+        {
+            visited.Remove(symbol);
+        }
+    }
+
+    private static IEnumerable<ISymbol> GetDefaultInheritDocTargets(ISymbol symbol)
+    {
+        return symbol switch
+        {
+            IMethodSymbol method => GetMethodInheritDocTargets(method),
+            IPropertySymbol property => GetPropertyInheritDocTargets(property),
+            INamedTypeSymbol type => GetTypeInheritDocTargets(type),
+            _ => []
+        };
+    }
+
+    private static IEnumerable<ISymbol> GetMethodInheritDocTargets(IMethodSymbol method)
+    {
+        if (method.OverriddenMethod != null)
+            yield return method.OverriddenMethod;
+
+        foreach (var target in GetInterfaceImplementations(method, method.Name, method.ExplicitInterfaceImplementations))
+            yield return target;
+    }
+
+    private static IEnumerable<ISymbol> GetPropertyInheritDocTargets(IPropertySymbol property)
+    {
+        if (property.OverriddenProperty != null)
+            yield return property.OverriddenProperty;
+
+        foreach (var target in GetInterfaceImplementations(property, property.Name, property.ExplicitInterfaceImplementations))
+            yield return target;
+    }
+
+    private static IEnumerable<ISymbol> GetTypeInheritDocTargets(INamedTypeSymbol type)
+    {
+        if (type.BaseType != null)
+            yield return type.BaseType;
+
+        foreach (var iface in type.Interfaces)
+        {
+            yield return iface;
+        }
+    }
+
+    private static IEnumerable<TSymbol> GetInterfaceImplementations<TSymbol>(TSymbol symbol, string name, ImmutableArray<TSymbol> explicitImpls)
+        where TSymbol : class, ISymbol
+    {
+        foreach (var ifaceMember in explicitImpls)
+        {
+            yield return ifaceMember;
+        }
+
+        if (symbol.ContainingType is not { } containingType)
+            yield break;
+
+        foreach (var iface in containingType.AllInterfaces)
+        {
+            foreach (var ifaceMember in iface.GetMembers(name).OfType<TSymbol>())
+            {
+                if (SymbolEqualityComparer.Default.Equals(containingType.FindImplementationForInterfaceMember(ifaceMember), symbol) &&
+                    !explicitImpls.Any(i => SymbolEqualityComparer.Default.Equals(i, ifaceMember)))
+                {
+                    yield return ifaceMember;
+                }
+            }
+        }
     }
 
     private static ITypeSymbol? GetCaughtExceptionType(ThrowStatementSyntax throwStatement, SemanticModel semanticModel, ITypeSymbol? exceptionType, CancellationToken cancellationToken)

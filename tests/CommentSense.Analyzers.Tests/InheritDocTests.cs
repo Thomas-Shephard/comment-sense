@@ -873,4 +873,749 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             """;
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
+
+    private static readonly Dictionary<string, string> BaseOptions = new()
+    {
+        ["dotnet_diagnostic.CSENSE001.severity"] = "none",
+        ["dotnet_diagnostic.CSENSE002.severity"] = "none",
+        ["dotnet_diagnostic.CSENSE007.severity"] = "none",
+        ["dotnet_diagnostic.CSENSE014.severity"] = "none",
+        ["dotnet_diagnostic.CSENSE016.severity"] = "none"
+    };
+
+    private static readonly Dictionary<string, string> EnableScanning = new(BaseOptions)
+    {
+        ["comment_sense.scan_called_methods_for_exceptions"] = "true"
+    };
+
+    [Test]
+    public async Task InheritDocWithNewExceptionWhenScanningDisabledIsReported()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base method</summary>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                public virtual void MyMethod() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc/>
+                public override void {|CSENSE012:MyMethod|}()
+                {
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: BaseOptions);
+    }
+
+    [Test]
+    public async Task InheritDocWithNewExceptionWhenScanningEnabledReportsDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base method</summary>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                public virtual void MyMethod() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc/>
+                public override void {|CSENSE012:MyMethod|}()
+                {
+                    if (true) throw new InvalidOperationException(); // Inherited
+                    throw new ArgumentException(); // New
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithNewExceptionDocumentedInDerivedWhenScanningEnabledIsSatisfied()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base method</summary>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                public virtual void MyMethod() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc/>
+                /// <exception cref="ArgumentException">This is a high quality description for the new exception.</exception>
+                public override void MyMethod()
+                {
+                    if (true) throw new InvalidOperationException();
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task InheritDocWithCrefWhenScanningEnabledVerifiesAgainstCrefTarget()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Other class</summary>
+            public class Other
+            {
+                /// <summary>External method</summary>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                public void External() { }
+            }
+            /// <summary>My class</summary>
+            public class MyClass
+            {
+                /// <inheritdoc cref="Other.External"/>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    if (true) throw new InvalidOperationException(); // OK
+                    throw new ArgumentException(); // New
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocRecursiveWhenScanningEnabledFindsBaseExceptions()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base method</summary>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                public virtual void M() { }
+            }
+            /// <summary>Middle class</summary>
+            public class Middle : Base
+            {
+                /// <inheritdoc/>
+                public override void M() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived : Middle
+            {
+                /// <inheritdoc/>
+                public override void {|CSENSE012:M|}()
+                {
+                    if (true) throw new InvalidOperationException(); // Inherited from Base
+                    throw new ArgumentException(); // New
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocInterfaceWhenScanningEnabledFindsInterfaceExceptions()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Interface</summary>
+            public interface I
+            {
+                /// <summary>Method</summary>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                void M();
+            }
+            /// <summary>Implementation class</summary>
+            public class C : I
+            {
+                /// <inheritdoc/>
+                public void {|CSENSE012:M|}()
+                {
+                    if (true) throw new InvalidOperationException(); // Inherited from I
+                    throw new ArgumentException(); // New
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocPropertyWhenScanningEnabledFindsBaseExceptions()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base property</summary>
+                /// <value>Some value</value>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                public virtual int MyProperty => throw new InvalidOperationException();
+            }
+            /// <summary>Derived class</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc/>
+                /// <value>Some value</value>
+                public override int {|CSENSE012:MyProperty|} => throw new ArgumentException();
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocConstructorCrefReportsNewException()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+            public class Base
+            {
+                /// <summary>Base constructor</summary>
+                /// <param name="x">The value</param>
+                public Base(int x) {}
+            }
+            /// <summary>Derived class</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc cref="Base(int)"/>
+                public {|CSENSE012:Derived|}(int x) : base(x)
+                {
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocTypeCrefInheritsTypeExceptions()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            /// <exception cref="InvalidOperationException">High quality description.</exception>
+            public class Base { }
+
+            /// <summary>Derived class</summary>
+            public class Derived
+            {
+                /// <inheritdoc cref="Base"/>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    if (true) throw new InvalidOperationException(); // Inherited
+                    throw new ArgumentException(); // New
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithInvalidCrefDoesNotCrash()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>My class</summary>
+            public class MyClass
+            {
+                /// <inheritdoc cref="NonExistent"/>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithBaseMemberMissingDocumentationDoesNotCrash()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                public virtual void MyMethod() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc/>
+                public override void {|CSENSE012:MyMethod|}()
+                {
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithExplicitInterfaceImplementation()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Interface</summary>
+            public interface I
+            {
+                /// <summary>Method</summary>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                void M();
+            }
+            /// <summary>Implementation class</summary>
+            public class C : I
+            {
+                /// <inheritdoc/>
+                void I.M()
+                {
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task InheritDocWithCircularReferenceDoesNotCrash()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Class A</summary>
+            public class A
+            {
+                /// <inheritdoc cref="B.M"/>
+                public virtual void M() { }
+            }
+            /// <summary>Class B</summary>
+            public class B : A
+            {
+                /// <inheritdoc cref="A.M"/>
+                public override void M() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task InheritDocWithMultiplePathsToSameBase()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Interface 1</summary>
+            public interface I1
+            {
+                /// <summary>Method</summary>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                void M();
+            }
+            /// <summary>Interface 2</summary>
+            public interface I2 : I1
+            {
+                /// <inheritdoc/>
+                new void M();
+            }
+            /// <summary>Implementation class</summary>
+            public class C : I1, I2
+            {
+                /// <inheritdoc/>
+                public void {|CSENSE012:M|}()
+                {
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithTypeCref()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+            public class Base { }
+
+            /// <summary>Derived class</summary>
+            public class Derived
+            {
+                /// <inheritdoc cref="Base"/>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocRecursiveWithCref()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base method</summary>
+                /// <exception cref="InvalidOperationException">This is a high quality description for the exception.</exception>
+                public void M1() { }
+            }
+            /// <summary>Middle class</summary>
+            public class Middle
+            {
+                /// <inheritdoc cref="Base.M1"/>
+                public void M2() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived
+            {
+                /// <inheritdoc cref="Middle.M2"/>
+                public void {|CSENSE012:M3|}()
+                {
+                    if (true) throw new InvalidOperationException();
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithExplicitMethodPrefix()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base method</summary>
+                /// <exception cref="InvalidOperationException">High quality description.</exception>
+                public void M1() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived
+            {
+                /// <inheritdoc cref="M:Base.M1"/>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    if (true) throw new InvalidOperationException();
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithExplicitPropertyPrefix()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base property</summary>
+                /// <value>The value.</value>
+                /// <exception cref="InvalidOperationException">High quality description.</exception>
+                public int P1 => 0;
+            }
+            /// <summary>Derived class</summary>
+            public class Derived
+            {
+                /// <inheritdoc cref="P:Base.P1"/>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    if (true) throw new InvalidOperationException();
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithExplicitTypePrefix()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            /// <exception cref="InvalidOperationException">High quality description.</exception>
+            public class Base { }
+
+            /// <summary>Derived class</summary>
+            public class Derived
+            {
+                /// <inheritdoc cref="T:Base"/>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    if (true) throw new InvalidOperationException();
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithPropertyCrefNoPrefix()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base property</summary>
+                /// <value>The value.</value>
+                /// <exception cref="InvalidOperationException">High quality description.</exception>
+                public int P1 => 0;
+            }
+            /// <summary>Derived class</summary>
+            public class Derived
+            {
+                /// <inheritdoc cref="Base.P1"/>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    if (true) throw new InvalidOperationException();
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocStrayWithIncludeDoesNotBypassAutoValidCheck()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>My class</summary>
+            public class MyClass
+            {
+                /// <remarks>
+                /// <inheritdoc/>
+                /// </remarks>
+                /// <include file='docs.xml' path='[@name="M"]/*'/>
+                public void MyMethod()
+                {
+                    throw new ArgumentException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task InheritDocWithWhitespaceInCref()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base class</summary>
+            public class Base
+            {
+                /// <summary>Base method</summary>
+                /// <exception cref="InvalidOperationException">High quality description.</exception>
+                public void M1() { }
+            }
+            /// <summary>Derived class</summary>
+            public class Derived
+            {
+                /// <inheritdoc cref="
+                ///     Base.M1
+                /// "/>
+                public void MyMethod()
+                {
+                    if (true) throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task InheritDocWithInvalidCrefReportsCSense012()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>My class</summary>
+            public class MyClass
+            {
+                /// <inheritdoc cref="NonExistent.Method"/>
+                public void {|CSENSE012:MyMethod|}()
+                {
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocOnEvent()
+    {
+        const string testCode = """
+            using System;
+            public class Base {
+                public virtual event EventHandler MyEvent;
+            }
+            public class Derived : Base {
+                /// <inheritdoc/>
+                public override event EventHandler MyEvent;
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task InheritDocWithShortCref()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>Base</summary>
+            /// <exception cref="InvalidOperationException">High quality description.</exception>
+            public class C { }
+
+            /// <summary>Derived</summary>
+            public class D : C {
+                /// <inheritdoc cref="C"/>
+                public void M() {
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task InheritDocWithDiamondInheritance()
+    {
+        const string testCode = """
+            using System;
+            public interface IBase {
+                /// <exception cref="InvalidOperationException">High quality description.</exception>
+                void M();
+            }
+            public interface IA : IBase {
+                /// <inheritdoc/>
+                new void M();
+            }
+            public interface IB : IBase {
+                /// <inheritdoc/>
+                new void M();
+            }
+            public class Derived : IA, IB {
+                /// <inheritdoc/>
+                public void M() {
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task InheritDocWithUnresolvableCref()
+    {
+        const string testCode = """
+            using System;
+            public class Derived {
+                /// <inheritdoc cref="Definitely.Not.Exists"/>
+                public void {|CSENSE012:M|}() {
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithMethodCrefNoPrefix()
+    {
+        const string testCode = """
+            using System;
+            public class Base {
+                /// <exception cref="InvalidOperationException">High quality description.</exception>
+                public virtual void M() { }
+            }
+            public class Derived : Base {
+                /// <inheritdoc cref="Base.M"/>
+                public override void {|CSENSE012:M|}() {
+                    if (true) throw new InvalidOperationException();
+                    throw new ArgumentException();
+                }
+            }
+            """;
+        await VerifyCSenseAsync(testCode, configOptions: EnableScanning);
+    }
+
+    [Test]
+    public async Task InheritDocWithMetadataInclude()
+    {
+        const string testCode = """
+            using System;
+            namespace BaseLib {
+                /// <summary>Base class</summary>
+                public class Base {
+                    /// <summary>Base method</summary>
+                    /// <exception cref="InvalidOperationException">High quality description.</exception>
+                    public virtual void M() { }
+                }
+
+                /// <summary>Derived class</summary>
+                public class Derived : Base
+                {
+                    /// <inheritdoc/>
+                    public override void M()
+                    {
+                        if (true) throw new InvalidOperationException();
+                    }
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode,
+            configOptions: EnableScanning,
+            expectDiagnostic: false);
+    }
 }

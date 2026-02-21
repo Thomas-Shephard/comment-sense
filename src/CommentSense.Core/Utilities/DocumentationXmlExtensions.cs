@@ -56,6 +56,11 @@ internal static class DocumentationXmlExtensions
         return root.Descendants(DocumentationTags.InheritDoc).Any();
     }
 
+    public static bool HasTopLevelInheritDoc(XElement root)
+    {
+        return GetTargetElements(root, DocumentationTags.InheritDoc).Any();
+    }
+
     public static bool HasInheritDocWithCref(XElement root)
     {
         return root.Descendants(DocumentationTags.InheritDoc).Any(e => e.Attribute(DocumentationAttributes.Cref) != null);
