@@ -2310,4 +2310,42 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             referenceAssemblies: ReferenceAssemblies.Net.Net100,
             solutionTransform: (solution, projectId) => solution.WithProjectMetadataReferences(projectId, []));
     }
+
+    [Test]
+    public async Task ExceptionAnalyzerGuardClauseWithIdentifierNameSyntax()
+    {
+        const string testCode = """
+            using System;
+            public class MyException : Exception {
+                public static void Throw() => throw new MyException();
+            }
+            /// <summary>This is a valid long enough summary for the class.</summary>
+            public class MyClass {
+                /// <summary>This is a valid long enough summary for the method.</summary>
+                public void {|CSENSE012:M|}() {
+                    var thrower = MyException.Throw;
+                    MyException.Throw();
+                }
+            }
+            """;
+        await VerifyCSenseAsync(testCode,
+            referenceAssemblies: ReferenceAssemblies.Net.Net100,
+            diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task ExceptionAnalyzerHandlesNonMethodExceptions()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a valid long enough summary for the class.</summary>
+            public class MyClass {
+                /// <summary>This is a valid long enough summary for the method.</summary>
+                public void M() {
+                    Type t = typeof(int);
+                }
+            }
+            """;
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
 }

@@ -402,4 +402,85 @@ public class DocumentationSyntaxExtensionsTests
         var result = DocumentationSyntaxExtensions.ParseCref("&");
         Assert.That(result, Is.Not.Null);
     }
+
+    [Test]
+    public void GetNameAttributeEmptyTextTokensReturnsEmptyString()
+    {
+        var attr = SyntaxFactory.XmlTextAttribute(
+            SyntaxFactory.XmlName("name"),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+            SyntaxFactory.TokenList(),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken));
+        var node = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("mytag"), SyntaxFactory.List<XmlAttributeSyntax>([attr]));
+        Assert.That(node.GetNameAttribute(), Is.EqualTo(string.Empty));
+    }
+
+    [Test]
+    public void GetNameAttributeMultipleTextTokensConcatenatesCorrectly()
+    {
+        var attr = SyntaxFactory.XmlTextAttribute(
+            SyntaxFactory.XmlName("name"),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+            SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("part1"), SyntaxFactory.XmlTextLiteral("part2")),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken));
+        var node = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("mytag"), SyntaxFactory.List<XmlAttributeSyntax>([attr]));
+        Assert.That(node.GetNameAttribute(), Is.EqualTo("part1part2"));
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveAtStartWithTrailingWhitespaceReturnsTrailing()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/// <summary/> \npublic class C {}");
+        var summary = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+        var result = summary.GetAssociatedWhitespaceToRemove();
+        Assert.That(result, Is.Not.Null);
+    }
+
+    [Test]
+    public void GetAssociatedWhitespaceToRemoveInMiddleReturnsTrailingIfValid()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/// Text <summary/> \r\n/// <remarks/>\npublic class C {}");
+        var summary = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First(e => e.Name.LocalName.ValueText == "summary");
+        var result = summary.GetAssociatedWhitespaceToRemove();
+        Assert.That(result, Is.Not.Null);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithStarReturnsTrue()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/**\n * <summary/>\n */\npublic class C {}");
+        var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First(t => t.ToString().Contains('*'));
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.True);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithMixedWhitespaceAndSlashReturnsTrue()
+    {
+        var tree = CSharpSyntaxTree.ParseText("///   \npublic class C {}");
+        var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.True);
+    }
+
+    [Test]
+    public void GetNewLineFromTriviaDetectsLiteralUnixNewLineOnly()
+    {
+        var text = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral(SyntaxTriviaList.Empty, "/// \n///", "/// \n///", SyntaxTriviaList.Empty)));
+        var trivia = SyntaxFactory.DocumentationCommentTrivia(SyntaxKind.SingleLineDocumentationCommentTrivia, SyntaxFactory.List<XmlNodeSyntax>([text]));
+        Assert.That(trivia.GetNewLine(), Is.EqualTo("\n"));
+    }
+
+    [Test]
+    public void ParseCrefWithEmptyStringButExistingCrefAttrReturnsCorrectCref()
+    {
+        var result = DocumentationSyntaxExtensions.ParseCref("");
+        Assert.That(result, Is.Not.Null);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithSlashOnlyReturnsTrue()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/// /\npublic class C {}");
+        var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.True);
+    }
 }
