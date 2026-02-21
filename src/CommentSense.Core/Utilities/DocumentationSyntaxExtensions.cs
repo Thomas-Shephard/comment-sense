@@ -31,31 +31,32 @@ internal static class DocumentationSyntaxExtensions
                 return nameAttr.Identifier.Identifier.ValueText;
 
             if (attribute is XmlTextAttributeSyntax { Name.LocalName.ValueText: DocumentationAttributes.Name } textAttr)
-            {
-                if (textAttr.TextTokens.Count == 0)
-                    return string.Empty;
-
-                if (textAttr.TextTokens.Count == 1)
-                    return textAttr.TextTokens[0].ValueText;
-
-                // For multiple tokens, we must concatenate.
-                // We use a StringBuilder with an estimated capacity to reduce reallocations.
-                int capacity = 0;
-                foreach (var token in textAttr.TextTokens)
-                {
-                    capacity += token.ValueText.Length;
-                }
-
-                var sb = new System.Text.StringBuilder(capacity);
-                foreach (var token in textAttr.TextTokens)
-                {
-                    sb.Append(token.ValueText);
-                }
-                return sb.ToString();
-            }
+                return GetTextAttributeValue(textAttr);
         }
 
         return null;
+    }
+
+    private static string GetTextAttributeValue(XmlTextAttributeSyntax textAttr)
+    {
+        if (textAttr.TextTokens.Count == 0)
+            return string.Empty;
+
+        if (textAttr.TextTokens.Count == 1)
+            return textAttr.TextTokens[0].ValueText;
+
+        int capacity = 0;
+        foreach (var token in textAttr.TextTokens)
+        {
+            capacity += token.ValueText.Length;
+        }
+
+        var sb = new System.Text.StringBuilder(capacity);
+        foreach (var token in textAttr.TextTokens)
+        {
+            sb.Append(token.ValueText);
+        }
+        return sb.ToString();
     }
 
     public static XmlTextSyntax? GetAssociatedWhitespaceToRemove(this XmlNodeSyntax xmlNode)
@@ -125,23 +126,28 @@ internal static class DocumentationSyntaxExtensions
         if (text.IsEmpty)
             return true;
 
-        for (int i = 0; i < text.Length; i++)
+        int i = 0;
+        while (i < text.Length)
         {
             char c = text[i];
             if (char.IsWhiteSpace(c))
+            {
+                i++;
                 continue;
+            }
 
             if (c == '/')
             {
                 if (i + 2 >= text.Length || text[i + 1] != '/' || text[i + 2] != '/')
                     return false;
 
-                i += 2;
+                i += 3;
                 continue;
             }
 
             if (c == '*')
             {
+                i++;
                 continue;
             }
 

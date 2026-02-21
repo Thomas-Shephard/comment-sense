@@ -53,53 +53,53 @@ internal static class QualityAnalyzer
 
     public static bool IsLowQuality(string? content, string symbolName, CommentSenseOptions options, string? tagName = null)
     {
-        if (content is null || string.IsNullOrWhiteSpace(content))
+        if (string.IsNullOrWhiteSpace(content))
             return true;
 
         var contentSpan = content.AsSpan();
-        if (options.RequireCapitalization && DocumentationQualityExtensions.StartsWithLowercase(contentSpan))
+        if (IsPoorlyFormatted(contentSpan, options))
             return true;
 
-        if (options.RequireEndingPunctuation && !DocumentationQualityExtensions.EndsWithPunctuation(contentSpan, trimEnd: true))
-            return true;
-
-        var span = contentSpan.Trim();
-        var normalized = span.TrimEnd(TrimChars);
+        var normalized = contentSpan.Trim().TrimEnd(TrimChars);
         if (normalized.IsEmpty)
             return true;
 
         if (CheckBasicQuality(normalized, symbolName, options.MinSummaryLength, tagName))
             return true;
 
-        if (options.LowQualityTerms.Count > 0)
+        foreach (var term in options.LowQualityTerms)
         {
-            foreach (var term in options.LowQualityTerms)
-            {
-                if (normalized.Equals(term.AsSpan(), StringComparison.OrdinalIgnoreCase))
-                    return true;
-            }
+            if (normalized.Equals(term.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                return true;
         }
 
-        if (options.SimilarityThreshold <= 0.0)
-            return false;
+        return CheckSimilarity(normalized, symbolName, options.SimilarityThreshold);
+    }
 
-        int n = normalized.Length;
-        int m = symbolName.Length;
+    private static bool IsPoorlyFormatted(ReadOnlySpan<char> content, CommentSenseOptions options)
+    {
+        if (options.RequireCapitalization && DocumentationQualityExtensions.StartsWithLowercase(content))
+            return true;
 
-        if (m <= 0)
+        if (options.RequireEndingPunctuation && !DocumentationQualityExtensions.EndsWithPunctuation(content, trimEnd: true))
+            return true;
+
+        return false;
+    }
+
+    private static bool CheckSimilarity(ReadOnlySpan<char> normalized, string symbolName, double threshold)
+    {
+        if (threshold <= 0.0 || symbolName.Length == 0)
             return false;
 
         // Distance is at least the absolute difference in lengths.
         // Similarity = 1 - distance / maxLen.
         // Max possible similarity = 1 - abs(n - m) / maxLen = minLen / maxLen.
-        double maxPossibleSimilarity = (double)Math.Min(n, m) / Math.Max(n, m);
-        if (maxPossibleSimilarity < options.SimilarityThreshold)
+        double maxPossibleSimilarity = (double)Math.Min(normalized.Length, symbolName.Length) / Math.Max(normalized.Length, symbolName.Length);
+        if (maxPossibleSimilarity < threshold)
             return false;
 
-        if (normalized.CalculateSimilarity(symbolName) >= options.SimilarityThreshold)
-            return true;
-
-        return false;
+        return normalized.CalculateSimilarity(symbolName) >= threshold;
     }
 
     public static bool IsLowQualityForAnyFormat(XElement element, ISymbol symbol, CommentSenseOptions options, string? tagName = null)

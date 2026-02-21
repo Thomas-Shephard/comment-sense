@@ -88,22 +88,30 @@ internal static class DocumentationLocationExtensions
         {
             if (current.HasStructuredTrivia)
             {
-                var triviaList = current.GetLeadingTrivia();
-                for (int i = triviaList.Count - 1; i >= 0; i--)
-                {
-                    var trivia = triviaList[i];
-                    if (!trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) && !trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia))
-                        continue;
-
-                    if (trivia.GetStructure() is DocumentationCommentTriviaSyntax docTrivia)
-                        return docTrivia;
-                }
+                var docTrivia = FindDocumentationTrivia(current.GetLeadingTrivia());
+                if (docTrivia != null)
+                    return docTrivia;
             }
 
             if (current is MemberDeclarationSyntax or CompilationUnitSyntax)
                 return null;
 
             current = current.Parent;
+        }
+
+        return null;
+    }
+
+    private static DocumentationCommentTriviaSyntax? FindDocumentationTrivia(SyntaxTriviaList triviaList)
+    {
+        for (int i = triviaList.Count - 1; i >= 0; i--)
+        {
+            var trivia = triviaList[i];
+            if (!trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) && !trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia))
+                continue;
+
+            if (trivia.GetStructure() is DocumentationCommentTriviaSyntax docTrivia)
+                return docTrivia;
         }
 
         return null;
@@ -161,60 +169,64 @@ internal static class DocumentationLocationExtensions
     public static bool MatchAttribute(XmlAttributeSyntax attribute, string name, string value)
     {
         var valueSpan = value.AsSpan();
-        switch (attribute)
+        return attribute switch
         {
-            case XmlNameAttributeSyntax nameAttr when nameAttr.Name.LocalName.ValueText == name:
-                return nameAttr.Identifier.Identifier.ValueText.AsSpan().Equals(valueSpan, StringComparison.Ordinal);
+            XmlNameAttributeSyntax nameAttr => MatchNameAttribute(nameAttr, name, valueSpan),
+            XmlCrefAttributeSyntax crefAttr => MatchCrefAttribute(crefAttr, name, valueSpan),
+            XmlTextAttributeSyntax textAttr => MatchTextAttribute(textAttr, name, valueSpan),
+            _ => false
+        };
+    }
 
-            case XmlCrefAttributeSyntax crefAttr when crefAttr.Name.LocalName.ValueText == name:
-                {
-                    // Consider a more direct comparison or using a pooled StringBuilder if this allocates too much.
-                    // cref.ToString() still allocates, but comparing is complex.
-                    // Most names are simple.
-                    string crefStr = crefAttr.Cref.ToString();
-                    if (crefStr.AsSpan().Equals(valueSpan, StringComparison.Ordinal))
-                        return true;
+    private static bool MatchNameAttribute(XmlNameAttributeSyntax nameAttr, string name, ReadOnlySpan<char> valueSpan)
+    {
+        return nameAttr.Name.LocalName.ValueText == name &&
+               nameAttr.Identifier.Identifier.ValueText.AsSpan().Equals(valueSpan, StringComparison.Ordinal);
+    }
 
-                    if (valueSpan.Length >= 2 && valueSpan[0] == 'T' && valueSpan[1] == ':' &&
-                        crefStr.AsSpan().Equals(valueSpan.Slice(2), StringComparison.Ordinal))
-                        return true;
+    private static bool MatchCrefAttribute(XmlCrefAttributeSyntax crefAttr, string name, ReadOnlySpan<char> valueSpan)
+    {
+        if (crefAttr.Name.LocalName.ValueText != name)
+            return false;
 
-                    return false;
-                }
+        string crefStr = crefAttr.Cref.ToString();
+        if (crefStr.AsSpan().Equals(valueSpan, StringComparison.Ordinal))
+            return true;
 
-            case XmlTextAttributeSyntax textAttr when textAttr.Name.LocalName.ValueText == name:
-                {
-                    if (textAttr.TextTokens.Count == 0)
-                        return valueSpan.IsEmpty;
+        return valueSpan.Length >= 2 && valueSpan[0] == 'T' && valueSpan[1] == ':' &&
+               crefStr.AsSpan().Equals(valueSpan.Slice(2), StringComparison.Ordinal);
+    }
 
-                    if (textAttr.TextTokens.Count == 1)
-                        return textAttr.TextTokens[0].ValueText.AsSpan().Equals(valueSpan, StringComparison.Ordinal);
+    private static bool MatchTextAttribute(XmlTextAttributeSyntax textAttr, string name, ReadOnlySpan<char> valueSpan)
+    {
+        if (textAttr.Name.LocalName.ValueText != name)
+            return false;
 
-                    // For multiple tokens, check if the concatenated result matches without allocating if possible.
-                    int totalLength = 0;
-                    foreach (var token in textAttr.TextTokens)
-                    {
-                        totalLength += token.ValueText.Length;
-                    }
+        if (textAttr.TextTokens.Count == 0)
+            return valueSpan.IsEmpty;
 
-                    if (totalLength != valueSpan.Length)
-                        return false;
+        if (textAttr.TextTokens.Count == 1)
+            return textAttr.TextTokens[0].ValueText.AsSpan().Equals(valueSpan, StringComparison.Ordinal);
 
-                    // Compare each token sequentially against the target valueSpan to avoid concatenation.
-                    int offset = 0;
-                    foreach (var token in textAttr.TextTokens)
-                    {
-                        var tokenText = token.ValueText;
-                        if (!valueSpan.Slice(offset, tokenText.Length).Equals(tokenText.AsSpan(), StringComparison.Ordinal))
-                            return false;
-
-                        offset += tokenText.Length;
-                    }
-
-                    return true;
-                }
-            default:
-                return false;
+        int totalLength = 0;
+        foreach (var token in textAttr.TextTokens)
+        {
+            totalLength += token.ValueText.Length;
         }
+
+        if (totalLength != valueSpan.Length)
+            return false;
+
+        int offset = 0;
+        foreach (var token in textAttr.TextTokens)
+        {
+            var tokenText = token.ValueText;
+            if (!valueSpan.Slice(offset, tokenText.Length).Equals(tokenText.AsSpan(), StringComparison.Ordinal))
+                return false;
+
+            offset += tokenText.Length;
+        }
+
+        return true;
     }
 }

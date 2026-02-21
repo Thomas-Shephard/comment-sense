@@ -23,14 +23,7 @@ internal static class DocumentationXmlExtensions
 
     public static bool HasValidDocumentation(XElement root)
     {
-        foreach (var element in GetTargetElements(root))
-        {
-            var name = element.Name.LocalName;
-            if (AutoValidTags.Contains(name) || ContentRequiredTags.Contains(name))
-                return true;
-        }
-
-        return false;
+        return GetTargetElements(root).Any(element => AutoValidTags.Contains(element.Name.LocalName) || ContentRequiredTags.Contains(element.Name.LocalName));
     }
 
     public static bool TryParseDocumentation(string? xml, out XElement element)
@@ -55,13 +48,7 @@ internal static class DocumentationXmlExtensions
 
     public static bool HasAutoValidTag(XElement root)
     {
-        foreach (var element in GetTargetElements(root))
-        {
-            if (AutoValidTags.Contains(element.Name.LocalName))
-                return true;
-        }
-
-        return false;
+        return GetTargetElements(root).Any(element => AutoValidTags.Contains(element.Name.LocalName));
     }
 
     public static bool HasInheritDoc(XElement root)
@@ -71,13 +58,7 @@ internal static class DocumentationXmlExtensions
 
     public static bool HasInheritDocWithCref(XElement root)
     {
-        foreach (var e in root.Descendants(DocumentationTags.InheritDoc))
-        {
-            if (e.Attribute(DocumentationAttributes.Cref) != null)
-                return true;
-        }
-
-        return false;
+        return root.Descendants(DocumentationTags.InheritDoc).Any(e => e.Attribute(DocumentationAttributes.Cref) != null);
     }
 
     public static IEnumerable<string> GetNames(XElement root, string tagName, string attributeName = DocumentationAttributes.Name, bool topLevelOnly = true)

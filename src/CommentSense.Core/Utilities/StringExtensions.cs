@@ -42,7 +42,6 @@ internal static class StringExtensions
             t = temp;
         }
 
-        int n = s.Length;
         int m = t.Length;
 
         const int maxStackLimit = 256;
@@ -74,37 +73,7 @@ internal static class StringExtensions
                 ? stackalloc char[m]
                 : tUpperArray.AsSpan(0, m);
 
-            // Pre-compute upper-case version of the shorter string to avoid redundant calls in the inner loop.
-            for (var j = 0; j < m; j++)
-            {
-                tUpper[j] = char.ToUpperInvariant(t[j]);
-            }
-
-            for (var j = 0; j <= m; j++)
-            {
-                previousRow[j] = j;
-            }
-
-            for (var i = 0; i < n; i++)
-            {
-                var sChar = char.ToUpperInvariant(s[i]);
-                currentRow[0] = i + 1;
-
-                for (var j = 0; j < m; j++)
-                {
-                    var cost = sChar == tUpper[j] ? 0 : 1;
-                    currentRow[j + 1] = Math.Min(
-                        Math.Min(currentRow[j] + 1, previousRow[j + 1] + 1),
-                        previousRow[j] + cost
-                    );
-                }
-
-                var tempRow = previousRow;
-                previousRow = currentRow;
-                currentRow = tempRow;
-            }
-
-            return previousRow[m];
+            return ComputeLevenshteinDistanceInternal(s, t, previousRow, currentRow, tUpper);
         }
         finally
         {
@@ -115,5 +84,43 @@ internal static class StringExtensions
             if (tUpperArray != null)
                 ArrayPool<char>.Shared.Return(tUpperArray, clearArray: false);
         }
+    }
+
+    private static int ComputeLevenshteinDistanceInternal(ReadOnlySpan<char> s, ReadOnlySpan<char> t, Span<int> previousRow, Span<int> currentRow, Span<char> tUpper)
+    {
+        int n = s.Length;
+        int m = t.Length;
+
+        // Pre-compute upper-case version of the shorter string to avoid redundant calls in the inner loop.
+        for (var j = 0; j < m; j++)
+        {
+            tUpper[j] = char.ToUpperInvariant(t[j]);
+        }
+
+        for (var j = 0; j <= m; j++)
+        {
+            previousRow[j] = j;
+        }
+
+        for (var i = 0; i < n; i++)
+        {
+            var sChar = char.ToUpperInvariant(s[i]);
+            currentRow[0] = i + 1;
+
+            for (var j = 0; j < m; j++)
+            {
+                var cost = sChar == tUpper[j] ? 0 : 1;
+                currentRow[j + 1] = Math.Min(
+                    Math.Min(currentRow[j] + 1, previousRow[j + 1] + 1),
+                    previousRow[j] + cost
+                );
+            }
+
+            var tempRow = previousRow;
+            previousRow = currentRow;
+            currentRow = tempRow;
+        }
+
+        return previousRow[m];
     }
 }

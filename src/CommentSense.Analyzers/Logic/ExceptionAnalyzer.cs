@@ -47,20 +47,7 @@ internal static class ExceptionAnalyzer
             if (IsIgnored(thrownType, options))
                 continue;
 
-            bool alreadyDocumented = documentedTypes.Contains(thrownType);
-            if (!alreadyDocumented)
-            {
-                foreach (var documentedType in documentedTypes)
-                {
-                    if (!thrownType.InheritsFromOrEquals(documentedType))
-                        continue;
-
-                    alreadyDocumented = true;
-                    break;
-                }
-            }
-
-            if (!alreadyDocumented)
+            if (!IsExceptionDocumented(thrownType, documentedTypes))
                 filteredThrownTypes.Add(thrownType);
         }
 
@@ -78,6 +65,20 @@ internal static class ExceptionAnalyzer
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.CrefProperty, crefValue);
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingExceptionDocumentationRule, location, properties, displayName));
         }
+    }
+
+    private static bool IsExceptionDocumented(ITypeSymbol thrownType, HashSet<ITypeSymbol> documentedTypes)
+    {
+        if (documentedTypes.Contains(thrownType))
+            return true;
+
+        foreach (var documentedType in documentedTypes)
+        {
+            if (thrownType.InheritsFromOrEquals(documentedType))
+                return true;
+        }
+
+        return false;
     }
 
     private static void ReportLowQualityExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
@@ -348,11 +349,7 @@ internal static class ExceptionAnalyzer
         if (thrownTypes.Count == 0)
             return null;
 
-        var normalizedCref = DocumentationSyntaxExtensions.NormalizeCref(crefText);
-        var crefSpan = normalizedCref.AsSpan();
-        int lastDotIndex = crefSpan.LastIndexOf('.');
-        var lastPart = lastDotIndex == -1 ? crefSpan : crefSpan.Slice(lastDotIndex + 1);
-        var simpleCrefName = RemoveGenerics(lastPart);
+        var simpleCrefName = GetSimpleCrefName(crefText);
 
         // 1. Exact name match
         foreach (var t in thrownTypes)
@@ -365,22 +362,45 @@ internal static class ExceptionAnalyzer
         if (thrownTypes.Count == 1)
         {
             var single = thrownTypes.First();
-            if ((simpleCrefName.Length > 2 && (single.Name.IndexOf(simpleCrefName, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                 simpleCrefName.IndexOf(single.Name, StringComparison.OrdinalIgnoreCase) >= 0)) ||
-                single.Name.CalculateSimilarity(simpleCrefName) >= options.RenameSimilarityThreshold)
+            if (IsSingleExceptionMatch(single, simpleCrefName, options.RenameSimilarityThreshold))
             {
                 return single.ToCrefString();
             }
         }
 
         // 3. Fuzzy match by name similarity
+        return FindFuzzyExceptionMatch(thrownTypes, simpleCrefName, options.RenameSimilarityThreshold);
+    }
+
+    private static string GetSimpleCrefName(string crefText)
+    {
+        var normalizedCref = DocumentationSyntaxExtensions.NormalizeCref(crefText);
+        var crefSpan = normalizedCref.AsSpan();
+        int lastDotIndex = crefSpan.LastIndexOf('.');
+        var lastPart = lastDotIndex == -1 ? crefSpan : crefSpan.Slice(lastDotIndex + 1);
+        return RemoveGenerics(lastPart);
+    }
+
+    private static bool IsSingleExceptionMatch(ITypeSymbol single, string simpleCrefName, double threshold)
+    {
+        if (simpleCrefName.Length > 2 && (single.Name.IndexOf(simpleCrefName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+             simpleCrefName.IndexOf(single.Name, StringComparison.OrdinalIgnoreCase) >= 0))
+        {
+            return true;
+        }
+
+        return single.Name.CalculateSimilarity(simpleCrefName) >= threshold;
+    }
+
+    private static string? FindFuzzyExceptionMatch(HashSet<ITypeSymbol> thrownTypes, string simpleCrefName, double threshold)
+    {
         ITypeSymbol? bestMatch = null;
         double bestSimilarity = -1.0;
 
         foreach (var t in thrownTypes)
         {
             double similarity = t.Name.CalculateSimilarity(simpleCrefName);
-            if (similarity < options.RenameSimilarityThreshold || similarity <= bestSimilarity)
+            if (similarity < threshold || similarity <= bestSimilarity)
                 continue;
 
             bestSimilarity = similarity;
@@ -560,16 +580,18 @@ internal static class ExceptionAnalyzer
         var symbol = semanticModel.GetSymbolInfo(invocation, token).Symbol;
 
         var guardException = GetExceptionTypeFromGuardClause(invocation, symbol, exceptionType);
+        var exceptions = GetExceptionsFromSymbol(symbol, semanticModel.Compilation, exceptionCache);
 
-        foreach (var exception in GetExceptionsFromSymbol(symbol, semanticModel.Compilation, exceptionCache))
+        bool guardExceptionFound = false;
+        foreach (var exception in exceptions)
         {
             if (guardException != null && SymbolEqualityComparer.Default.Equals(exception, guardException))
-                guardException = null;
+                guardExceptionFound = true;
 
             yield return exception;
         }
 
-        if (guardException != null)
+        if (guardException != null && !guardExceptionFound)
             yield return guardException;
     }
 
