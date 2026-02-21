@@ -742,10 +742,10 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixOnlySlashReturnsFalse()
+    public void IsPureWhitespaceOrPrefixOnlySlashReturnsTrue()
     {
         var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("/")));
-        Assert.That(node.IsPureWhitespaceOrPrefix(), Is.False);
+        Assert.That(node.IsPureWhitespaceOrPrefix(), Is.True);
     }
 
     [Test]

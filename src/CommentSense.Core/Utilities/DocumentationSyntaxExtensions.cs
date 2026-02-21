@@ -125,7 +125,6 @@ internal static class DocumentationSyntaxExtensions
         if (text.IsEmpty)
             return true;
 
-        bool hasPrefix = false;
         for (int i = 0; i < text.Length; i++)
         {
             char c = text[i];
@@ -136,7 +135,6 @@ internal static class DocumentationSyntaxExtensions
             {
                 if (i + 2 < text.Length && text[i + 1] == '/' && text[i + 2] == '/')
                 {
-                    hasPrefix = true;
                     i += 2;
                 }
 
@@ -145,23 +143,12 @@ internal static class DocumentationSyntaxExtensions
 
             if (c == '*')
             {
-                hasPrefix = true;
                 continue;
             }
 
             return false;
         }
 
-        return hasPrefix || IsAllWhiteSpace(text);
-    }
-
-    private static bool IsAllWhiteSpace(ReadOnlySpan<char> text)
-    {
-        foreach (char c in text)
-        {
-            if (!char.IsWhiteSpace(c))
-                return false;
-        }
         return true;
     }
 
