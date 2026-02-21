@@ -153,7 +153,10 @@ internal static class ExceptionAnalyzer
         if (ns.Equals(targetNamespace, StringComparison.OrdinalIgnoreCase))
             return true;
 
-        return ns.StartsWith(targetNamespace + ".", StringComparison.OrdinalIgnoreCase);
+        if (ns.Length <= targetNamespace.Length)
+            return false;
+
+        return ns.StartsWith(targetNamespace, StringComparison.OrdinalIgnoreCase) && ns[targetNamespace.Length] == '.';
     }
 
     private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(SymbolAnalysisContext context, IEnumerable<XElement> exceptionElements)

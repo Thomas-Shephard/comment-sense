@@ -133,11 +133,10 @@ internal static class DocumentationSyntaxExtensions
 
             if (c == '/')
             {
-                if (i + 2 < text.Length && text[i + 1] == '/' && text[i + 2] == '/')
-                {
-                    i += 2;
-                }
+                if (i + 2 >= text.Length || text[i + 1] != '/' || text[i + 2] != '/')
+                    return false;
 
+                i += 2;
                 continue;
             }
 

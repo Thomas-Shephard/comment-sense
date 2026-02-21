@@ -52,20 +52,27 @@ internal static class StringExtensions
         int[]? currentRowArray = null;
         char[]? tUpperArray = null;
 
+        bool useStack = rowSize <= maxStackLimit;
+        if (!useStack)
+        {
+            previousRowArray = ArrayPool<int>.Shared.Rent(rowSize);
+            currentRowArray = ArrayPool<int>.Shared.Rent(rowSize);
+            tUpperArray = ArrayPool<char>.Shared.Rent(m);
+        }
+
         try
         {
-            bool useStack = rowSize <= maxStackLimit;
             Span<int> previousRow = useStack
                 ? stackalloc int[rowSize]
-                : (previousRowArray = ArrayPool<int>.Shared.Rent(rowSize)).AsSpan(0, rowSize);
+                : previousRowArray.AsSpan(0, rowSize);
 
             Span<int> currentRow = useStack
                 ? stackalloc int[rowSize]
-                : (currentRowArray = ArrayPool<int>.Shared.Rent(rowSize)).AsSpan(0, rowSize);
+                : currentRowArray.AsSpan(0, rowSize);
 
             Span<char> tUpper = m <= maxStackLimit
                 ? stackalloc char[m]
-                : (tUpperArray = ArrayPool<char>.Shared.Rent(m)).AsSpan(0, m);
+                : tUpperArray.AsSpan(0, m);
 
             // Pre-compute upper-case version of the shorter string to avoid redundant calls in the inner loop.
             for (var j = 0; j < m; j++)

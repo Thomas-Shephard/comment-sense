@@ -477,10 +477,10 @@ public class DocumentationSyntaxExtensionsTests
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixWithSlashOnlyReturnsTrue()
+    public void IsPureWhitespaceOrPrefixWithSlashOnlyReturnsFalse()
     {
         var tree = CSharpSyntaxTree.ParseText("/// /\npublic class C {}");
         var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
-        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.True);
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.False);
     }
 }
