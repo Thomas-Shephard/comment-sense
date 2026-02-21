@@ -377,7 +377,7 @@ internal static class ExceptionAnalyzer
         foreach (var t in thrownTypes)
         {
             double similarity = t.Name.CalculateSimilarity(simpleCrefName);
-            if (similarity < options.RenameSimilarityThreshold || similarity >= bestSimilarity)
+            if (similarity < options.RenameSimilarityThreshold || similarity <= bestSimilarity)
                 continue;
 
             bestSimilarity = similarity;

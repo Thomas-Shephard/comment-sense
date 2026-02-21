@@ -35,4 +35,14 @@ public class StringExtensionsTests
         var result = longSource.CalculateSimilarity(longTarget);
         Assert.That(result, Is.GreaterThan(0.95));
     }
+
+    [Test]
+    public void CalculateSimilarityExceedsCapReturnsZero()
+    {
+        var longSource = new string('A', 2049);
+        var target = "A";
+
+        var result = longSource.CalculateSimilarity(target);
+        Assert.That(result, Is.Zero);
+    }
 }
