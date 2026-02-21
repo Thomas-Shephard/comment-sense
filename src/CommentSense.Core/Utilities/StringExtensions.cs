@@ -7,8 +7,14 @@ internal static class StringExtensions
         if (source.Equals(target, StringComparison.OrdinalIgnoreCase))
             return 1.0;
 
+        int n = source.Length;
+        int m = target.Length;
+
+        if (n == 0 || m == 0)
+            return 0.0;
+
         var distance = ComputeLevenshteinDistance(source.AsSpan(), target.AsSpan());
-        return 1.0 - (double)distance / Math.Max(source.Length, target.Length);
+        return 1.0 - (double)distance / Math.Max(n, m);
     }
 
     private static int ComputeLevenshteinDistance(ReadOnlySpan<char> s, ReadOnlySpan<char> t)
@@ -28,6 +34,13 @@ internal static class StringExtensions
         Span<int> previousRow = rowSize <= maxStackLimit ? stackalloc int[rowSize] : new int[rowSize];
         Span<int> currentRow = rowSize <= maxStackLimit ? stackalloc int[rowSize] : new int[rowSize];
 
+        // Pre-compute upper-case version of the shorter string to avoid redundant calls in the inner loop.
+        Span<char> tUpper = m <= maxStackLimit ? stackalloc char[m] : new char[m];
+        for (var j = 0; j < m; j++)
+        {
+            tUpper[j] = char.ToUpperInvariant(t[j]);
+        }
+
         for (var j = 0; j <= m; j++)
         {
             previousRow[j] = j;
@@ -35,11 +48,12 @@ internal static class StringExtensions
 
         for (var i = 0; i < n; i++)
         {
+            var sChar = char.ToUpperInvariant(s[i]);
             currentRow[0] = i + 1;
 
             for (var j = 0; j < m; j++)
             {
-                var cost = char.ToUpperInvariant(s[i]) == char.ToUpperInvariant(t[j]) ? 0 : 1;
+                var cost = sChar == tUpper[j] ? 0 : 1;
                 currentRow[j + 1] = Math.Min(
                     Math.Min(currentRow[j] + 1, previousRow[j + 1] + 1),
                     previousRow[j] + cost

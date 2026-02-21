@@ -73,7 +73,26 @@ internal static class QualityAnalyzer
         if (options.LowQualityTerms.Contains(normalized))
             return true;
 
-        return options.SimilarityThreshold > 0.0 && normalized.CalculateSimilarity(symbolName) >= options.SimilarityThreshold;
+        if (options.SimilarityThreshold <= 0.0)
+            return false;
+
+        int n = normalized.Length;
+        int m = symbolName.Length;
+
+        if (m <= 0)
+            return false;
+
+        // Distance is at least the absolute difference in lengths.
+        // Similarity = 1 - distance / maxLen.
+        // Max possible similarity = 1 - abs(n - m) / maxLen = minLen / maxLen.
+        double maxPossibleSimilarity = (double)Math.Min(n, m) / Math.Max(n, m);
+        if (maxPossibleSimilarity < options.SimilarityThreshold)
+            return false;
+
+        if (normalized.CalculateSimilarity(symbolName) >= options.SimilarityThreshold)
+            return true;
+
+        return false;
     }
 
     public static bool IsLowQualityForAnyFormat(XElement element, ISymbol symbol, CommentSenseOptions options, string? tagName = null)

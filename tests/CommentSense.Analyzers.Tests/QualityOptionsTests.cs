@@ -383,4 +383,45 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false, configOptions: config);
     }
+
+    [Test]
+    public async Task SimilarityThresholdEarlyExitForLengthDifference()
+    {
+        const string testCode = """
+            /// <summary>This is a valid class summary.</summary>
+            public class MyClass
+            {
+                /// <summary>Brief</summary>
+                public void MethodWithAVeryVeryVeryVeryVeryLongName() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.similarity_threshold"] = "0.8"
+        };
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, configOptions: config);
+    }
+
+    [Test]
+    public async Task SimilarityThresholdHandlesEmptySymbolName()
+    {
+        const string testCode = """
+            /// <summary>This is a long enough and unique summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a long enough and unique summary for the method.</summary>
+                /// <exception cref="{|CSENSE007:|}">Invalid cref</exception>
+                public void Method() { }
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.similarity_threshold"] = "0.8"
+        };
+
+        await VerifyCSenseAsync(testCode, configOptions: config);
+    }
 }
