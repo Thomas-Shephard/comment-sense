@@ -27,20 +27,16 @@ internal static class CollectionDocumentationAnalyzer
         if (symbols.IsEmpty && !DocumentationXmlExtensions.GetTargetElements(xml, rules.TagName, recursive: true).Any())
             return;
 
-        // Presence/Missing: Only top-level tags count as documenting a symbol.
-        var documentedNames = DocumentationXmlExtensions.GetNames(xml, rules.TagName, topLevelOnly: true);
-        var documentedSet = new HashSet<string>(documentedNames, StringComparer.Ordinal);
-
-        if (!DocumentationXmlExtensions.HasInheritDoc(xml) && !DocumentationXmlExtensions.HasAutoValidTag(xml))
-            ReportMissing(context, symbols, documentedSet, rules.MissingRule);
-
         var actualIndexMap = new Dictionary<string, int>(symbols.Length, StringComparer.Ordinal);
         for (int i = 0; i < symbols.Length; i++)
         {
             actualIndexMap[symbols[i].Name] = i;
         }
 
-        ValidateDocumented(context, parentSymbol, xml, actualIndexMap, options, rules);
+        var documentedSet = ValidateDocumented(context, parentSymbol, xml, actualIndexMap, options, rules);
+
+        if (!DocumentationXmlExtensions.HasInheritDoc(xml) && !DocumentationXmlExtensions.HasAutoValidTag(xml))
+            ReportMissing(context, symbols, documentedSet, rules.MissingRule);
     }
 
     private static void ReportMissing<TSymbol>(
@@ -57,7 +53,7 @@ internal static class CollectionDocumentationAnalyzer
         }
     }
 
-    private static void ValidateDocumented(
+    private static HashSet<string> ValidateDocumented(
         SymbolAnalysisContext context,
         ISymbol symbol,
         XElement xml,
@@ -66,6 +62,7 @@ internal static class CollectionDocumentationAnalyzer
         CollectionRuleSet rules)
     {
         var seen = new Dictionary<string, int>(StringComparer.Ordinal);
+        var documentedSet = new HashSet<string>(StringComparer.Ordinal);
         var lastActualIndex = -1;
         var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
 
@@ -87,6 +84,8 @@ internal static class CollectionDocumentationAnalyzer
 
             if (name == null || string.IsNullOrWhiteSpace(name))
                 continue;
+
+            documentedSet.Add(name);
 
             // Process top-level tags for Duplicates, Order, and Quality.
             if (!seen.TryGetValue(name, out var occurrence))
@@ -121,5 +120,7 @@ internal static class CollectionDocumentationAnalyzer
 
             lastActualIndex = currentIndex;
         }
+
+        return documentedSet;
     }
 }

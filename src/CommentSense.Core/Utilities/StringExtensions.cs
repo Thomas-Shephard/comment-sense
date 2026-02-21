@@ -34,6 +34,13 @@ internal static class StringExtensions
         Span<int> previousRow = rowSize <= maxStackLimit ? stackalloc int[rowSize] : new int[rowSize];
         Span<int> currentRow = rowSize <= maxStackLimit ? stackalloc int[rowSize] : new int[rowSize];
 
+        // Pre-compute upper-case version of the shorter string to avoid redundant calls in the inner loop.
+        Span<char> tUpper = m <= maxStackLimit ? stackalloc char[m] : new char[m];
+        for (var j = 0; j < m; j++)
+        {
+            tUpper[j] = char.ToUpperInvariant(t[j]);
+        }
+
         for (var j = 0; j <= m; j++)
         {
             previousRow[j] = j;
@@ -41,11 +48,12 @@ internal static class StringExtensions
 
         for (var i = 0; i < n; i++)
         {
+            var sChar = char.ToUpperInvariant(s[i]);
             currentRow[0] = i + 1;
 
             for (var j = 0; j < m; j++)
             {
-                var cost = char.ToUpperInvariant(s[i]) == char.ToUpperInvariant(t[j]) ? 0 : 1;
+                var cost = sChar == tUpper[j] ? 0 : 1;
                 currentRow[j + 1] = Math.Min(
                     Math.Min(currentRow[j] + 1, previousRow[j + 1] + 1),
                     previousRow[j] + cost
