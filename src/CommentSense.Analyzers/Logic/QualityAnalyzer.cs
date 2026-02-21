@@ -79,7 +79,7 @@ internal static class QualityAnalyzer
         int n = normalized.Length;
         int m = symbolName.Length;
 
-        if (n <= 0 || m <= 0)
+        if (m <= 0)
             return false;
 
         // Distance is at least the absolute difference in lengths.
