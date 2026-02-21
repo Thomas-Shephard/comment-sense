@@ -133,18 +133,30 @@ internal static class ExceptionAnalyzer
         if (options.IgnoredExceptions.Contains(type.Name))
             return true;
 
-        var ns = type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+        var fullName = type.ToDisplayString(FullNameFormat);
+        if (options.IgnoredExceptions.Contains(fullName))
+            return true;
+
+        if (type is INamedTypeSymbol { IsGenericType: true } named)
+        {
+            var originalFullName = named.OriginalDefinition.ToDisplayString(FullNameFormat);
+            if (options.IgnoredExceptions.Contains(originalFullName))
+                return true;
+        }
+
+        var nsSymbol = type.ContainingNamespace;
+        if (nsSymbol is null || nsSymbol.IsGlobalNamespace)
+            return false;
+
+        var ns = nsSymbol.ToDisplayString();
         if (options.IgnoreSystemExceptions && IsInNamespace(ns, "System"))
             return true;
 
-        if (options.IgnoredExceptionNamespaces.Any(targetNs => IsInNamespace(ns, targetNs)))
-            return true;
-
-        if (options.IgnoredExceptions.Contains(type.ToDisplayString(FullNameFormat)))
-            return true;
-
-        if (type is INamedTypeSymbol { IsGenericType: true } named && options.IgnoredExceptions.Contains(named.OriginalDefinition.ToDisplayString(FullNameFormat)))
-            return true;
+        foreach (var targetNs in options.IgnoredExceptionNamespaces)
+        {
+            if (IsInNamespace(ns, targetNs))
+                return true;
+        }
 
         return false;
     }

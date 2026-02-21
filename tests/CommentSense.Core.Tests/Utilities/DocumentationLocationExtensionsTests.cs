@@ -415,6 +415,35 @@ public class DocumentationLocationExtensionsTests
         Assert.That(DocumentationLocationExtensions.MatchAttribute(attr, "name", "abc"), Is.False);
     }
 
+    [Test]
+    public void MatchAttributeTextAttributeMultipleTokensSuccessfulMatchReturnsTrue()
+    {
+        var attr = SyntaxFactory.XmlTextAttribute(
+            SyntaxFactory.XmlName("name"),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+            SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("a"), SyntaxFactory.XmlTextLiteral("b")),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken));
+        Assert.That(DocumentationLocationExtensions.MatchAttribute(attr, "name", "ab"), Is.True);
+    }
+
+    [Test]
+    public void MatchAttributeTextAttributeMultipleTokensContentMismatchReturnsFalse()
+    {
+        var attr = SyntaxFactory.XmlTextAttribute(
+            SyntaxFactory.XmlName("name"),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+            SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("a"), SyntaxFactory.XmlTextLiteral("c")),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken));
+        Assert.That(DocumentationLocationExtensions.MatchAttribute(attr, "name", "ab"), Is.False);
+    }
+
+    [Test]
+    public void MatchAttributeNullReturnsFalse()
+    {
+        // ReSharper disable once NullableWarningSuppressionIsUsed
+        Assert.That(DocumentationLocationExtensions.MatchAttribute(null!, "name", "value"), Is.False);
+    }
+
     private static ISymbol GetSymbolFromSource(string source, string symbolName)
     {
         return RoslynTestUtils.GetSymbolFromSource(source, symbolName, parseDocumentation: true);

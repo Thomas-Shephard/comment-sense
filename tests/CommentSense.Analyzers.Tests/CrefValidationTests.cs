@@ -356,4 +356,26 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
 
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task FuzzyMatchWithQualifiedNameReportsSuggestion()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>This is a valid summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>This is a valid summary for the method.</summary>
+                /// <exception cref="{|CSENSE007:System.ArgNull|}">Qualified typo.</exception>
+                [System.Diagnostics.CodeAnalysis.SuppressMessage("CommentSense", "CSENSE012")]
+                public void MyMethod()
+                {
+                    throw new ArgumentNullException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
 }

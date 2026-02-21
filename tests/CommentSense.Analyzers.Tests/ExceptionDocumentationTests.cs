@@ -2348,4 +2348,70 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             """;
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
+
+    [Test]
+    public async Task ExceptionInGlobalNamespaceIsHandled()
+    {
+        const string testCode = """
+            using System;
+            public class GlobalException : Exception {}
+            /// <summary>This is a valid long enough summary for the class.</summary>
+            public class C
+            {
+                /// <summary>This is a valid long enough summary for the method.</summary>
+                public void {|CSENSE012:M|}()
+                {
+                    throw new GlobalException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode,
+            diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task TypeParameterExceptionIsHandled()
+    {
+        const string testCode = """
+            using System;
+            /// <summary>This is a valid long enough summary for the class.</summary>
+            public class C
+            {
+                /// <summary>This is a valid long enough summary for the method.</summary>
+                public void {|CSENSE012:M|}<T>() where T : Exception, new()
+                {
+                    throw new T();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode,
+            diagnosticOptions: [("CSENSE004", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task IgnoredNamespaceExceptionIsHandled()
+    {
+        const string testCode = """
+            using System;
+            namespace MyNamespace.Sub
+            {
+                public class MyEx : Exception {}
+            }
+            /// <summary>This is a valid long enough summary for the class.</summary>
+            public class C
+            {
+                /// <summary>This is a valid long enough summary for the method.</summary>
+                public void M()
+                {
+                    throw new MyNamespace.Sub.MyEx();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false,
+            configOptions: new Dictionary<string, string> { ["comment_sense.ignored_exception_namespaces"] = "MyNamespace" },
+            diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
 }

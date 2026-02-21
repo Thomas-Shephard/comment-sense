@@ -483,4 +483,57 @@ public class DocumentationSyntaxExtensionsTests
         var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
         Assert.That(text.IsPureWhitespaceOrPrefix(), Is.False);
     }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithDoubleSlashOnlyReturnsFalse()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/// //\npublic class C {}");
+        var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.False);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithSlashAndSpaceReturnsFalse()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/// / \npublic class C {}");
+        var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.False);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithDoubleSlashAndSpaceReturnsFalse()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/// // \npublic class C {}");
+        var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.False);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithTripleSlashReturnsTrue()
+    {
+        var text = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("///")));
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.True);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithSlashMismatchAtPos1ReturnsFalse()
+    {
+        var text = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("/a/")));
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.False);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithSlashMismatchAtPos2ReturnsFalse()
+    {
+        var text = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("//a")));
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.False);
+    }
+
+    [Test]
+    public void IsPureWhitespaceOrPrefixWithStarOnlyReturnsTrue()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/** * */\npublic class C {}");
+        var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.True);
+    }
 }
