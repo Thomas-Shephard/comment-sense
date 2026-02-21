@@ -70,24 +70,23 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             return;
 
         var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
-        var locationCache = new DocumentationLocationCache();
-        AnalyzeSymbolCore(context, symbol, options, locationCache);
+        AnalyzeSymbolCore(context, symbol, options);
     }
 
-    private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options, DocumentationLocationCache locationCache)
+    private static void AnalyzeSymbolCore(SymbolAnalysisContext context, ISymbol symbol, CommentSenseOptions options)
     {
         if (!IsEligibleForAnalysis(symbol, options))
             return;
 
-        var element = DocumentationCache.GetOrParseDocumentation(context.Compilation, symbol);
-        if (element == null)
+        var xml = symbol.GetDocumentationCommentXml();
+        if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))
         {
             // Parsing failure (e.g., malformed XML) is treated as missing documentation
             ReportMissingDocumentation(context, symbol, options);
             return;
         }
 
-        TagOrderAnalyzer.Analyze(context, symbol, element, options, locationCache);
+        TagOrderAnalyzer.Analyze(context, symbol, element, options);
 
         if (!DocumentationXmlExtensions.HasValidDocumentation(element))
         {
@@ -104,8 +103,8 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        SummaryAnalyzer.Analyze(context, symbol, element, options, locationCache);
-        AnalyzeSpecificSymbol(context, symbol, element, options, locationCache);
+        SummaryAnalyzer.Analyze(context, symbol, element, options);
+        AnalyzeSpecificSymbol(context, symbol, element, options);
     }
 
     private static bool IsEligibleForAnalysis(ISymbol symbol, CommentSenseOptions options)
@@ -135,37 +134,37 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         ReportMissingDocs(context, symbol);
     }
 
-    private static void AnalyzeSpecificSymbol(SymbolAnalysisContext context, ISymbol symbol, System.Xml.Linq.XElement element, CommentSenseOptions options, DocumentationLocationCache locationCache)
+    private static void AnalyzeSpecificSymbol(SymbolAnalysisContext context, ISymbol symbol, System.Xml.Linq.XElement element, CommentSenseOptions options)
     {
         switch (symbol)
         {
             case IMethodSymbol methodSymbol:
-                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element, options, locationCache);
-                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element, options, locationCache);
-                ReturnValueAnalyzer.Analyze(context, methodSymbol, element, options, locationCache);
-                ExceptionAnalyzer.Analyze(context, methodSymbol, element, options, locationCache, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
+                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element, options);
+                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element, options);
+                ReturnValueAnalyzer.Analyze(context, methodSymbol, element, options);
+                ExceptionAnalyzer.Analyze(context, methodSymbol, element, options, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
                 break;
             case IPropertySymbol propertySymbol:
                 if (propertySymbol.IsIndexer)
                 {
-                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element, options, locationCache);
+                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element, options);
                 }
-                ReturnValueAnalyzer.Analyze(context, propertySymbol, element, options, locationCache);
-                ExceptionAnalyzer.Analyze(context, propertySymbol, element, options, locationCache);
+                ReturnValueAnalyzer.Analyze(context, propertySymbol, element, options);
+                ExceptionAnalyzer.Analyze(context, propertySymbol, element, options);
                 break;
             case INamedTypeSymbol namedTypeSymbol:
-                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element, options, locationCache);
+                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element, options);
                 if (namedTypeSymbol is { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null })
                 {
-                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element, options, locationCache);
-                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element, options, locationCache);
+                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element, options);
+                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element, options);
                 }
 
                 if (namedTypeSymbol.GetPrimaryConstructor() is { } primaryCtor)
                 {
-                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element, options, locationCache);
-                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, options, locationCache);
-                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, options, locationCache, isPrimaryCtor: true);
+                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element, options);
+                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, options);
+                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, options, isPrimaryCtor: true);
                 }
                 break;
         }

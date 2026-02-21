@@ -22,8 +22,7 @@ internal static class CollectionDocumentationAnalyzer
         ISymbol parentSymbol,
         XElement xml,
         CommentSenseOptions options,
-        CollectionRuleSet rules,
-        DocumentationLocationCache locationCache) where TSymbol : ISymbol
+        CollectionRuleSet rules) where TSymbol : ISymbol
     {
         if (symbols.IsEmpty && !DocumentationXmlExtensions.GetTargetElements(xml, rules.TagName, recursive: true).Any())
             return;
@@ -41,7 +40,7 @@ internal static class CollectionDocumentationAnalyzer
             actualIndexMap[symbols[i].Name] = i;
         }
 
-        ValidateDocumented(context, parentSymbol, xml, actualIndexMap, options, rules, locationCache);
+        ValidateDocumented(context, parentSymbol, xml, actualIndexMap, options, rules);
     }
 
     private static void ReportMissing<TSymbol>(
@@ -64,15 +63,14 @@ internal static class CollectionDocumentationAnalyzer
         XElement xml,
         Dictionary<string, int> actualIndexMap,
         CommentSenseOptions options,
-        CollectionRuleSet rules,
-        DocumentationLocationCache locationCache)
+        CollectionRuleSet rules)
     {
         var seen = new Dictionary<string, int>(StringComparer.Ordinal);
         var lastActualIndex = -1;
         var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
 
         // Scan all tags recursively.
-        foreach (var (element, location) in symbol.GetTargetElementsWithLocations(xml, rules.TagName, locationCache, topLevelOnly: false))
+        foreach (var (element, location) in symbol.GetTargetElementsWithLocations(xml, rules.TagName, topLevelOnly: false))
         {
             var name = element.Attribute(DocumentationAttributes.Name)?.Value;
             bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, element, effectiveTarget);

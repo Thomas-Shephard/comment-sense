@@ -8,7 +8,7 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class TagOrderAnalyzer
 {
-    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, DocumentationLocationCache locationCache)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
     {
         var topLevelElements = DocumentationXmlExtensions.GetTargetElements(xml).ToList();
         if (topLevelElements.Count < 2)
@@ -30,7 +30,7 @@ internal static class TagOrderAnalyzer
             if (currentPriority < lastPriority && lastElement != null)
             {
                 var occurrence = GetOccurrence(topLevelElements, element);
-                var location = locationCache.GetLocation(symbol, tagName, topLevelOnly: true, occurrence: occurrence);
+                var location = symbol.GetDocumentationLocation(tagName, occurrence: occurrence, topLevelOnly: true);
                 context.ReportDiagnostic(Diagnostic.Create(
                     CommentSenseRules.DocumentationTagOrderMismatchRule,
                     location,
