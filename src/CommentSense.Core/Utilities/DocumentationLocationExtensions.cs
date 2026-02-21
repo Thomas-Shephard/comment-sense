@@ -17,7 +17,7 @@ internal static class DocumentationLocationExtensions
         foreach (var element in elements)
         {
             if (locationIndex >= locations.Length)
-                yield break;
+                break;
 
             yield return (element, locations[locationIndex++]);
         }
@@ -69,13 +69,13 @@ internal static class DocumentationLocationExtensions
     {
         var builder = ImmutableArray.CreateBuilder<Location>();
 
-        var trivias = symbol.DeclaringSyntaxReferences
-            .Select(r => GetDocumentationCommentTrivia(r.GetSyntax()))
-            .OfType<DocumentationCommentTriviaSyntax>();
-
-        foreach (var docTrivia in trivias)
+        foreach (var r in symbol.DeclaringSyntaxReferences)
         {
-            GetDocumentationLocationsInternal(docTrivia, tagName, attributeValue, attributeName, builder, topLevelOnly);
+            var docTrivia = GetDocumentationCommentTrivia(r.GetSyntax());
+            if (docTrivia != null)
+            {
+                GetDocumentationLocationsInternal(docTrivia, tagName, attributeValue, attributeName, builder, topLevelOnly);
+            }
         }
 
         return builder.ToImmutable();
@@ -88,9 +88,16 @@ internal static class DocumentationLocationExtensions
         {
             if (current.HasStructuredTrivia)
             {
-                var trivia = current.GetLeadingTrivia().LastOrDefault(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) || t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia));
-                if (trivia.GetStructure() is DocumentationCommentTriviaSyntax docTrivia)
-                    return docTrivia;
+                var triviaList = current.GetLeadingTrivia();
+                for (int i = triviaList.Count - 1; i >= 0; i--)
+                {
+                    var trivia = triviaList[i];
+                    if (!trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) && !trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia))
+                        continue;
+
+                    if (trivia.GetStructure() is DocumentationCommentTriviaSyntax docTrivia)
+                        return docTrivia;
+                }
             }
 
             if (current is MemberDeclarationSyntax or CompilationUnitSyntax)
@@ -108,9 +115,11 @@ internal static class DocumentationLocationExtensions
             ? docTrivia.Content
             : docTrivia.DescendantNodes();
 
-        builder.AddRange(nodes
-            .Where(node => IsMatch(node, tagName, attributeValue, attributeName))
-            .Select(node => node.GetLocation()));
+        foreach (var node in nodes)
+        {
+            if (IsMatch(node, tagName, attributeValue, attributeName))
+                builder.Add(node.GetLocation());
+        }
     }
 
     private static bool IsMatch(SyntaxNode node, string tagName, string? attributeValue, string attributeName)
@@ -129,30 +138,81 @@ internal static class DocumentationLocationExtensions
 
     public static bool HasAttribute(XmlElementSyntax element, string name, string value)
     {
-        return element.StartTag.Attributes.Any(attr => MatchAttribute(attr, name, value));
+        foreach (var attr in element.StartTag.Attributes)
+        {
+            if (MatchAttribute(attr, name, value))
+                return true;
+        }
+
+        return false;
     }
 
     public static bool HasAttribute(XmlEmptyElementSyntax element, string name, string value)
     {
-        return element.Attributes.Any(attr => MatchAttribute(attr, name, value));
+        foreach (var attr in element.Attributes)
+        {
+            if (MatchAttribute(attr, name, value))
+                return true;
+        }
+
+        return false;
     }
 
     public static bool MatchAttribute(XmlAttributeSyntax attribute, string name, string value)
     {
+        var valueSpan = value.AsSpan();
         switch (attribute)
         {
             case XmlNameAttributeSyntax nameAttr when nameAttr.Name.LocalName.ValueText == name:
-                return nameAttr.Identifier.Identifier.ValueText == value;
+                return nameAttr.Identifier.Identifier.ValueText.AsSpan().Equals(valueSpan, StringComparison.Ordinal);
+
             case XmlCrefAttributeSyntax crefAttr when crefAttr.Name.LocalName.ValueText == name:
                 {
+                    // Consider a more direct comparison or using a pooled StringBuilder if this allocates too much.
+                    // cref.ToString() still allocates, but comparing is complex.
+                    // Most names are simple.
                     string crefStr = crefAttr.Cref.ToString();
-                    if (crefStr == value)
+                    if (crefStr.AsSpan().Equals(valueSpan, StringComparison.Ordinal))
                         return true;
 
-                    return "T:" + crefStr == value;
+                    if (valueSpan.Length >= 2 && valueSpan[0] == 'T' && valueSpan[1] == ':' &&
+                        crefStr.AsSpan().Equals(valueSpan.Slice(2), StringComparison.Ordinal))
+                        return true;
+
+                    return false;
                 }
+
             case XmlTextAttributeSyntax textAttr when textAttr.Name.LocalName.ValueText == name:
-                return string.Concat(textAttr.TextTokens.Select(t => t.ValueText)) == value;
+                {
+                    if (textAttr.TextTokens.Count == 0)
+                        return valueSpan.IsEmpty;
+
+                    if (textAttr.TextTokens.Count == 1)
+                        return textAttr.TextTokens[0].ValueText.AsSpan().Equals(valueSpan, StringComparison.Ordinal);
+
+                    // For multiple tokens, check if the concatenated result matches without allocating if possible.
+                    int totalLength = 0;
+                    foreach (var token in textAttr.TextTokens)
+                    {
+                        totalLength += token.ValueText.Length;
+                    }
+
+                    if (totalLength != valueSpan.Length)
+                        return false;
+
+                    // Compare each token sequentially against the target valueSpan to avoid concatenation.
+                    int offset = 0;
+                    foreach (var token in textAttr.TextTokens)
+                    {
+                        var tokenText = token.ValueText;
+                        if (!valueSpan.Slice(offset, tokenText.Length).Equals(tokenText.AsSpan(), StringComparison.Ordinal))
+                            return false;
+
+                        offset += tokenText.Length;
+                    }
+
+                    return true;
+                }
             default:
                 return false;
         }

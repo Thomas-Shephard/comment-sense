@@ -23,9 +23,14 @@ internal static class DocumentationXmlExtensions
 
     public static bool HasValidDocumentation(XElement root)
     {
-        return GetTargetElements(root)
-            .Select(element => element.Name.LocalName)
-            .Any(name => AutoValidTags.Contains(name) || ContentRequiredTags.Contains(name));
+        foreach (var element in GetTargetElements(root))
+        {
+            var name = element.Name.LocalName;
+            if (AutoValidTags.Contains(name) || ContentRequiredTags.Contains(name))
+                return true;
+        }
+
+        return false;
     }
 
     public static bool TryParseDocumentation(string? xml, out XElement element)
@@ -50,7 +55,13 @@ internal static class DocumentationXmlExtensions
 
     public static bool HasAutoValidTag(XElement root)
     {
-        return GetTargetElements(root).Any(element => AutoValidTags.Contains(element.Name.LocalName));
+        foreach (var element in GetTargetElements(root))
+        {
+            if (AutoValidTags.Contains(element.Name.LocalName))
+                return true;
+        }
+
+        return false;
     }
 
     public static bool HasInheritDoc(XElement root)
@@ -60,7 +71,13 @@ internal static class DocumentationXmlExtensions
 
     public static bool HasInheritDocWithCref(XElement root)
     {
-        return root.Descendants(DocumentationTags.InheritDoc).Any(e => e.Attribute(DocumentationAttributes.Cref) != null);
+        foreach (var e in root.Descendants(DocumentationTags.InheritDoc))
+        {
+            if (e.Attribute(DocumentationAttributes.Cref) != null)
+                return true;
+        }
+
+        return false;
     }
 
     public static IEnumerable<string> GetNames(XElement root, string tagName, string attributeName = DocumentationAttributes.Name, bool topLevelOnly = true)
@@ -146,9 +163,11 @@ internal static class DocumentationXmlExtensions
     {
         var elements = GetTargetElements(root, tagName, recursive: !topLevelOnly);
 
-        return elements
-               .Select(d => d.Attribute(attributeName)?.Value)
-               .Where(v => !string.IsNullOrWhiteSpace(v))
-               .OfType<string>();
+        foreach (var d in elements)
+        {
+            var value = d.Attribute(attributeName)?.Value;
+            if (value is not null && !string.IsNullOrWhiteSpace(value))
+                yield return value;
+        }
     }
 }

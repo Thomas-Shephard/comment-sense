@@ -31,7 +31,28 @@ internal static class DocumentationSyntaxExtensions
                 return nameAttr.Identifier.Identifier.ValueText;
 
             if (attribute is XmlTextAttributeSyntax { Name.LocalName.ValueText: DocumentationAttributes.Name } textAttr)
-                return string.Concat(textAttr.TextTokens.Select(t => t.ValueText));
+            {
+                if (textAttr.TextTokens.Count == 0)
+                    return string.Empty;
+
+                if (textAttr.TextTokens.Count == 1)
+                    return textAttr.TextTokens[0].ValueText;
+
+                // For multiple tokens, we must concatenate.
+                // We use a StringBuilder with an estimated capacity to reduce reallocations.
+                int capacity = 0;
+                foreach (var token in textAttr.TextTokens)
+                {
+                    capacity += token.ValueText.Length;
+                }
+
+                var sb = new System.Text.StringBuilder(capacity);
+                foreach (var token in textAttr.TextTokens)
+                {
+                    sb.Append(token.ValueText);
+                }
+                return sb.ToString();
+            }
         }
 
         return null;
@@ -61,7 +82,7 @@ internal static class DocumentationSyntaxExtensions
         var trailing = index + 1 < content.Count ? content[index + 1] as XmlTextSyntax : null;
         var leading = index > 0 ? content[index - 1] as XmlTextSyntax : null;
 
-        bool isAtStart = index == 0 || (index == 1 && leading != null && !leading.ToString().Contains("\n") && leading.IsPureWhitespaceOrPrefix());
+        bool isAtStart = index == 0 || (index == 1 && leading != null && !leading.ContainsNewLine() && leading.IsPureWhitespaceOrPrefix());
         if (isAtStart && trailing.IsPureWhitespaceOrPrefix())
             return trailing;
 
@@ -74,14 +95,74 @@ internal static class DocumentationSyntaxExtensions
         return null;
     }
 
+    private static bool ContainsNewLine(this XmlTextSyntax xmlText)
+    {
+        foreach (var token in xmlText.TextTokens)
+        {
+            if (token.Text.Contains('\n'))
+                return true;
+        }
+
+        return false;
+    }
+
     public static bool IsPureWhitespaceOrPrefix(this XmlTextSyntax? xmlText)
     {
         if (xmlText == null)
             return false;
 
-        var text = xmlText.ToString();
-        var allValidChars = text.All(c => char.IsWhiteSpace(c) || c == '/');
-        return string.IsNullOrEmpty(text) || (allValidChars && (text.Contains("///") || text.All(char.IsWhiteSpace)));
+        foreach (var token in xmlText.TextTokens)
+        {
+            if (!IsPureWhitespaceOrPrefix(token.Text.AsSpan()))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsPureWhitespaceOrPrefix(ReadOnlySpan<char> text)
+    {
+        if (text.IsEmpty)
+            return true;
+
+        bool hasPrefix = false;
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (char.IsWhiteSpace(c))
+                continue;
+
+            if (c == '/')
+            {
+                if (i + 2 < text.Length && text[i + 1] == '/' && text[i + 2] == '/')
+                {
+                    hasPrefix = true;
+                    i += 2;
+                }
+
+                continue;
+            }
+
+            if (c == '*')
+            {
+                hasPrefix = true;
+                continue;
+            }
+
+            return false;
+        }
+
+        return hasPrefix || IsAllWhiteSpace(text);
+    }
+
+    private static bool IsAllWhiteSpace(ReadOnlySpan<char> text)
+    {
+        foreach (char c in text)
+        {
+            if (!char.IsWhiteSpace(c))
+                return false;
+        }
+        return true;
     }
 
     public static (SyntaxNode? Parent, SyntaxList<XmlNodeSyntax> Content) GetParentContent(this XmlNodeSyntax xmlNode)

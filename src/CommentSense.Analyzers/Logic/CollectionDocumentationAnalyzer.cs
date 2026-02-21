@@ -45,8 +45,11 @@ internal static class CollectionDocumentationAnalyzer
         HashSet<string> documentedSet,
         DiagnosticDescriptor rule) where TSymbol : ISymbol
     {
-        foreach (var symbol in symbols.Where(s => !documentedSet.Contains(s.Name)))
+        foreach (var symbol in symbols)
         {
+            if (documentedSet.Contains(symbol.Name))
+                continue;
+
             var location = symbol.Locations.GetPrimaryLocation();
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, symbol.Name);
             context.ReportDiagnostic(Diagnostic.Create(rule, location, properties, symbol.Name));

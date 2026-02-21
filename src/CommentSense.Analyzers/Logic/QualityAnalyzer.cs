@@ -56,22 +56,29 @@ internal static class QualityAnalyzer
         if (content is null || string.IsNullOrWhiteSpace(content))
             return true;
 
-        if (options.RequireCapitalization && DocumentationQualityExtensions.StartsWithLowercase(content))
+        var contentSpan = content.AsSpan();
+        if (options.RequireCapitalization && DocumentationQualityExtensions.StartsWithLowercase(contentSpan))
             return true;
 
-        if (options.RequireEndingPunctuation && !DocumentationQualityExtensions.EndsWithPunctuation(content, trimEnd: true))
+        if (options.RequireEndingPunctuation && !DocumentationQualityExtensions.EndsWithPunctuation(contentSpan, trimEnd: true))
             return true;
 
-        var trimmed = content.Trim();
-        var normalized = trimmed.TrimEnd(TrimChars);
-        if (string.IsNullOrEmpty(normalized))
+        var span = contentSpan.Trim();
+        var normalized = span.TrimEnd(TrimChars);
+        if (normalized.IsEmpty)
             return true;
 
         if (CheckBasicQuality(normalized, symbolName, options.MinSummaryLength, tagName))
             return true;
 
-        if (options.LowQualityTerms.Contains(normalized))
-            return true;
+        if (options.LowQualityTerms.Count > 0)
+        {
+            foreach (var term in options.LowQualityTerms)
+            {
+                if (normalized.Equals(term.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+        }
 
         if (options.SimilarityThreshold <= 0.0)
             return false;
@@ -113,20 +120,20 @@ internal static class QualityAnalyzer
         return minimallyQualifiedName != displayName && IsLowQuality(content, minimallyQualifiedName, options, tagName: tagName);
     }
 
-    private static bool CheckBasicQuality(string normalized, string symbolName, int minLength, string? tagName)
+    private static bool CheckBasicQuality(ReadOnlySpan<char> normalized, string symbolName, int minLength, string? tagName)
     {
         // Use normalized length to ensure trailing punctuation doesn't artificially satisfy the requirement
         if (normalized.Length < minLength)
             return true;
 
-        if (string.Equals(normalized, symbolName, StringComparison.OrdinalIgnoreCase))
+        if (normalized.Equals(symbolName.AsSpan(), StringComparison.OrdinalIgnoreCase))
             return true;
 
-        if (tagName != null && string.Equals(normalized, tagName, StringComparison.OrdinalIgnoreCase))
+        if (tagName != null && normalized.Equals(tagName.AsSpan(), StringComparison.OrdinalIgnoreCase))
             return true;
 
         // The word "return" is treated as low-quality only when documenting the <returns> tag
-        return tagName == DocumentationTags.Returns && string.Equals(normalized, "return", StringComparison.OrdinalIgnoreCase);
+        return tagName == DocumentationTags.Returns && normalized.Equals("return".AsSpan(), StringComparison.OrdinalIgnoreCase);
     }
 
     public static void Report(SymbolAnalysisContext context, Location location, string tagName, string targetName)
