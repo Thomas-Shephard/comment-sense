@@ -11,7 +11,6 @@ internal static class DocumentationLocationExtensions
     public static IEnumerable<(XElement Element, Location Location)> GetTargetElementsWithLocations(this ISymbol symbol, XElement xml, string tagName, bool topLevelOnly = true)
     {
         var locations = symbol.GetDocumentationLocations(tagName, topLevelOnly: topLevelOnly);
-
         var elements = DocumentationXmlExtensions.GetTargetElements(xml, tagName, recursive: !topLevelOnly).ToList();
 
         for (int i = 0; i < Math.Min(locations.Length, elements.Count); i++)

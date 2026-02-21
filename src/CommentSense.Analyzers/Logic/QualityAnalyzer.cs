@@ -73,7 +73,7 @@ internal static class QualityAnalyzer
         if (options.LowQualityTerms.Contains(normalized))
             return true;
 
-        if (!(options.SimilarityThreshold > 0.0))
+        if (options.SimilarityThreshold <= 0.0)
             return false;
 
         int n = normalized.Length;
@@ -86,7 +86,7 @@ internal static class QualityAnalyzer
         // Similarity = 1 - distance / maxLen.
         // Max possible similarity = 1 - abs(n - m) / maxLen = minLen / maxLen.
         double maxPossibleSimilarity = (double)Math.Min(n, m) / Math.Max(n, m);
-        if (!(maxPossibleSimilarity >= options.SimilarityThreshold))
+        if (maxPossibleSimilarity < options.SimilarityThreshold)
             return false;
 
         if (normalized.CalculateSimilarity(symbolName) >= options.SimilarityThreshold)

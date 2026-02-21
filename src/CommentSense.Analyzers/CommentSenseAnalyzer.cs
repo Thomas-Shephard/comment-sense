@@ -49,6 +49,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 return;
 
             var analyzedNodes = new ConcurrentDictionary<XmlTextSyntax, bool>();
+
             compilationContext.RegisterSymbolAction(AnalyzeSymbol,
                 SymbolKind.NamedType,
                 SymbolKind.Method,
