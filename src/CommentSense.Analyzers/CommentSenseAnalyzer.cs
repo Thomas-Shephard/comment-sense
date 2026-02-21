@@ -79,8 +79,8 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (!IsEligibleForAnalysis(symbol, options))
             return;
 
-        var xml = symbol.GetDocumentationCommentXml();
-        if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))
+        var element = DocumentationCache.GetOrParseDocumentation(context.Compilation, symbol);
+        if (element == null)
         {
             // Parsing failure (e.g., malformed XML) is treated as missing documentation
             ReportMissingDocumentation(context, symbol, options);
