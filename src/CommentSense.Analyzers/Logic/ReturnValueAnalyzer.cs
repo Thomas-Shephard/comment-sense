@@ -16,14 +16,14 @@ internal static class ReturnValueAnalyzer
 
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, ISymbol targetSymbol, XElement xml, CommentSenseOptions options)
     {
-        var methodSymbol = symbol as IMethodSymbol;
-        var isTask = methodSymbol != null && methodSymbol.ReturnType.IsTaskType();
-        var isVoid = methodSymbol is { ReturnsVoid: true } || isTask;
-
         if (targetSymbol is IPropertySymbol property)
+        {
             AnalyzeProperty(context, property, targetSymbol, xml, options);
-        else if (methodSymbol != null)
-            AnalyzeMethod(context, methodSymbol, targetSymbol, xml, options, isVoid);
+        }
+        else if (symbol is IMethodSymbol methodSymbol)
+        {
+            AnalyzeMethod(context, methodSymbol, targetSymbol, xml, options);
+        }
     }
 
     private static void AnalyzeProperty(SymbolAnalysisContext context, IPropertySymbol property, ISymbol targetSymbol, XElement xml, CommentSenseOptions options)
@@ -68,13 +68,17 @@ internal static class ReturnValueAnalyzer
         }
     }
 
-    private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol, ISymbol targetSymbol, XElement xml, CommentSenseOptions options, bool isVoid)
+    private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol, ISymbol targetSymbol, XElement xml, CommentSenseOptions options)
     {
         var hasInheritDoc = DocumentationXmlExtensions.HasInheritDoc(xml);
         var hasAutoValidTag = DocumentationXmlExtensions.HasAutoValidTag(xml);
 
+        var isTask = methodSymbol.ReturnType.IsTaskType();
+        var isVoid = methodSymbol.ReturnsVoid;
+        var returnsRequired = !isVoid && !isTask;
+
         // CSENSE006: Missing <returns> documentation
-        if (!isVoid && !DocumentationXmlExtensions.HasReturnsTag(xml) && !hasInheritDoc && !hasAutoValidTag)
+        if (returnsRequired && !DocumentationXmlExtensions.HasReturnsTag(xml) && !hasInheritDoc && !hasAutoValidTag)
         {
             var location = targetSymbol.Locations.GetPrimaryLocation();
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, DocumentationTags.Returns);
@@ -82,7 +86,7 @@ internal static class ReturnValueAnalyzer
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
         }
 
-        // CSENSE013: Stray <returns> tag (on void/Task, nested, or duplicate)
+        // CSENSE013: Stray <returns> tag (on void, nested, or duplicate)
         // CSENSE016: Low quality <returns> documentation
         var seenReturns = false;
         var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);

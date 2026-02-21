@@ -134,7 +134,7 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
     }
 
     [Test]
-    public async Task TaskMethodWithReturnsTagReportsDiagnostic()
+    public async Task TaskMethodWithReturnsTagDoesNotReportDiagnostic()
     {
         const string testCode = """
             using System.Threading.Tasks;
@@ -142,16 +142,16 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// {|CSENSE013:<returns>A stray returns tag.</returns>|}
+                /// <returns>A stray returns tag.</returns>
                 public Task MyMethod() => Task.CompletedTask;
             }
             """;
 
-        await VerifyCSenseAsync(testCode);
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 
     [Test]
-    public async Task ValueTaskMethodWithReturnsTagReportsDiagnostic()
+    public async Task ValueTaskMethodWithReturnsTagDoesNotReportDiagnostic()
     {
         const string testCode = """
             using System.Threading.Tasks;
@@ -159,12 +159,12 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             public class MyClass
             {
                 /// <summary>This is a summary for the method.</summary>
-                /// {|CSENSE013:<returns>A stray returns tag.</returns>|}
+                /// <returns>A stray returns tag.</returns>
                 public ValueTask MyMethod() => default;
             }
             """;
 
-        await VerifyCSenseAsync(testCode);
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 
     [Test]

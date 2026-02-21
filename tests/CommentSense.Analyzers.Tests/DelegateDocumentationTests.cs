@@ -140,15 +140,28 @@ public class DelegateDocumentationTests : CommentSenseAnalyzerTestBase<CommentSe
     }
 
     [Test]
-    public async Task TaskDelegateWithReturnsTagReportsDiagnostic()
+    public async Task TaskDelegateWithReturnsTagDoesNotReportDiagnostic()
     {
         const string testCode = """
             using System.Threading.Tasks;
             /// <summary>This is a summary for the delegate.</summary>
-            /// {|CSENSE013:<returns>Stray return documentation.</returns>|}
+            /// <returns>Optional return documentation.</returns>
             public delegate Task MyDelegate();
             """;
 
-        await VerifyCSenseAsync(testCode);
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task ValueTaskDelegateWithReturnsTagDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            using System.Threading.Tasks;
+            /// <summary>This is a summary for the delegate.</summary>
+            /// <returns>Optional return documentation.</returns>
+            public delegate ValueTask MyDelegate();
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 }
