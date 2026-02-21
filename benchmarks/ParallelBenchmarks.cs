@@ -8,7 +8,6 @@ using System.Globalization;
 
 namespace CommentSense.PerformanceTests;
 
-[MemoryDiagnoser]
 #if WINDOWS
 [ThreadingDiagnoser]
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]

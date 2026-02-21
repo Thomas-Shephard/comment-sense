@@ -8,7 +8,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace CommentSense.PerformanceTests;
 
-[MemoryDiagnoser]
 public class DogfoodBenchmarks : BenchmarkBase
 {
     protected override IEnumerable<SyntaxTree> GetSyntaxTrees()

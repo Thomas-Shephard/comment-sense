@@ -14,6 +14,7 @@ using CommentSense.Analyzers;
 namespace CommentSense.PerformanceTests;
 
 [SuppressMessage("ReSharper", "NullableWarningSuppressionIsUsed")]
+[MemoryDiagnoser]
 public abstract class BenchmarkBase
 {
     private Compilation Compilation { get; set; } = null!;
