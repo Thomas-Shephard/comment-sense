@@ -9,7 +9,6 @@ using System.Globalization;
 
 namespace CommentSense.PerformanceTests;
 
-[MemoryDiagnoser]
 [SuppressMessage("ReSharper", "NullableWarningSuppressionIsUsed")]
 public class LeakBenchmarks : BenchmarkBase
 {

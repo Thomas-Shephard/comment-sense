@@ -6,7 +6,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace CommentSense.PerformanceTests;
 
-[MemoryDiagnoser]
 [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Global")]
 public class AnalyzerBenchmarks : BenchmarkBase
 {

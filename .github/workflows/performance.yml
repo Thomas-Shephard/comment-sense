@@ -55,7 +55,7 @@ jobs:
         run: rm -rf BenchmarkDotNet.Artifacts/results
 
       - name: Run Benchmarks
-        run: dotnet run -c Release --project benchmarks/CommentSense.PerformanceTests.csproj -- --filter '*' --exporters BriefJson --job Short
+        run: dotnet run -c Release --project benchmarks/CommentSense.PerformanceTests.csproj -- --filter '*' --exporters BriefJson --iterationCount 10 --warmupCount 5
 
       - name: Merge Benchmark Results
         run: |
@@ -68,23 +68,26 @@ jobs:
           fi
 
           if [ ${#JSON_FILES[@]} -gt 1 ]; then
-            jq -s 'map(select(type == "object" and .Benchmarks and (.Benchmarks | type) == "array")) | .[0] + {Benchmarks: map(.Benchmarks) | add}' BenchmarkDotNet.Artifacts/results/*-report-brief.json > BenchmarkDotNet.Artifacts/results/combined-report.json
+            jq -s 'map(select(type == "object" and .Benchmarks and (.Benchmarks | type) == "array")) | .[0] + {Benchmarks: map(.Benchmarks) | add}' BenchmarkDotNet.Artifacts/results/*-report-brief.json > BenchmarkDotNet.Artifacts/results/temp-report.json
           else
-            cp "${JSON_FILES[0]}" BenchmarkDotNet.Artifacts/results/combined-report.json
+            cp "${JSON_FILES[0]}" BenchmarkDotNet.Artifacts/results/temp-report.json
           fi
+
+          # Transform report to use memory allocations instead of time for tracking
+          jq '.Benchmarks |= map(.Statistics.Mean = .Memory.BytesAllocatedPerOperation)' BenchmarkDotNet.Artifacts/results/temp-report.json > BenchmarkDotNet.Artifacts/results/combined-report.json
 
       - name: Store Benchmark Result
         if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
         # benchmark-action/github-action-benchmark@v1.20.7
         uses: benchmark-action/github-action-benchmark@4bdcce38c94cec68da58d012ac24b7b1155efe8b
         with:
-          name: CommentSense Performance
+          name: CommentSense Memory Allocations
           tool: 'benchmarkdotnet'
           output-file-path: BenchmarkDotNet.Artifacts/results/combined-report.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           summary-always: true
           comment-always: true
-          alert-threshold: '120%'
+          alert-threshold: '105%'
           comment-on-alert: true
           fail-on-alert: true

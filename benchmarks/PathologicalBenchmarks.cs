@@ -6,7 +6,6 @@ using System.Globalization;
 
 namespace CommentSense.PerformanceTests;
 
-[MemoryDiagnoser]
 public class PathologicalBenchmarks : BenchmarkBase
 {
     [Params(10)]
