@@ -33,13 +33,25 @@ public class DocumentationLocationCacheTests
     [Test]
     public void GetLocationsRespectsTopLevelOnly()
     {
+        const string source = """
+            public class TestClass
+            {
+                /// <summary>Top level <summary>Nested</summary></summary>
+                public void M() { }
+            }
+            """;
         var cache = new DocumentationLocationCache();
-        var symbol = RoslynTestUtils.GetSymbolFromSource(TestSource, "M", parseDocumentation: true);
+        var symbol = RoslynTestUtils.GetSymbolFromSource(source, "M", parseDocumentation: true);
 
         var locationsRecursive = cache.GetLocations(symbol, "summary", topLevelOnly: false);
         var locationsTopLevel = cache.GetLocations(symbol, "summary", topLevelOnly: true);
 
-        Assert.That(locationsRecursive, Is.Not.EqualTo(locationsTopLevel));
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(locationsRecursive, Has.Length.EqualTo(2));
+            Assert.That(locationsTopLevel, Has.Length.EqualTo(1));
+            Assert.That(locationsRecursive, Is.Not.EqualTo(locationsTopLevel));
+        }
     }
 
     [Test]
