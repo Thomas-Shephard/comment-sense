@@ -58,7 +58,7 @@ Ensures parameters and type parameters are correctly documented and referenced.
 ### Return Values
 *   **CSENSE006**: Requires a `<returns>` tag for members that return a value (i.e., non-`void`, non-`Task`, non-`ValueTask`).
     *   **Code Fix**: An automatic code fix is available to generate a missing `<returns>` tag with a placeholder. This fix supports **Fix All** in document, project, or solution.
-*   **CSENSE013**: Flags stray or duplicate `<returns>` tags on members that do not produce a documented return value (including `void`, `Task`, and `ValueTask` members), as well as on properties and indexers.
+*   **CSENSE013**: Flags stray or duplicate `<returns>` tags on members that do not produce a documented return value (such as `void` methods), as well as on properties and indexers.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 ### Exceptions
 *   **CSENSE012**: Scans the method body for explicitly thrown exceptions (including static guard clauses like `ArgumentNullException.ThrowIfNull`) and ensures they are documented with `<exception>` tags.
