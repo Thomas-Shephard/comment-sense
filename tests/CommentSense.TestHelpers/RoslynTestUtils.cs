@@ -18,7 +18,7 @@ public static class RoslynTestUtils
         var syntaxTree = CSharpSyntaxTree.ParseText(source, options: parseOptions);
 
         var compilation = CSharpCompilation.Create("TestAssembly",
-                                               options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+                                               options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true))
                                            .AddReferences(CachedReferences)
                                            .AddSyntaxTrees(syntaxTree);
 

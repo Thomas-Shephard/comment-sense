@@ -1,4 +1,5 @@
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -415,5 +416,139 @@ public class CrefAccessibilityTests : CommentSenseAnalyzerTestBase<CommentSenseA
             """;
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task ExceptionTagWithUnresolvedCrefReportsDiagnostic()
+    {
+        const string testCode = """
+            namespace MyNamespace
+            {
+                /// <summary>Public class.</summary>
+                /// <exception cref="{|CSENSE007:UnknownException|}">Some error.</exception>
+                public class PublicClass { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task ExceptionTagWithInvalidExceptionTypeReportsDiagnostic()
+    {
+        const string testCode = """
+            namespace MyNamespace
+            {
+                /// <summary>Public class.</summary>
+                public class PublicClass
+                {
+                    /// <summary>This is a valid summary.</summary>
+                    /// <exception cref="{|CSENSE017:Method|}">Invalid.</exception>
+                    public void Method() { }
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task ExceptionTagWithNonExceptionTypeReportsDiagnostic()
+    {
+        const string testCode = """
+            namespace MyNamespace
+            {
+                /// <summary>Public class summary.</summary>
+                /// <exception cref="{|CSENSE017:PublicClass|}">Invalid.</exception>
+                public class PublicClass { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task UnknownGenericWithInternalTypeArgumentReportsDiagnostic()
+    {
+        const string testCode = """
+            namespace MyNamespace
+            {
+                /// <summary>Public class.</summary>
+                /// <see cref="{|CSENSE025:UnknownGeneric{MyNamespace.InternalType}|}"/>
+                public class PublicClass { }
+
+                /// <summary>Internal type.</summary>
+                internal class InternalType { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task IneligibleSymbolReturnsEarly()
+    {
+        const string testCode = """
+            namespace MyNamespace
+            {
+                /// <summary>Internal class.</summary>
+                internal class InternalClass
+                {
+                    /// <summary>
+                    /// See <see cref="OtherInternalClass"/>
+                    /// </summary>
+                    public void PublicMethod() { }
+                }
+
+                /// <summary>Other internal class.</summary>
+                internal class OtherInternalClass { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, configOptions: new Dictionary<string, string>
+        {
+            { "comment_sense.visibility_level", "public" }
+        });
+    }
+
+    [Test]
+    public async Task GenericCrefWithInternalTypeArgumentReportsDiagnostic()
+    {
+        const string testCode = """
+            namespace MyNamespace
+            {
+                /// <summary>Public class.</summary>
+                /// <see cref="{|CSENSE025:GenericType{MyNamespace.InternalType}|}"/>
+                public class PublicClass { }
+
+                /// <summary>Internal type.</summary>
+                internal class InternalType { }
+
+                /// <summary>Public generic type.</summary>
+                /// <typeparam name="T">The type parameter.</typeparam>
+                public class GenericType<T> { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task CrefWithUnresolvedTypeArgumentInsideGenericDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            namespace MyNamespace
+            {
+                /// <summary>Public class.</summary>
+                /// <see cref="GenericType{UnknownType}"/>
+                public class PublicClass { }
+
+                /// <summary>Public generic type.</summary>
+                /// <typeparam name="T">The type parameter.</typeparam>
+                public class GenericType<T> { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
     }
 }

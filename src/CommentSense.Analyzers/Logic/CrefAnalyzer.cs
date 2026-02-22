@@ -45,7 +45,10 @@ internal static class CrefAnalyzer
 
     private static bool CheckGenericArgumentsVisibility(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol? resolvedSymbol)
     {
-        if (resolvedSymbol is not INamedTypeSymbol { IsGenericType: true, IsDefinition: true })
+        var isGeneric = resolvedSymbol is INamedTypeSymbol { IsGenericType: true };
+        var hasTypeArguments = cref.DescendantNodes().OfType<TypeArgumentListSyntax>().Any();
+
+        if (!isGeneric && !hasTypeArguments)
             return false;
 
         var associatedVisibility = associatedSymbol.GetEffectiveVisibilityLevel();
@@ -53,8 +56,8 @@ internal static class CrefAnalyzer
         {
             foreach (var arg in typeArgList.Arguments)
             {
-                var argInfo = context.SemanticModel.GetSymbolInfo(arg, context.CancellationToken);
-                if (argInfo.Symbol is not { } argSymbol)
+                var argSymbol = context.SemanticModel.GetSymbolInfo(arg, context.CancellationToken).Symbol;
+                if (argSymbol is null)
                     continue;
 
                 var argVisibility = argSymbol.GetEffectiveVisibilityLevel();
@@ -63,7 +66,7 @@ internal static class CrefAnalyzer
                     context.ReportDiagnostic(Diagnostic.Create(
                         CommentSenseRules.InaccessibleCrefRule,
                         cref.GetLocation(),
-                        resolvedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                        (resolvedSymbol ?? argSymbol).ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
                         associatedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
                     return true;
                 }

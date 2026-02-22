@@ -29,12 +29,10 @@ internal static class AccessibilityExtensions
     {
         while (symbol is IArrayTypeSymbol or IPointerTypeSymbol)
         {
-            symbol = symbol switch
-            {
-                IArrayTypeSymbol array => array.ElementType,
-                IPointerTypeSymbol pointer => pointer.PointedAtType,
-                _ => symbol
-            };
+            if (symbol is IArrayTypeSymbol array)
+                symbol = array.ElementType;
+            else if (symbol is IPointerTypeSymbol pointer)
+                symbol = pointer.PointedAtType;
         }
 
         return symbol;
@@ -95,8 +93,7 @@ internal static class AccessibilityExtensions
             Accessibility.Public => VisibilityLevel.Public,
             Accessibility.Protected or Accessibility.ProtectedOrInternal => VisibilityLevel.Protected,
             Accessibility.Internal or Accessibility.ProtectedAndInternal => VisibilityLevel.Internal,
-            Accessibility.Private => VisibilityLevel.Private,
-            _ => VisibilityLevel.Public
+            _ => VisibilityLevel.Private
         };
     }
 }
