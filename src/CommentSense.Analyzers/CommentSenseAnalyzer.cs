@@ -58,6 +58,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 SymbolKind.Event);
 
             compilationContext.RegisterSyntaxNodeAction(CrefAnalyzer.Analyze, SyntaxKind.XmlCrefAttribute);
+            compilationContext.RegisterSyntaxNodeAction(InheritDocAnalyzer.Analyze, SyntaxKind.XmlEmptyElement, SyntaxKind.XmlElement);
             compilationContext.RegisterSyntaxNodeAction(c => DocumentationTextAnalyzer.Analyze(c, analyzedNodes), SyntaxKind.XmlText);
         });
     }
@@ -93,14 +94,6 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         {
             // Documentation is present but does not contain valid tags (e.g., empty or only unsupported tags)
             ReportMissingDocumentation(context, symbol, options);
-            return;
-        }
-
-        if (DocumentationXmlExtensions.HasInheritDoc(element) &&
-            !DocumentationXmlExtensions.HasInheritDocWithCref(element) &&
-            !symbol.IsInheriting())
-        {
-            ReportMissingDocs(context, symbol);
             return;
         }
 

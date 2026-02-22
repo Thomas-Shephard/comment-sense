@@ -185,4 +185,65 @@ internal static class AnalyzerExtensions
             .Where(m => m.Kind == symbol.Kind)
             .Any(m => SymbolEqualityComparer.Default.Equals(containingType.FindImplementationForInterfaceMember(m), symbol));
     }
+
+    public static IEnumerable<ISymbol> GetInheritedSymbols(this ISymbol symbol)
+    {
+        if (symbol is INamedTypeSymbol type)
+        {
+            var currentBase = type.BaseType;
+            while (currentBase != null && currentBase.SpecialType != SpecialType.System_Object)
+            {
+                yield return currentBase;
+                currentBase = currentBase.BaseType;
+            }
+
+            foreach (var i in type.AllInterfaces)
+                yield return i;
+
+            yield break;
+        }
+
+        if (symbol is IMethodSymbol method)
+        {
+            var current = method.OverriddenMethod;
+            while (current != null)
+            {
+                yield return current;
+                current = current.OverriddenMethod;
+            }
+        }
+        else if (symbol is IPropertySymbol property)
+        {
+            var current = property.OverriddenProperty;
+            while (current != null)
+            {
+                yield return current;
+                current = current.OverriddenProperty;
+            }
+        }
+        else if (symbol is IEventSymbol @event)
+        {
+            var current = @event.OverriddenEvent;
+            while (current != null)
+            {
+                yield return current;
+                current = current.OverriddenEvent;
+            }
+        }
+
+        var containingType = symbol.ContainingType;
+        if (containingType == null) yield break;
+
+        foreach (var i in containingType.AllInterfaces)
+        {
+            foreach (var member in i.GetMembers(symbol.Name).Where(m => m.Kind == symbol.Kind))
+            {
+                if (SymbolEqualityComparer.Default.Equals(containingType.FindImplementationForInterfaceMember(member), symbol)
+                    || (containingType.TypeKind == TypeKind.Interface && MatchesInterfaceMember(symbol, member)))
+                {
+                    yield return member;
+                }
+            }
+        }
+    }
 }

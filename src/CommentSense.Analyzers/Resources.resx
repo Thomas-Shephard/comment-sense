@@ -292,6 +292,15 @@
   <data name="InaccessibleCrefDescription" xml:space="preserve">
     <value>The 'cref' attribute in XML documentation should not refer to a member with lower accessibility than the member being documented, as it will result in broken links in the generated documentation.</value>
   </data>
+  <data name="InvalidInheritDocTargetTitle" xml:space="preserve">
+    <value>Invalid inheritdoc target</value>
+  </data>
+  <data name="InvalidInheritDocTargetMessage" xml:space="preserve">
+    <value>The &lt;inheritdoc /&gt; tag on '{0}' has no target to inherit from or the target is missing documentation</value>
+  </data>
+  <data name="InvalidInheritDocTargetDescription" xml:space="preserve">
+    <value>The &lt;inheritdoc /&gt; tag must refer to a base member, an interface implementation, or have a valid 'cref' attribute that points to a documented symbol.</value>
+  </data>
   <data name="SuppressionJustification" xml:space="preserve">
     <value>Handled by CommentSense analyzer.</value>
   </data>

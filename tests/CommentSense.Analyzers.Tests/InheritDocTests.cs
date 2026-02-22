@@ -1,4 +1,5 @@
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -12,8 +13,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>This is a class.</summary>
             public class MyClass
             {
-                /// <inheritdoc/>
-                public void {|CSENSE001:MyMethod|}() { }
+                /// {|CSENSE026:<inheritdoc/>|}
+                public void MyMethod() { }
             }
             """;
 
@@ -161,8 +162,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
     public async Task ClassWithInheritDocButNoBaseReportsDiagnostic()
     {
         const string testCode = """
-            /// <inheritdoc/>
-            public class {|CSENSE001:MyClass|} { }
+            /// {|CSENSE026:<inheritdoc/>|}
+            public class MyClass { }
             """;
         await VerifyCSenseAsync(testCode);
     }
@@ -271,8 +272,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>Derived interface.</summary>
             public interface IDerived : IBase
             {
-                /// <inheritdoc/>
-                void {|CSENSE001:M|}(int x);
+                /// {|CSENSE026:<inheritdoc/>|}
+                void M(int x);
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -337,8 +338,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>Derived interface.</summary>
             public interface IDerived : IBase
             {
-                /// <inheritdoc/>
-                int {|CSENSE001:M|}();
+                /// {|CSENSE026:<inheritdoc/>|}
+                int M();
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -359,8 +360,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>Derived interface.</summary>
             public interface IDerived : IBase
             {
-                /// <inheritdoc/>
-                void {|CSENSE001:M|}(ref int x);
+                /// {|CSENSE026:<inheritdoc/>|}
+                void M(ref int x);
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -381,8 +382,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>Derived interface.</summary>
             public interface IDerived : IBase
             {
-                /// <inheritdoc/>
-                string {|CSENSE001:P|} { get; }
+                /// {|CSENSE026:<inheritdoc/>|}
+                string P { get; }
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -450,8 +451,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>Derived interface.</summary>
             public interface IDerived : IBase
             {
-                /// <inheritdoc/>
-                event Action {|CSENSE001:E|};
+                /// {|CSENSE026:<inheritdoc/>|}
+                event Action E;
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -510,8 +511,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             /// <summary>Class Summary.</summary>
             public class MyClass
             {
-                /// <inheritdoc/>
-                public void {|CSENSE001:M|}() { }
+                /// {|CSENSE026:<inheritdoc/>|}
+                public void M() { }
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -534,8 +535,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             {
                 void IBase.M() {}
 
-                /// <inheritdoc/>
-                public static void {|CSENSE001:M|}() { }
+                /// {|CSENSE026:<inheritdoc/>|}
+                public static void M() { }
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -559,8 +560,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
                 int IBase.M() => 0;
                 private static int _field;
 
-                /// <inheritdoc/>
-                public ref int {|CSENSE001:M|}() { return ref _field; }
+                /// {|CSENSE026:<inheritdoc/>|}
+                public ref int M() { return ref _field; }
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -583,8 +584,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             {
                 int IBase.P => 0;
 
-                /// <inheritdoc/>
-                public static int {|CSENSE001:P|} => 0;
+                /// {|CSENSE026:<inheritdoc/>|}
+                public static int P => 0;
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -608,8 +609,8 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
                 int IBase.P => 0;
                 private static int _field;
 
-                /// <inheritdoc/>
-                public static ref int {|CSENSE001:P|} => ref _field;
+                /// {|CSENSE026:<inheritdoc/>|}
+                public static ref int P => ref _field;
             }
             """;
         await VerifyCSenseAsync(testCode);
@@ -872,5 +873,93 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             }
             """;
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task InheritDocWithInvalidCrefReportsDiagnostic()
+    {
+        const string testCode = """
+            public class MyClass
+            {
+                /// {|CSENSE026:<inheritdoc cref="NonExistent"/>|}
+                public void M() { }
+            }
+            """;
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress), ("CSENSE007", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task InheritDocWithValidCrefToMemberWithoutDocsReportsDiagnostic()
+    {
+        const string testCode = """
+            public class MyClass
+            {
+                public void Other() { }
+
+                /// {|CSENSE026:<inheritdoc cref="Other"/>|}
+                public void M() { }
+            }
+            """;
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task InheritDocOnOverrideOfMemberWithoutDocsReportsDiagnostic()
+    {
+        const string testCode = """
+            public class Base
+            {
+                public virtual void M() { }
+            }
+
+            public class Derived : Base
+            {
+                /// {|CSENSE026:<inheritdoc/>|}
+                public override void M() { }
+            }
+            """;
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task InheritDocOnInterfaceImplementationOfMemberWithoutDocsReportsDiagnostic()
+    {
+        const string testCode = """
+            public interface IBase
+            {
+                void M();
+            }
+
+            public class MyClass : IBase
+            {
+                /// {|CSENSE026:<inheritdoc/>|}
+                public void M() { }
+            }
+            """;
+        await VerifyCSenseAsync(testCode, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public async Task InheritDocOnDeepOverrideOfMemberWithDocsDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            public class GrandBase
+            {
+                /// <summary>GrandBase documentation.</summary>
+                public virtual void M() { }
+            }
+
+            public class Base : GrandBase
+            {
+                public override void M() { }
+            }
+
+            public class Derived : Base
+            {
+                /// <inheritdoc/>
+                public override void M() { }
+            }
+            """;
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
     }
 }
