@@ -23,48 +23,52 @@ internal static class InheritDocAnalyzer
         if (!associatedSymbol.IsEligibleForAnalysis(options.VisibilityLevel))
             return;
 
-        var crefAttr = node switch
+        var crefAttr = GetCrefAttribute(node);
+        if (crefAttr != null)
+        {
+            AnalyzeCref(context, associatedSymbol, crefAttr);
+        }
+        else
+        {
+            AnalyzeImplicit(context, associatedSymbol, node.GetLocation());
+        }
+    }
+
+    private static XmlCrefAttributeSyntax? GetCrefAttribute(XmlNodeSyntax node)
+    {
+        return node switch
         {
             XmlElementSyntax e => e.StartTag.Attributes.OfType<XmlCrefAttributeSyntax>().FirstOrDefault(),
             XmlEmptyElementSyntax ee => ee.Attributes.OfType<XmlCrefAttributeSyntax>().FirstOrDefault(),
             _ => null
         };
+    }
 
-        if (crefAttr != null)
-        {
-            var symbolInfo = context.SemanticModel.GetSymbolInfo(crefAttr.Cref, context.CancellationToken);
-            var target = symbolInfo.Symbol ?? (symbolInfo.CandidateSymbols.Length == 1 ? symbolInfo.CandidateSymbols[0] : null);
+    private static void AnalyzeCref(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, XmlCrefAttributeSyntax crefAttr)
+    {
+        var symbolInfo = context.SemanticModel.GetSymbolInfo(crefAttr.Cref, context.CancellationToken);
+        var target = symbolInfo.Symbol ?? (symbolInfo.CandidateSymbols.Length == 1 ? symbolInfo.CandidateSymbols[0] : null);
 
-            if (target == null)
-            {
-                ReportInvalidTarget(context, associatedSymbol, node.GetLocation());
-                return;
-            }
+        if (target != null && HasDocumentation(target))
+            return;
 
-            if (!HasDocumentation(target))
-                ReportInvalidTarget(context, associatedSymbol, node.GetLocation());
-        }
-        else
-        {
-            if (!associatedSymbol.GetInheritedSymbols().Any(HasDocumentation))
-                ReportInvalidTarget(context, associatedSymbol, node.GetLocation());
-        }
+        var location = crefAttr.Parent?.GetLocation() ?? crefAttr.GetLocation();
+        ReportInvalidTarget(context, associatedSymbol, location);
+    }
+
+    private static void AnalyzeImplicit(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, Location location)
+    {
+        if (!associatedSymbol.GetInheritedSymbols().Any(HasDocumentation))
+            ReportInvalidTarget(context, associatedSymbol, location);
     }
 
     private static bool HasDocumentation(ISymbol symbol)
     {
-        var xml = symbol.GetDocumentationCommentXml();
-        if (string.IsNullOrWhiteSpace(xml))
-            return false;
-
-        if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))
-            return false;
-
-        return DocumentationXmlExtensions.HasValidDocumentation(element);
+        return DocumentationXmlExtensions.HasValidDocumentation(symbol.GetDocumentationCommentXml());
     }
 
-    private static void ReportInvalidTarget(SyntaxNodeAnalysisContext context, ISymbol symbol, Location location)
+    private static void ReportInvalidTarget(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, Location location)
     {
-        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.InvalidInheritDocTargetRule, location, symbol.GetDisplayName()));
+        context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.InvalidInheritDocTargetRule, location, associatedSymbol.GetDisplayName()));
     }
 }
