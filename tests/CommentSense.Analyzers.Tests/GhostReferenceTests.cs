@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using CommentSense.Analyzers.Logic;
 using CommentSense.Core;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
@@ -8,6 +10,35 @@ namespace CommentSense.Analyzers.Tests;
 
 public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
+    [Test]
+    public void NameListComparerWorksCorrectly()
+    {
+        var comparer = new GhostReferenceAnalyzer.NameListComparer();
+
+        var array1 = ImmutableArray.Create("a", "b");
+        var array2 = ImmutableArray.Create("a", "b");
+        var array3 = ImmutableArray.Create("a", "B");
+        var array4 = ImmutableArray.Create("a");
+        var array5 = ImmutableArray.Create("a", "c");
+
+        using (Assert.EnterMultipleScope())
+        {
+            // Equal arrays
+            Assert.That(comparer.Equals(array1, array2), Is.True);
+            Assert.That(comparer.GetHashCode(array1), Is.EqualTo(comparer.GetHashCode(array2)));
+
+            // Case-insensitive equal
+            Assert.That(comparer.Equals(array1, array3), Is.True);
+            Assert.That(comparer.GetHashCode(array1), Is.EqualTo(comparer.GetHashCode(array3)));
+
+            // Different length
+            Assert.That(comparer.Equals(array1, array4), Is.False);
+
+            // Different content
+            Assert.That(comparer.Equals(array1, array5), Is.False);
+        }
+    }
+
     [Test]
     public async Task FastPathDetectsGhostReferencesWithManyParameters()
     {
