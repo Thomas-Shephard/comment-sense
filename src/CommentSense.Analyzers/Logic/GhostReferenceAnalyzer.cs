@@ -101,18 +101,23 @@ internal static class GhostReferenceAnalyzer
                 caseInsensitiveMap[name] = name;
         }
 
+        var lookups = new FastPathLookups(exactMatchMap, caseInsensitiveMap, rule);
+
         foreach (var token in context.XmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
         {
-            AnalyzeTokenFast(token, exactMatchMap, caseInsensitiveMap, context, rule);
+            AnalyzeTokenFast(token, lookups, context);
         }
     }
 
+    private readonly record struct FastPathLookups(
+        Dictionary<string, string> ExactMatchMap,
+        Dictionary<string, string> CaseInsensitiveMap,
+        DiagnosticDescriptor Rule);
+
     private static void AnalyzeTokenFast(
         SyntaxToken token,
-        Dictionary<string, string> exactMatchMap,
-        Dictionary<string, string> caseInsensitiveMap,
-        GhostReferenceContext context,
-        DiagnosticDescriptor rule)
+        FastPathLookups lookups,
+        GhostReferenceContext context)
     {
         var text = token.Text;
         var start = -1;
@@ -125,13 +130,13 @@ internal static class GhostReferenceAnalyzer
             }
             else if (!isWordChar && start != -1)
             {
-                ReportIfMatch(token, text, start, i - start, exactMatchMap, caseInsensitiveMap, context, rule);
+                ReportIfMatch(token, text, start, i - start, lookups, context);
                 start = -1;
             }
         }
 
         if (start != -1)
-            ReportIfMatch(token, text, start, text.Length - start, exactMatchMap, caseInsensitiveMap, context, rule);
+            ReportIfMatch(token, text, start, text.Length - start, lookups, context);
     }
 
     private static void ReportIfMatch(
@@ -139,17 +144,12 @@ internal static class GhostReferenceAnalyzer
         string text,
         int wordStart,
         int wordLength,
-        Dictionary<string, string> exactMatchMap,
-        Dictionary<string, string> caseInsensitiveMap,
-        GhostReferenceContext context,
-        DiagnosticDescriptor rule)
+        FastPathLookups lookups,
+        GhostReferenceContext context)
     {
         var word = text.Substring(wordStart, wordLength);
-        if (!exactMatchMap.TryGetValue(word, out var originalName))
-        {
-            if (!caseInsensitiveMap.TryGetValue(word, out originalName))
-                return;
-        }
+        if (!lookups.ExactMatchMap.TryGetValue(word, out var originalName) && !lookups.CaseInsensitiveMap.TryGetValue(word, out originalName))
+            return;
 
         if (!IsGhostReference(word, originalName, context.Options, context.ContainingTag, context.NameValue))
             return;
@@ -162,7 +162,7 @@ internal static class GhostReferenceAnalyzer
 
         var location = Location.Create(context.AnalysisContext.Node.SyntaxTree, span);
         var properties = ImmutableDictionary<string, string?>.Empty.Add("originalName", originalName);
-        context.AnalysisContext.ReportDiagnostic(Diagnostic.Create(rule, location, properties, word, originalName));
+        context.AnalysisContext.ReportDiagnostic(Diagnostic.Create(lookups.Rule, location, properties, word, originalName));
     }
 
     private static string? ResolveOriginalName(string matchedText, ImmutableArray<string> names)
