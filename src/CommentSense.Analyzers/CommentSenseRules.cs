@@ -239,6 +239,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: CreateResourceString(nameof(Resources.DocumentationTagOrderMismatchDescription)));
 
+    public static readonly DiagnosticDescriptor InaccessibleCrefRule = new(
+        CommentSenseDiagnosticIds.InaccessibleCrefId,
+        CreateResourceString(nameof(Resources.InaccessibleCrefTitle)),
+        CreateResourceString(nameof(Resources.InaccessibleCrefMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.InaccessibleCrefDescription)));
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =
     [
         DisabledDocumentationParsingRule,
@@ -265,6 +274,7 @@ internal static class CommentSenseRules
         GhostTypeParameterReferenceRule,
         StraySummaryDocumentationRule,
         StrayExceptionDocumentationRule,
-        DocumentationTagOrderMismatchRule
+        DocumentationTagOrderMismatchRule,
+        InaccessibleCrefRule
     ];
 }

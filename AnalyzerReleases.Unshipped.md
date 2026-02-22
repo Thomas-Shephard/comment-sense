@@ -5,3 +5,4 @@ Rule ID | Category | Severity | Notes
 CSENSE022 | Documentation | Warning | Stray summary documentation
 CSENSE023 | Documentation | Warning | Stray exception documentation
 CSENSE024 | Documentation | Warning | XML documentation tag order mismatch
+CSENSE025 | Documentation | Warning | Inaccessible XML documentation reference

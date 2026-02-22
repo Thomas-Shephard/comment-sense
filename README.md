@@ -31,6 +31,7 @@ For CommentSense to analyze your documentation, your project must have XML docum
     *   *Default:* Flags empty content or content that just repeats the symbol name.
     *   *Configurable:* Add custom terms, minimum length, punctuation requirements, capitalization requirements, and similarity thresholds.
 *   **CSENSE007**: Validates that `cref` attributes in documentation point to valid symbols.
+*   **CSENSE025**: Flags `cref` attributes that point to symbols with lower accessibility than the member being documented (e.g., a public member pointing to an internal type).
 *   **CSENSE022**: Flags stray `<summary>` tags that are nested within other tags or duplicated.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
 *   **CSENSE019**: Recommends using the `<see langword="..." />` tag for C# keywords (e.g., `true`, `false`, `null`, `void`) instead of plain text.

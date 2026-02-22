@@ -188,7 +188,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
         const string testCode = """
             using System;
             /// <summary>This is a summary for the exception class.</summary>
-            class Ex : Exception { }
+            public class Ex : Exception { }
             /// <summary>This is a summary for the main class.</summary>
             public class MyClass
             {

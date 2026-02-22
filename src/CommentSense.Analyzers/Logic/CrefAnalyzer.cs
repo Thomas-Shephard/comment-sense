@@ -32,8 +32,26 @@ internal static class CrefAnalyzer
             return;
         }
 
+        if (symbolInfo.Symbol is not null)
+            HandleResolvedCref(context, symbol, cref, symbolInfo.Symbol);
+
         if (crefAttribute.IsInExceptionTag())
             HandleExceptionTagCref(context, symbol, cref, cref.ToString(), symbolInfo.Symbol, options);
+    }
+
+    private static void HandleResolvedCref(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol resolvedSymbol)
+    {
+        var associatedVisibility = associatedSymbol.GetEffectiveVisibilityLevel();
+        var resolvedVisibility = resolvedSymbol.GetEffectiveVisibilityLevel();
+
+        if (resolvedVisibility > associatedVisibility)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                CommentSenseRules.InaccessibleCrefRule,
+                cref.GetLocation(),
+                resolvedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                associatedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        }
     }
 
     private static void HandleUnresolvedCref(SyntaxNodeAnalysisContext context, XmlCrefAttributeSyntax crefAttribute, string crefText, Location location, ISymbol associatedSymbol, CommentSenseOptions options)

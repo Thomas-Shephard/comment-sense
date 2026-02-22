@@ -6,35 +6,74 @@ internal static class AccessibilityExtensions
 {
     public static bool IsEffectivelyAccessible(this ISymbol? symbol, VisibilityLevel visibilityLevel = VisibilityLevel.Protected)
     {
-        if (symbol is null)
-        {
+        if (visibilityLevel is < VisibilityLevel.Public or > VisibilityLevel.Private)
             return false;
-        }
 
-        if (symbol.Kind is SymbolKind.Local or SymbolKind.Label or SymbolKind.RangeVariable)
+        return symbol.GetEffectiveVisibilityLevel() <= visibilityLevel;
+    }
+
+    public static VisibilityLevel GetEffectiveVisibilityLevel(this ISymbol? symbol)
+    {
+        while (true)
         {
-            return false;
-        }
+            if (symbol is null)
+                return VisibilityLevel.Private;
 
-        var current = symbol;
-        while (current is not null && current.Kind is not SymbolKind.Namespace)
-        {
-            bool isAccessible = current.DeclaredAccessibility == Accessibility.NotApplicable || visibilityLevel switch
+            if (symbol is IArrayTypeSymbol array)
             {
-                VisibilityLevel.Public => current.DeclaredAccessibility == Accessibility.Public,
-                VisibilityLevel.Protected => current.DeclaredAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal,
-                VisibilityLevel.Internal => current.DeclaredAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal or Accessibility.Internal or Accessibility.ProtectedAndInternal,
-                VisibilityLevel.Private => true,
-                _ => false
-            };
-
-            if (!isAccessible)
-            {
-                return false;
+                symbol = array.ElementType;
+                continue;
             }
 
-            current = current.ContainingSymbol;
+            if (symbol is IPointerTypeSymbol pointer)
+            {
+                symbol = pointer.PointedAtType;
+                continue;
+            }
+
+            if (symbol.Kind is SymbolKind.Local or SymbolKind.Label or SymbolKind.RangeVariable)
+                return VisibilityLevel.Private;
+
+            var mostRestrictive = VisibilityLevel.Public;
+
+            if (symbol is INamedTypeSymbol { TypeArguments.IsEmpty: false } namedType)
+            {
+                foreach (var typeArg in namedType.TypeArguments)
+                {
+                    if (typeArg.Kind == SymbolKind.TypeParameter)
+                        continue;
+
+                    var argLevel = typeArg.GetEffectiveVisibilityLevel();
+                    if (argLevel > mostRestrictive)
+                        mostRestrictive = argLevel;
+                }
+            }
+
+            var current = symbol;
+            while (current is not null && current.Kind is not SymbolKind.Namespace)
+            {
+                if (current.DeclaredAccessibility != Accessibility.NotApplicable)
+                {
+                    var level = current.DeclaredAccessibility switch
+                    {
+                        Accessibility.Public => VisibilityLevel.Public,
+                        Accessibility.Protected or Accessibility.ProtectedOrInternal => VisibilityLevel.Protected,
+                        Accessibility.Internal or Accessibility.ProtectedAndInternal => VisibilityLevel.Internal,
+                        Accessibility.Private => VisibilityLevel.Private,
+                        _ => VisibilityLevel.Public
+                    };
+
+                    if (level > mostRestrictive)
+                        mostRestrictive = level;
+
+                    if (mostRestrictive == VisibilityLevel.Private)
+                        break;
+                }
+
+                current = current.ContainingSymbol;
+            }
+
+            return mostRestrictive;
         }
-        return true;
     }
 }

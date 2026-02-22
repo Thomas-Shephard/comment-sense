@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using CommentSense.Core.Utilities;
 using CommentSense.TestHelpers;
 using NUnit.Framework;
@@ -36,6 +37,28 @@ public class AccessibilityExtensionsTests
     {
         var symbol = RoslynTestUtils.GetSymbolFromSource(source, symbolName);
         Assert.That(symbol.IsEffectivelyAccessible(level), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void IsEffectivelyAccessibleGenericWithInternalArgumentReturnsExpected()
+    {
+        const string source = "using System.Collections.Generic; internal class InternalType {} public class C { internal List<InternalType> f; }";
+        var symbol = (IFieldSymbol)RoslynTestUtils.GetSymbolFromSource(source, "f");
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(symbol.IsEffectivelyAccessible(), Is.False);
+            Assert.That(symbol.IsEffectivelyAccessible(VisibilityLevel.Internal), Is.True);
+        }
+    }
+    [Test]
+    public void GetEffectiveVisibilityLevelGenericWithInternalArgumentReturnsInternal()
+    {
+        const string source = "using System.Collections.Generic; internal class InternalType {} public class C { private List<InternalType> f; }";
+        var symbol = (IFieldSymbol)RoslynTestUtils.GetSymbolFromSource(source, "f");
+        var type = symbol.Type;
+
+        Assert.That(type.GetEffectiveVisibilityLevel(), Is.EqualTo(VisibilityLevel.Internal));
     }
 
     [Test]
