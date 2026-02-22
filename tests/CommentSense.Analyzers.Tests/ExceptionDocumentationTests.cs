@@ -1481,7 +1481,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             {
                 private EventHandler? _myEvent;
                 /// <summary>This is a summary for the event.</summary>
-                public event EventHandler MyEvent
+                public event EventHandler {|CSENSE012:MyEvent|}
                 {
                     add => throw new InvalidOperationException();
                     remove => _myEvent -= value;
@@ -1489,8 +1489,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             }
             """;
 
-        // Currently ignored by analyzer. Documenting current behavior.
-        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+        await VerifyCSenseAsync(testCode);
     }
 
     [Test]

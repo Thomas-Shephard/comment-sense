@@ -165,7 +165,6 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 {
                     ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element, options);
                     ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, options);
-                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, options, isPrimaryCtor: true);
                 }
                 break;
             case IEventSymbol eventSymbol:

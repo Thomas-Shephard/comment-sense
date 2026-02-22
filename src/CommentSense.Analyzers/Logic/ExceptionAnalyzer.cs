@@ -463,27 +463,23 @@ internal static class ExceptionAnalyzer
             if (n == root)
                 return true;
 
-            if (n is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax or BaseTypeDeclarationSyntax)
+            if (n is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax)
                 return false;
 
-            if (isPrimaryCtor && IsExcludedPrimaryConstructorMember(n))
+            if (isPrimaryCtor && n is MemberDeclarationSyntax)
+                return n is FieldDeclarationSyntax;
+
+            return true;
+        }).Where(n =>
+        {
+            if (!isPrimaryCtor)
+                return true;
+
+            if (n is MemberDeclarationSyntax and not FieldDeclarationSyntax)
                 return false;
 
             return true;
         });
-    }
-
-    private static bool IsExcludedPrimaryConstructorMember(SyntaxNode n)
-    {
-        // Block members that have their own analysis to avoid duplicates.
-        // We descend into FieldDeclaration because fields don't have their own ExceptionAnalyzer.
-        return n is MethodDeclarationSyntax
-                    or ConstructorDeclarationSyntax
-                    or PropertyDeclarationSyntax
-                    or IndexerDeclarationSyntax
-                    or AccessorListSyntax
-                    or AccessorDeclarationSyntax
-                    or EventDeclarationSyntax;
     }
 
     private static IEnumerable<ITypeSymbol> IdentifyThrownExceptions(IEnumerable<SyntaxNode> nodes, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
