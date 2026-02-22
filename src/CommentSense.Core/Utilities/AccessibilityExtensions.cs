@@ -14,66 +14,89 @@ internal static class AccessibilityExtensions
 
     public static VisibilityLevel GetEffectiveVisibilityLevel(this ISymbol? symbol)
     {
-        while (true)
+        symbol = symbol.UnwrapType();
+        if (symbol is null || symbol.Kind is SymbolKind.Local or SymbolKind.Label or SymbolKind.RangeVariable)
+            return VisibilityLevel.Private;
+
+        var mostRestrictive = GetTypeArgumentVisibility(symbol);
+        if (mostRestrictive == VisibilityLevel.Private)
+            return VisibilityLevel.Private;
+
+        return GetHierarchyVisibility(symbol, mostRestrictive);
+    }
+
+    private static ISymbol? UnwrapType(this ISymbol? symbol)
+    {
+        while (symbol is IArrayTypeSymbol or IPointerTypeSymbol)
         {
-            if (symbol is null)
-                return VisibilityLevel.Private;
-
-            if (symbol is IArrayTypeSymbol array)
+            symbol = symbol switch
             {
-                symbol = array.ElementType;
-                continue;
-            }
-
-            if (symbol is IPointerTypeSymbol pointer)
-            {
-                symbol = pointer.PointedAtType;
-                continue;
-            }
-
-            if (symbol.Kind is SymbolKind.Local or SymbolKind.Label or SymbolKind.RangeVariable)
-                return VisibilityLevel.Private;
-
-            var mostRestrictive = VisibilityLevel.Public;
-
-            if (symbol is INamedTypeSymbol { TypeArguments.IsEmpty: false } namedType)
-            {
-                foreach (var typeArg in namedType.TypeArguments)
-                {
-                    if (typeArg.Kind == SymbolKind.TypeParameter)
-                        continue;
-
-                    var argLevel = typeArg.GetEffectiveVisibilityLevel();
-                    if (argLevel > mostRestrictive)
-                        mostRestrictive = argLevel;
-                }
-            }
-
-            var current = symbol;
-            while (current is not null && current.Kind is not SymbolKind.Namespace)
-            {
-                if (current.DeclaredAccessibility != Accessibility.NotApplicable)
-                {
-                    var level = current.DeclaredAccessibility switch
-                    {
-                        Accessibility.Public => VisibilityLevel.Public,
-                        Accessibility.Protected or Accessibility.ProtectedOrInternal => VisibilityLevel.Protected,
-                        Accessibility.Internal or Accessibility.ProtectedAndInternal => VisibilityLevel.Internal,
-                        Accessibility.Private => VisibilityLevel.Private,
-                        _ => VisibilityLevel.Public
-                    };
-
-                    if (level > mostRestrictive)
-                        mostRestrictive = level;
-
-                    if (mostRestrictive == VisibilityLevel.Private)
-                        break;
-                }
-
-                current = current.ContainingSymbol;
-            }
-
-            return mostRestrictive;
+                IArrayTypeSymbol array => array.ElementType,
+                IPointerTypeSymbol pointer => pointer.PointedAtType,
+                _ => symbol
+            };
         }
+
+        return symbol;
+    }
+
+    private static VisibilityLevel GetTypeArgumentVisibility(ISymbol symbol)
+    {
+        var typeArguments = symbol switch
+        {
+            INamedTypeSymbol namedType => namedType.TypeArguments,
+            IMethodSymbol method => method.TypeArguments,
+            _ => default
+        };
+
+        if (typeArguments.IsDefaultOrEmpty)
+            return VisibilityLevel.Public;
+
+        var mostRestrictive = VisibilityLevel.Public;
+        foreach (var typeArg in typeArguments)
+        {
+            if (typeArg.Kind == SymbolKind.TypeParameter)
+                continue;
+
+            var argLevel = typeArg.GetEffectiveVisibilityLevel();
+            if (argLevel > mostRestrictive)
+                mostRestrictive = argLevel;
+        }
+
+        return mostRestrictive;
+    }
+
+    private static VisibilityLevel GetHierarchyVisibility(ISymbol symbol, VisibilityLevel initial)
+    {
+        var mostRestrictive = initial;
+        var current = symbol;
+        while (current is not null && current.Kind is not SymbolKind.Namespace)
+        {
+            if (current.DeclaredAccessibility != Accessibility.NotApplicable)
+            {
+                var level = MapAccessibilityToVisibilityLevel(current.DeclaredAccessibility);
+                if (level > mostRestrictive)
+                    mostRestrictive = level;
+
+                if (mostRestrictive == VisibilityLevel.Private)
+                    break;
+            }
+
+            current = current.ContainingSymbol;
+        }
+
+        return mostRestrictive;
+    }
+
+    private static VisibilityLevel MapAccessibilityToVisibilityLevel(Accessibility accessibility)
+    {
+        return accessibility switch
+        {
+            Accessibility.Public => VisibilityLevel.Public,
+            Accessibility.Protected or Accessibility.ProtectedOrInternal => VisibilityLevel.Protected,
+            Accessibility.Internal or Accessibility.ProtectedAndInternal => VisibilityLevel.Internal,
+            Accessibility.Private => VisibilityLevel.Private,
+            _ => VisibilityLevel.Public
+        };
     }
 }

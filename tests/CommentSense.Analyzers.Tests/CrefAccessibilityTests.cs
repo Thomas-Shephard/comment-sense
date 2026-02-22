@@ -353,11 +353,15 @@ public class CrefAccessibilityTests : CommentSenseAnalyzerTestBase<CommentSenseA
             namespace MyNamespace
             {
                 /// <summary>Public class.</summary>
-                /// <see cref="{|CSENSE025:InternalType|}[]"/>
+                /// <see cref="{|CSENSE025:GenericType{MyNamespace.InternalType}|}"/>
                 public class PublicClass { }
 
                 /// <summary>Internal type.</summary>
                 internal class InternalType { }
+
+                /// <summary>Public generic type.</summary>
+                /// <typeparam name="T">The type parameter.</typeparam>
+                public class GenericType<T> { }
             }
             """;
 
