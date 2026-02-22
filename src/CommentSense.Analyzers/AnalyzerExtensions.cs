@@ -197,7 +197,11 @@ internal static class AnalyzerExtensions
     private static IEnumerable<ISymbol> GetInheritedTypes(INamedTypeSymbol type)
     {
         var currentBase = type.BaseType;
-        while (currentBase != null && currentBase.SpecialType != SpecialType.System_Object)
+        while (currentBase != null &&
+               currentBase.SpecialType != SpecialType.System_Object &&
+               currentBase.SpecialType != SpecialType.System_ValueType &&
+               currentBase.SpecialType != SpecialType.System_Enum &&
+               currentBase.SpecialType != SpecialType.System_MulticastDelegate)
         {
             yield return currentBase;
             currentBase = currentBase.BaseType;
@@ -211,6 +215,28 @@ internal static class AnalyzerExtensions
     {
         foreach (var overridden in GetOverriddenMembers(symbol))
             yield return overridden;
+
+        switch (symbol)
+        {
+            case IMethodSymbol method:
+                {
+                    foreach (var explicitImpl in method.ExplicitInterfaceImplementations)
+                        yield return explicitImpl;
+                    break;
+                }
+            case IPropertySymbol property:
+                {
+                    foreach (var explicitImpl in property.ExplicitInterfaceImplementations)
+                        yield return explicitImpl;
+                    break;
+                }
+            case IEventSymbol @event:
+                {
+                    foreach (var explicitImpl in @event.ExplicitInterfaceImplementations)
+                        yield return explicitImpl;
+                    break;
+                }
+        }
 
         var containingType = symbol.ContainingType;
         if (containingType == null) yield break;

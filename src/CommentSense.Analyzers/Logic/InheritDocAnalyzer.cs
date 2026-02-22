@@ -33,7 +33,7 @@ internal static class InheritDocAnalyzer
         if (crefAttr != null)
         {
             var symbolInfo = context.SemanticModel.GetSymbolInfo(crefAttr.Cref, context.CancellationToken);
-            var target = symbolInfo.Symbol ?? symbolInfo.CandidateSymbols.FirstOrDefault();
+            var target = symbolInfo.Symbol ?? (symbolInfo.CandidateSymbols.Length == 1 ? symbolInfo.CandidateSymbols[0] : null);
 
             if (target == null)
             {
@@ -54,10 +54,7 @@ internal static class InheritDocAnalyzer
     private static bool HasDocumentation(ISymbol symbol)
     {
         var xml = symbol.GetDocumentationCommentXml();
-        if (xml == null || string.IsNullOrWhiteSpace(xml))
-            return false;
-
-        if (!xml.Contains("<"))
+        if (string.IsNullOrWhiteSpace(xml))
             return false;
 
         if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))

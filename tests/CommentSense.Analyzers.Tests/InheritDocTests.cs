@@ -962,4 +962,23 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             """;
         await VerifyCSenseAsync(testCode, expectDiagnostic: false, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
     }
+
+    [Test]
+    public async Task InheritDocOnExplicitInterfaceImplementationWithDocsDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            public interface IBase
+            {
+                /// <summary>IBase documentation.</summary>
+                void M();
+            }
+
+            public class MyClass : IBase
+            {
+                /// <inheritdoc/>
+                void IBase.M() { }
+            }
+            """;
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
 }
