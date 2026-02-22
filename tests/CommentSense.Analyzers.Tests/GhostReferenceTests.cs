@@ -1,4 +1,6 @@
+using CommentSense.Core;
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
@@ -6,6 +8,53 @@ namespace CommentSense.Analyzers.Tests;
 
 public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
+    [Test]
+    public async Task FastPathDetectsGhostReferencesWithManyParameters()
+    {
+        var parameterCount = 110;
+        var parameters = string.Join(", ", Enumerable.Range(0, parameterCount).Select(i => $"int p{i}"));
+
+        var code = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// This summary mentions {|CSENSE020:p0|} and {|CSENSE020:p{{parameterCount - 1}}|}.
+                /// </summary>
+                public void M({{parameters}}) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(code, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
+    public async Task FastPathDetectsGhostReferencesWithLongText()
+    {
+        var longSummary = new string('a', 50001) + " {|CSENSE020:p0|} " + new string('b', 1000);
+
+        var code = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// {{longSummary}}
+                /// </summary>
+                public void M(int p0) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(code, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
     [Test]
     public async Task GhostParameterInSummaryReportsDiagnostic()
     {
