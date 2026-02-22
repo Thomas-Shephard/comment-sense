@@ -45,10 +45,8 @@ internal static class CrefAnalyzer
 
     private static bool CheckGenericArgumentsVisibility(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol? resolvedSymbol)
     {
-        var isGeneric = resolvedSymbol is INamedTypeSymbol { IsGenericType: true };
-        var hasTypeArguments = cref.DescendantNodes().OfType<TypeArgumentListSyntax>().Any();
-
-        if (!isGeneric && !hasTypeArguments)
+        var crefText = cref.ToString();
+        if (resolvedSymbol is not (INamedTypeSymbol { IsGenericType: true } or IMethodSymbol { IsGenericMethod: true }) && crefText.IndexOf('{') == -1)
             return false;
 
         var associatedVisibility = associatedSymbol.GetEffectiveVisibilityLevel();

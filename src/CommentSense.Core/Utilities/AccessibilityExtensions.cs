@@ -14,19 +14,6 @@ internal static class AccessibilityExtensions
 
     public static VisibilityLevel GetEffectiveVisibilityLevel(this ISymbol? symbol)
     {
-        symbol = symbol.UnwrapType();
-        if (symbol is null || symbol.Kind is SymbolKind.Local or SymbolKind.Label or SymbolKind.RangeVariable)
-            return VisibilityLevel.Private;
-
-        var mostRestrictive = GetTypeArgumentVisibility(symbol);
-        if (mostRestrictive == VisibilityLevel.Private)
-            return VisibilityLevel.Private;
-
-        return GetHierarchyVisibility(symbol, mostRestrictive);
-    }
-
-    private static ISymbol? UnwrapType(this ISymbol? symbol)
-    {
         while (symbol is IArrayTypeSymbol or IPointerTypeSymbol)
         {
             if (symbol is IArrayTypeSymbol array)
@@ -35,7 +22,14 @@ internal static class AccessibilityExtensions
                 symbol = pointer.PointedAtType;
         }
 
-        return symbol;
+        if (symbol is null || symbol.Kind is SymbolKind.Local or SymbolKind.Label or SymbolKind.RangeVariable)
+            return VisibilityLevel.Private;
+
+        var mostRestrictive = GetTypeArgumentVisibility(symbol);
+        if (mostRestrictive == VisibilityLevel.Private)
+            return VisibilityLevel.Private;
+
+        return GetHierarchyVisibility(symbol, mostRestrictive);
     }
 
     private static VisibilityLevel GetTypeArgumentVisibility(ISymbol symbol)
