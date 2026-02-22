@@ -123,12 +123,15 @@ internal static class GhostReferenceAnalyzer
         var start = -1;
         for (var i = 0; i < text.Length; i++)
         {
-            var isWordChar = char.IsLetterOrDigit(text[i]) || text[i] == '_';
-            if (isWordChar && start == -1)
+            var ch = text[i];
+            var isPart = SyntaxFacts.IsIdentifierPartCharacter(ch);
+
+            if (isPart && start == -1)
             {
-                start = i;
+                if (SyntaxFacts.IsIdentifierStartCharacter(ch))
+                    start = i;
             }
-            else if (!isWordChar && start != -1)
+            else if (!isPart && start != -1)
             {
                 ReportIfMatch(token, text, start, i - start, lookups, context);
                 start = -1;
@@ -198,7 +201,8 @@ internal static class GhostReferenceAnalyzer
     {
         return RegexCache.GetOrAdd(names, static n =>
         {
-            var pattern = $@"\b({string.Join("|", n.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
+            var uniqueNames = n.Distinct(StringComparer.OrdinalIgnoreCase);
+            var pattern = $@"\b({string.Join("|", uniqueNames.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
             return new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
         });
     }

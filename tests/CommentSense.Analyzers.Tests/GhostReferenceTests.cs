@@ -197,6 +197,31 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     }
 
     [Test]
+    public async Task FastPathHandlesUnicodeIdentifiersCorrectly()
+    {
+        var padding = new string(' ', 50001);
+
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// {{padding}}
+                /// The {|CSENSE020:λ_identifier|} mention.
+                /// </summary>
+                public void M(int λ_identifier) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.LowQualityDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
     public async Task GhostParameterInSummaryReportsDiagnostic()
     {
         const string testCode = """
