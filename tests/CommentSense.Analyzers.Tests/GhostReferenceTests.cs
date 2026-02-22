@@ -1,4 +1,8 @@
+using System.Collections.Immutable;
+using CommentSense.Analyzers.Logic;
+using CommentSense.Core;
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
@@ -6,6 +10,217 @@ namespace CommentSense.Analyzers.Tests;
 
 public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
+    [Test]
+    public void NameListComparerWorksCorrectly()
+    {
+        var comparer = new GhostReferenceAnalyzer.NameListComparer();
+
+        var array1 = ImmutableArray.Create("a", "b");
+        var array2 = ImmutableArray.Create("a", "b");
+        var array3 = ImmutableArray.Create("a", "B");
+        var array4 = ImmutableArray.Create("a");
+        var array5 = ImmutableArray.Create("a", "c");
+
+        using (Assert.EnterMultipleScope())
+        {
+            // Equal arrays
+            Assert.That(comparer.Equals(array1, array2), Is.True);
+            Assert.That(comparer.GetHashCode(array1), Is.EqualTo(comparer.GetHashCode(array2)));
+
+            // Case-insensitive equal
+            Assert.That(comparer.Equals(array1, array3), Is.True);
+            Assert.That(comparer.GetHashCode(array1), Is.EqualTo(comparer.GetHashCode(array3)));
+
+            // Different length
+            Assert.That(comparer.Equals(array1, array4), Is.False);
+
+            // Different content
+            Assert.That(comparer.Equals(array1, array5), Is.False);
+        }
+    }
+
+    [Test]
+    public async Task FastPathDetectsGhostReferencesWithManyParameters()
+    {
+        var parameterCount = 110;
+        var parameters = string.Join(", ", Enumerable.Range(0, parameterCount).Select(i => $"int p{i}"));
+
+        var code = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// This summary mentions {|CSENSE020:p0|} and {|CSENSE020:p{{parameterCount - 1}}|}.
+                /// </summary>
+                public void M({{parameters}}) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(code, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
+    public async Task FastPathDetectsGhostReferencesWithLongText()
+    {
+        var longSummary = new string('a', 50001) + " {|CSENSE020:p0|} " + new string('b', 1000);
+
+        var code = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// {{longSummary}}
+                /// </summary>
+                public void M(int p0) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(code, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
+    public async Task FastPathHandlesCaseVariantParametersCorrectly()
+    {
+        var padding = new string(' ', 50001);
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// {{padding}}
+                /// The {|#0:ID1|} and the {|#1:id1|}.
+                /// </summary>
+                public void Get(int id1, int ID1) { }
+            }
+            """;
+
+        var expected1 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(0)
+            .WithArguments("ID1", "ID1");
+        var expected2 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(1)
+            .WithArguments("id1", "id1");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected1, expected2], diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
+    public async Task FastPathWithManyParametersHandlesCaseVariants()
+    {
+        var parameterCount = 102;
+        var parameters = string.Join(", ", Enumerable.Range(1, parameterCount - 2).Select(i => $"int p{i}"));
+        parameters = "int p0, int P0, " + parameters;
+
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// The {|#0:p0|} and the {|#1:P0|}.
+                /// </summary>
+                public void M({{parameters}}) { }
+            }
+            """;
+
+        var expected1 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(0)
+            .WithArguments("p0", "p0");
+        var expected2 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(1)
+            .WithArguments("P0", "P0");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected1, expected2], diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
+    public async Task FastPathIgnoresSelfReferenceInParamTag()
+    {
+        var padding = new string(' ', 50001);
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>Summary</summary>
+                /// <param name="p0">{{padding}} The p0 parameter.</param>
+                public void M(int p0) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.LowQualityDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
+    public async Task FastPathPreventsDuplicateDiagnosticsForSameSpan()
+    {
+        var padding = new string(' ', 50001);
+
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// {{padding}}
+                /// The {|CSENSE020:T|} mention.
+                /// </summary>
+                public void M<T>(int T) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, compilerDiagnostics: CompilerDiagnostics.None, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.LowQualityDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
+    public async Task FastPathHandlesUnicodeIdentifiersCorrectly()
+    {
+        var padding = new string(' ', 50001);
+
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// {{padding}}
+                /// The {|CSENSE020:λ_identifier|} mention.
+                /// </summary>
+                public void M(int λ_identifier) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.LowQualityDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
     [Test]
     public async Task GhostParameterInSummaryReportsDiagnostic()
     {

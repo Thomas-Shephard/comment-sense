@@ -13,7 +13,7 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class GhostReferenceAnalyzer
 {
-    private static readonly ConcurrentDictionary<string, Regex> RegexCache = new();
+    private static readonly ConcurrentDictionary<ImmutableArray<string>, Regex> RegexCache = new(new NameListComparer());
 
     public static void Analyze(SyntaxNodeAnalysisContext context, XmlTextSyntax xmlText, ISymbol symbol, CommentSenseOptions options)
     {
@@ -25,17 +25,20 @@ internal static class GhostReferenceAnalyzer
         if (IsIgnoredTag(containingTag))
             return;
 
-        var parameters = symbol.GetParameters().Select(p => p.Name).ToImmutableArray();
-        var typeParameters = symbol.GetTypeParameters().Select(p => p.Name).ToImmutableArray();
+        var parameters = symbol.GetParameters();
+        var typeParameters = symbol.GetTypeParameters();
 
         if (parameters.IsEmpty && typeParameters.IsEmpty)
             return;
 
+        var parameterNames = parameters.Select(p => p.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
+        var typeParameterNames = typeParameters.Select(p => p.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
+
         var reportedSpans = new HashSet<TextSpan>();
         var analysisContext = new GhostReferenceContext(context, xmlText, options, containingTag, nameValue, reportedSpans);
 
-        AnalyzeReferences(analysisContext, parameters, CommentSenseRules.GhostParameterReferenceRule);
-        AnalyzeReferences(analysisContext, typeParameters, CommentSenseRules.GhostTypeParameterReferenceRule);
+        AnalyzeReferences(analysisContext, parameterNames, CommentSenseRules.GhostParameterReferenceRule);
+        AnalyzeReferences(analysisContext, typeParameterNames, CommentSenseRules.GhostTypeParameterReferenceRule);
     }
 
     private readonly record struct GhostReferenceContext(
@@ -53,6 +56,13 @@ internal static class GhostReferenceAnalyzer
     {
         if (names.IsEmpty)
             return;
+
+        // Fast-path for extremely large parameter sets or long documentation blocks to avoid
+        if (names.Length > 100 || context.XmlText.Span.Length > 50000)
+        {
+            AnalyzeReferencesFast(context, names, rule);
+            return;
+        }
 
         var regex = GetRegex(names);
         foreach (var token in context.XmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
@@ -76,6 +86,86 @@ internal static class GhostReferenceAnalyzer
                 context.AnalysisContext.ReportDiagnostic(Diagnostic.Create(rule, location, properties, matchedText, originalName));
             }
         }
+    }
+
+    private static void AnalyzeReferencesFast(
+        GhostReferenceContext context,
+        ImmutableArray<string> names,
+        DiagnosticDescriptor rule)
+    {
+        var exactMatchMap = names.ToDictionary(n => n, StringComparer.Ordinal);
+        var caseInsensitiveMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in names)
+        {
+            if (!caseInsensitiveMap.ContainsKey(name))
+                caseInsensitiveMap[name] = name;
+        }
+
+        var lookups = new FastPathLookups(exactMatchMap, caseInsensitiveMap, rule);
+
+        foreach (var token in context.XmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
+        {
+            AnalyzeTokenFast(token, lookups, context);
+        }
+    }
+
+    private readonly record struct FastPathLookups(
+        Dictionary<string, string> ExactMatchMap,
+        Dictionary<string, string> CaseInsensitiveMap,
+        DiagnosticDescriptor Rule);
+
+    private static void AnalyzeTokenFast(
+        SyntaxToken token,
+        FastPathLookups lookups,
+        GhostReferenceContext context)
+    {
+        var text = token.Text;
+        var start = -1;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var ch = text[i];
+            var isPart = SyntaxFacts.IsIdentifierPartCharacter(ch);
+
+            if (isPart && start == -1)
+            {
+                if (SyntaxFacts.IsIdentifierStartCharacter(ch))
+                    start = i;
+            }
+            else if (!isPart && start != -1)
+            {
+                ReportIfMatch(token, text, start, i - start, lookups, context);
+                start = -1;
+            }
+        }
+
+        if (start != -1)
+            ReportIfMatch(token, text, start, text.Length - start, lookups, context);
+    }
+
+    private static void ReportIfMatch(
+        SyntaxToken token,
+        string text,
+        int wordStart,
+        int wordLength,
+        FastPathLookups lookups,
+        GhostReferenceContext context)
+    {
+        var word = text.Substring(wordStart, wordLength);
+        if (!lookups.ExactMatchMap.TryGetValue(word, out var originalName) && !lookups.CaseInsensitiveMap.TryGetValue(word, out originalName))
+            return;
+
+        if (!IsGhostReference(word, originalName, context.Options, context.ContainingTag, context.NameValue))
+            return;
+
+        var absoluteStart = token.SpanStart + wordStart;
+        var span = new TextSpan(absoluteStart, wordLength);
+
+        if (!context.ReportedSpans.Add(span))
+            return;
+
+        var location = Location.Create(context.AnalysisContext.Node.SyntaxTree, span);
+        var properties = ImmutableDictionary<string, string?>.Empty.Add("originalName", originalName);
+        context.AnalysisContext.ReportDiagnostic(Diagnostic.Create(lookups.Rule, location, properties, word, originalName));
     }
 
     private static string? ResolveOriginalName(string matchedText, ImmutableArray<string> names)
@@ -109,14 +199,40 @@ internal static class GhostReferenceAnalyzer
 
     private static Regex GetRegex(ImmutableArray<string> names)
     {
-        var key = string.Join("|", names.Select(n => n.ToLowerInvariant()).OrderBy(n => n).Distinct());
-
-        return RegexCache.GetOrAdd(key, _ =>
+        return RegexCache.GetOrAdd(names, static n =>
         {
-            var uniqueNames = names.Distinct(StringComparer.OrdinalIgnoreCase);
+            var uniqueNames = n.Distinct(StringComparer.OrdinalIgnoreCase);
             var pattern = $@"\b({string.Join("|", uniqueNames.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
             return new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
         });
+    }
+
+    internal sealed class NameListComparer : IEqualityComparer<ImmutableArray<string>>
+    {
+        public bool Equals(ImmutableArray<string> x, ImmutableArray<string> y)
+        {
+            if (x.Length != y.Length)
+                return false;
+
+            for (var i = 0; i < x.Length; i++)
+            {
+                if (!string.Equals(x[i], y[i], StringComparison.OrdinalIgnoreCase))
+                    return false;
+            }
+
+            return true;
+        }
+
+        public int GetHashCode(ImmutableArray<string> obj)
+        {
+            var hash = 17;
+            foreach (string t in obj)
+            {
+                hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(t);
+            }
+
+            return hash;
+        }
     }
 
     private static bool IsIgnoredTag(string? tagName)

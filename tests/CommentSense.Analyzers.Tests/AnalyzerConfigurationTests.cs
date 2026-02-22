@@ -45,7 +45,6 @@ public class AnalyzerConfigurationTests : CommentSenseAnalyzerTestBase<CommentSe
 
         var config = new Dictionary<string, string>
         {
-            // Testing ParseSet with multiple commas, spaces, and empty segments
             ["comment_sense.ignored_exceptions"] = "  ArgumentNullException  , ,  System.Exception  "
         };
 
