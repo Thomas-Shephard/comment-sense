@@ -12,6 +12,9 @@ internal static class SummaryAnalyzer
     {
         var seenSummary = false;
         var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
+        var displayName = symbol.GetDisplayName();
+        var minimallyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+
         // Check for low-quality documentation against multiple symbol formats (e.g., friendly name and qualified name)
         foreach (var (summaryElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Summary, topLevelOnly: false))
         {
@@ -19,16 +22,16 @@ internal static class SummaryAnalyzer
 
             if (!isTopLevel || seenSummary)
             {
-                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StraySummaryDocumentationRule, location, symbol.GetDisplayName()));
+                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StraySummaryDocumentationRule, location, displayName));
                 continue;
             }
 
             seenSummary = true;
 
-            if (!QualityAnalyzer.IsLowQualityForAnyFormat(summaryElement, symbol, options, DocumentationTags.Summary))
+            if (!QualityAnalyzer.IsLowQualityForAnyFormat(summaryElement, displayName, minimallyQualifiedName, options, DocumentationTags.Summary))
                 continue;
 
-            QualityAnalyzer.Report(context, location, DocumentationTags.Summary, symbol.GetDisplayName());
+            QualityAnalyzer.Report(context, location, DocumentationTags.Summary, displayName);
         }
     }
 }
