@@ -61,19 +61,41 @@ internal static class QualityAnalyzer
             return true;
 
         var normalized = contentSpan.Trim().TrimEnd(TrimChars);
+        return normalized.IsEmpty || CheckNameQuality(normalized, symbolName, options, tagName);
+    }
+
+    public static bool IsLowQualityForAnyFormat(XElement element, string displayName, string minimallyQualifiedName, CommentSenseOptions options, string? tagName = null)
+    {
+        if (element.HasElements && string.IsNullOrWhiteSpace(element.Value))
+            return false;
+
+        return IsLowQualityForAnyFormat(element.Value, displayName, minimallyQualifiedName, options, tagName);
+    }
+
+    public static bool IsLowQualityForAnyFormat(string content, string displayName, string minimallyQualifiedName, CommentSenseOptions options, string? tagName = null)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return true;
+
+        var contentSpan = content.AsSpan();
+        if (IsPoorlyFormatted(contentSpan, options))
+            return true;
+
+        var normalized = contentSpan.Trim().TrimEnd(TrimChars);
         if (normalized.IsEmpty)
             return true;
 
-        if (CheckBasicQuality(normalized, symbolName, options.MinSummaryLength, tagName))
+        if (CheckNameQuality(normalized, displayName, options, tagName))
             return true;
 
-        foreach (var term in options.LowQualityTerms)
-        {
-            if (normalized.Equals(term.AsSpan(), StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
+        return minimallyQualifiedName != displayName && CheckNameQuality(normalized, minimallyQualifiedName, options, tagName);
+    }
 
-        return CheckSimilarity(normalized, symbolName, options.SimilarityThreshold);
+    public static bool IsLowQualityForAnyFormat(string content, ISymbol symbol, CommentSenseOptions options, string? tagName = null)
+    {
+        var displayName = symbol.GetDisplayName();
+        var minimallyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+        return IsLowQualityForAnyFormat(content, displayName, minimallyQualifiedName, options, tagName);
     }
 
     private static bool IsPoorlyFormatted(ReadOnlySpan<char> content, CommentSenseOptions options)
@@ -102,22 +124,18 @@ internal static class QualityAnalyzer
         return normalized.CalculateSimilarity(symbolName) >= threshold;
     }
 
-    public static bool IsLowQualityForAnyFormat(XElement element, ISymbol symbol, CommentSenseOptions options, string? tagName = null)
+    private static bool CheckNameQuality(ReadOnlySpan<char> normalized, string symbolName, CommentSenseOptions options, string? tagName)
     {
-        if (element.HasElements && string.IsNullOrWhiteSpace(element.Value))
-            return false;
-
-        return IsLowQualityForAnyFormat(element.Value, symbol, options, tagName);
-    }
-
-    public static bool IsLowQualityForAnyFormat(string content, ISymbol symbol, CommentSenseOptions options, string? tagName = null)
-    {
-        var displayName = symbol.GetDisplayName();
-        if (IsLowQuality(content, displayName, options, tagName: tagName))
+        if (CheckBasicQuality(normalized, symbolName, options.MinSummaryLength, tagName))
             return true;
 
-        var minimallyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-        return minimallyQualifiedName != displayName && IsLowQuality(content, minimallyQualifiedName, options, tagName: tagName);
+        foreach (var term in options.LowQualityTerms)
+        {
+            if (normalized.Equals(term.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return CheckSimilarity(normalized, symbolName, options.SimilarityThreshold);
     }
 
     private static bool CheckBasicQuality(ReadOnlySpan<char> normalized, string symbolName, int minLength, string? tagName)

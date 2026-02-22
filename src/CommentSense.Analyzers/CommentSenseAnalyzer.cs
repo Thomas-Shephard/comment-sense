@@ -105,6 +105,7 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         }
 
         SummaryAnalyzer.Analyze(context, symbol, element, options);
+        SupplementalAnalyzer.Analyze(context, symbol, element, options);
         AnalyzeSpecificSymbol(context, symbol, element, options);
     }
 
