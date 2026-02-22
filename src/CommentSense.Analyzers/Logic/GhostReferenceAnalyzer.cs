@@ -101,46 +101,63 @@ internal static class GhostReferenceAnalyzer
 
         foreach (var token in context.XmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
         {
-            var text = token.Text;
-            var start = -1;
-            for (var i = 0; i < text.Length; i++)
+            AnalyzeTokenFast(token, nameMap, context, rule);
+        }
+    }
+
+    private static void AnalyzeTokenFast(
+        SyntaxToken token,
+        Dictionary<string, string> nameMap,
+        GhostReferenceContext context,
+        DiagnosticDescriptor rule)
+    {
+        var text = token.Text;
+        var start = -1;
+        for (var i = 0; i < text.Length; i++)
+        {
+            var isWordChar = char.IsLetterOrDigit(text[i]) || text[i] == '_';
+            if (isWordChar && start == -1)
             {
-                if (char.IsLetterOrDigit(text[i]) || text[i] == '_')
-                {
-                    if (start == -1) start = i;
-                }
-                else if (start != -1)
-                {
-                    ReportIfMatch(text, start, i - start);
-                    start = -1;
-                }
+                start = i;
             }
-
-            if (start != -1)
+            else if (!isWordChar && start != -1)
             {
-                ReportIfMatch(text, start, text.Length - start);
-            }
-
-            void ReportIfMatch(string fullText, int wordStart, int wordLength)
-            {
-                var word = fullText.Substring(wordStart, wordLength);
-                if (!nameMap.TryGetValue(word, out var originalName))
-                    return;
-
-                if (!IsGhostReference(word, originalName, context.Options, context.ContainingTag, context.NameValue))
-                    return;
-
-                var absoluteStart = token.SpanStart + wordStart;
-                var span = new TextSpan(absoluteStart, wordLength);
-
-                if (!context.ReportedSpans.Add(span))
-                    return;
-
-                var location = Location.Create(context.AnalysisContext.Node.SyntaxTree, span);
-                var properties = ImmutableDictionary<string, string?>.Empty.Add("originalName", originalName);
-                context.AnalysisContext.ReportDiagnostic(Diagnostic.Create(rule, location, properties, word, originalName));
+                ReportIfMatch(token, text, start, i - start, nameMap, context, rule);
+                start = -1;
             }
         }
+
+        if (start != -1)
+        {
+            ReportIfMatch(token, text, start, text.Length - start, nameMap, context, rule);
+        }
+    }
+
+    private static void ReportIfMatch(
+        SyntaxToken token,
+        string text,
+        int wordStart,
+        int wordLength,
+        Dictionary<string, string> nameMap,
+        GhostReferenceContext context,
+        DiagnosticDescriptor rule)
+    {
+        var word = text.Substring(wordStart, wordLength);
+        if (!nameMap.TryGetValue(word, out var originalName))
+            return;
+
+        if (!IsGhostReference(word, originalName, context.Options, context.ContainingTag, context.NameValue))
+            return;
+
+        var absoluteStart = token.SpanStart + wordStart;
+        var span = new TextSpan(absoluteStart, wordLength);
+
+        if (!context.ReportedSpans.Add(span))
+            return;
+
+        var location = Location.Create(context.AnalysisContext.Node.SyntaxTree, span);
+        var properties = ImmutableDictionary<string, string?>.Empty.Add("originalName", originalName);
+        context.AnalysisContext.ReportDiagnostic(Diagnostic.Create(rule, location, properties, word, originalName));
     }
 
     private static string? ResolveOriginalName(string matchedText, ImmutableArray<string> names)
