@@ -203,7 +203,7 @@ internal static class GhostReferenceAnalyzer
         });
     }
 
-    private sealed class NameListComparer : IEqualityComparer<ImmutableArray<string>>
+    internal sealed class NameListComparer : IEqualityComparer<ImmutableArray<string>>
     {
         public bool Equals(ImmutableArray<string> x, ImmutableArray<string> y)
         {

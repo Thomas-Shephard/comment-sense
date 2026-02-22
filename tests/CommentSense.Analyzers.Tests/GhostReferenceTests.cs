@@ -118,6 +118,54 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     }
 
     [Test]
+    public async Task FastPathIgnoresSelfReferenceInParamTag()
+    {
+        var padding = new string(' ', 50001);
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>Summary</summary>
+                /// <param name="p0">{{padding}} The p0 parameter.</param>
+                public void M(int p0) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.LowQualityDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
+    public async Task FastPathPreventsDuplicateDiagnosticsForSameSpan()
+    {
+        var padding = new string(' ', 50001);
+
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// {{padding}}
+                /// The {|CSENSE020:T|} mention.
+                /// </summary>
+                public void M<T>(int T) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, compilerDiagnostics: CompilerDiagnostics.None, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.LowQualityDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
     public async Task GhostParameterInSummaryReportsDiagnostic()
     {
         const string testCode = """
