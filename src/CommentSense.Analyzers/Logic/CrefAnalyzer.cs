@@ -27,30 +27,8 @@ internal static class CrefAnalyzer
         var symbolInfo = context.SemanticModel.GetSymbolInfo(cref, context.CancellationToken);
         var resolvedSymbol = symbolInfo.Symbol;
 
-        if (resolvedSymbol is INamedTypeSymbol { IsGenericType: true, IsDefinition: true })
-        {
-            var associatedVisibility = associatedSymbol.GetEffectiveVisibilityLevel();
-            foreach (var typeArgList in cref.DescendantNodes().OfType<TypeArgumentListSyntax>())
-            {
-                foreach (var arg in typeArgList.Arguments)
-                {
-                    var argInfo = context.SemanticModel.GetSymbolInfo(arg, context.CancellationToken);
-                    if (argInfo.Symbol is not { } argSymbol)
-                        continue;
-
-                    var argVisibility = argSymbol.GetEffectiveVisibilityLevel();
-                    if (argVisibility > associatedVisibility)
-                    {
-                        context.ReportDiagnostic(Diagnostic.Create(
-                            CommentSenseRules.InaccessibleCrefRule,
-                            cref.GetLocation(),
-                            resolvedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
-                            associatedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
-                        return;
-                    }
-                }
-            }
-        }
+        if (CheckGenericArgumentsVisibility(context, associatedSymbol, cref, resolvedSymbol))
+            return;
 
         if (resolvedSymbol is null && symbolInfo.CandidateSymbols.IsEmpty)
         {
@@ -63,6 +41,36 @@ internal static class CrefAnalyzer
 
         if (crefAttribute.IsInExceptionTag())
             HandleExceptionTagCref(context, associatedSymbol, cref, cref.ToString(), resolvedSymbol, options);
+    }
+
+    private static bool CheckGenericArgumentsVisibility(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol? resolvedSymbol)
+    {
+        if (resolvedSymbol is not INamedTypeSymbol { IsGenericType: true, IsDefinition: true })
+            return false;
+
+        var associatedVisibility = associatedSymbol.GetEffectiveVisibilityLevel();
+        foreach (var typeArgList in cref.DescendantNodes().OfType<TypeArgumentListSyntax>())
+        {
+            foreach (var arg in typeArgList.Arguments)
+            {
+                var argInfo = context.SemanticModel.GetSymbolInfo(arg, context.CancellationToken);
+                if (argInfo.Symbol is not { } argSymbol)
+                    continue;
+
+                var argVisibility = argSymbol.GetEffectiveVisibilityLevel();
+                if (argVisibility > associatedVisibility)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        CommentSenseRules.InaccessibleCrefRule,
+                        cref.GetLocation(),
+                        resolvedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                        associatedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static void HandleResolvedCref(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol resolvedSymbol)
