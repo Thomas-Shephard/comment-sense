@@ -57,7 +57,7 @@ internal static class GhostReferenceAnalyzer
         if (names.IsEmpty)
             return;
 
-        // Fast-path for extremely large parameter sets to avoid massive regex execution
+        // Fast-path for extremely large parameter sets or long documentation blocks to avoid
         if (names.Length > 100 || context.XmlText.Span.Length > 50000)
         {
             AnalyzeReferencesFast(context, names, rule);
@@ -93,21 +93,24 @@ internal static class GhostReferenceAnalyzer
         ImmutableArray<string> names,
         DiagnosticDescriptor rule)
     {
-        var nameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var exactMatchMap = names.ToDictionary(n => n, StringComparer.Ordinal);
+        var caseInsensitiveMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var name in names)
         {
-            nameMap[name] = name;
+            if (!caseInsensitiveMap.ContainsKey(name))
+                caseInsensitiveMap[name] = name;
         }
 
         foreach (var token in context.XmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
         {
-            AnalyzeTokenFast(token, nameMap, context, rule);
+            AnalyzeTokenFast(token, exactMatchMap, caseInsensitiveMap, context, rule);
         }
     }
 
     private static void AnalyzeTokenFast(
         SyntaxToken token,
-        Dictionary<string, string> nameMap,
+        Dictionary<string, string> exactMatchMap,
+        Dictionary<string, string> caseInsensitiveMap,
         GhostReferenceContext context,
         DiagnosticDescriptor rule)
     {
@@ -122,15 +125,13 @@ internal static class GhostReferenceAnalyzer
             }
             else if (!isWordChar && start != -1)
             {
-                ReportIfMatch(token, text, start, i - start, nameMap, context, rule);
+                ReportIfMatch(token, text, start, i - start, exactMatchMap, caseInsensitiveMap, context, rule);
                 start = -1;
             }
         }
 
         if (start != -1)
-        {
-            ReportIfMatch(token, text, start, text.Length - start, nameMap, context, rule);
-        }
+            ReportIfMatch(token, text, start, text.Length - start, exactMatchMap, caseInsensitiveMap, context, rule);
     }
 
     private static void ReportIfMatch(
@@ -138,13 +139,17 @@ internal static class GhostReferenceAnalyzer
         string text,
         int wordStart,
         int wordLength,
-        Dictionary<string, string> nameMap,
+        Dictionary<string, string> exactMatchMap,
+        Dictionary<string, string> caseInsensitiveMap,
         GhostReferenceContext context,
         DiagnosticDescriptor rule)
     {
         var word = text.Substring(wordStart, wordLength);
-        if (!nameMap.TryGetValue(word, out var originalName))
-            return;
+        if (!exactMatchMap.TryGetValue(word, out var originalName))
+        {
+            if (!caseInsensitiveMap.TryGetValue(word, out originalName))
+                return;
+        }
 
         if (!IsGhostReference(word, originalName, context.Options, context.ContainingTag, context.NameValue))
             return;

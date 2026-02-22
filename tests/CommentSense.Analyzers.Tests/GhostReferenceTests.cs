@@ -56,6 +56,68 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     }
 
     [Test]
+    public async Task FastPathHandlesCaseVariantParametersCorrectly()
+    {
+        var padding = new string(' ', 50001);
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// {{padding}}
+                /// The {|#0:ID1|} and the {|#1:id1|}.
+                /// </summary>
+                public void Get(int id1, int ID1) { }
+            }
+            """;
+
+        var expected1 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(0)
+            .WithArguments("ID1", "ID1");
+        var expected2 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(1)
+            .WithArguments("id1", "id1");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected1, expected2], diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
+    public async Task FastPathWithManyParametersHandlesCaseVariants()
+    {
+        var parameterCount = 102;
+        var parameters = string.Join(", ", Enumerable.Range(1, parameterCount - 2).Select(i => $"int p{i}"));
+        parameters = "int p0, int P0, " + parameters;
+
+        var testCode = $$"""
+            using System;
+            namespace Test;
+            public class C {
+                /// <summary>
+                /// The {|#0:p0|} and the {|#1:P0|}.
+                /// </summary>
+                public void M({{parameters}}) { }
+            }
+            """;
+
+        var expected1 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(0)
+            .WithArguments("p0", "p0");
+        var expected2 = new DiagnosticResult(CommentSenseRules.GhostParameterReferenceRule)
+            .WithLocation(1)
+            .WithArguments("P0", "P0");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected1, expected2], diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
     public async Task GhostParameterInSummaryReportsDiagnostic()
     {
         const string testCode = """
