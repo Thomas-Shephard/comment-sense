@@ -28,6 +28,7 @@ internal static class CommentSenseDiagnosticIds
     public const string StraySummaryDocumentationId = "CSENSE022";
     public const string StrayExceptionDocumentationId = "CSENSE023";
     public const string DocumentationTagOrderMismatchId = "CSENSE024";
+    public const string InaccessibleCrefId = "CSENSE025";
 
     // Suppressions
     public const string SuppressMissingXmlCommentId = "CSENSESUP001";

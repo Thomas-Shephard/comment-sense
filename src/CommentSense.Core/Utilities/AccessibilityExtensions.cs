@@ -6,35 +6,88 @@ internal static class AccessibilityExtensions
 {
     public static bool IsEffectivelyAccessible(this ISymbol? symbol, VisibilityLevel visibilityLevel = VisibilityLevel.Protected)
     {
-        if (symbol is null)
-        {
+        if (visibilityLevel is < VisibilityLevel.Public or > VisibilityLevel.Private)
             return false;
+
+        return symbol.GetEffectiveVisibilityLevel() <= visibilityLevel;
+    }
+
+    public static VisibilityLevel GetEffectiveVisibilityLevel(this ISymbol? symbol)
+    {
+        while (symbol is IArrayTypeSymbol or IPointerTypeSymbol)
+        {
+            if (symbol is IArrayTypeSymbol array)
+                symbol = array.ElementType;
+            else if (symbol is IPointerTypeSymbol pointer)
+                symbol = pointer.PointedAtType;
         }
 
-        if (symbol.Kind is SymbolKind.Local or SymbolKind.Label or SymbolKind.RangeVariable)
+        if (symbol is null || symbol.Kind is SymbolKind.Local or SymbolKind.Label or SymbolKind.RangeVariable)
+            return VisibilityLevel.Private;
+
+        var mostRestrictive = GetTypeArgumentVisibility(symbol);
+        if (mostRestrictive == VisibilityLevel.Private)
+            return VisibilityLevel.Private;
+
+        return GetHierarchyVisibility(symbol, mostRestrictive);
+    }
+
+    private static VisibilityLevel GetTypeArgumentVisibility(ISymbol symbol)
+    {
+        var typeArguments = symbol switch
         {
-            return false;
+            INamedTypeSymbol namedType => namedType.TypeArguments,
+            IMethodSymbol method => method.TypeArguments,
+            _ => default
+        };
+
+        if (typeArguments.IsDefaultOrEmpty)
+            return VisibilityLevel.Public;
+
+        var mostRestrictive = VisibilityLevel.Public;
+        foreach (var typeArg in typeArguments)
+        {
+            if (typeArg.Kind == SymbolKind.TypeParameter)
+                continue;
+
+            var argLevel = typeArg.GetEffectiveVisibilityLevel();
+            if (argLevel > mostRestrictive)
+                mostRestrictive = argLevel;
         }
 
+        return mostRestrictive;
+    }
+
+    private static VisibilityLevel GetHierarchyVisibility(ISymbol symbol, VisibilityLevel initial)
+    {
+        var mostRestrictive = initial;
         var current = symbol;
         while (current is not null && current.Kind is not SymbolKind.Namespace)
         {
-            bool isAccessible = current.DeclaredAccessibility == Accessibility.NotApplicable || visibilityLevel switch
+            if (current.DeclaredAccessibility != Accessibility.NotApplicable)
             {
-                VisibilityLevel.Public => current.DeclaredAccessibility == Accessibility.Public,
-                VisibilityLevel.Protected => current.DeclaredAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal,
-                VisibilityLevel.Internal => current.DeclaredAccessibility is Accessibility.Public or Accessibility.Protected or Accessibility.ProtectedOrInternal or Accessibility.Internal or Accessibility.ProtectedAndInternal,
-                VisibilityLevel.Private => true,
-                _ => false
-            };
+                var level = MapAccessibilityToVisibilityLevel(current.DeclaredAccessibility);
+                if (level > mostRestrictive)
+                    mostRestrictive = level;
 
-            if (!isAccessible)
-            {
-                return false;
+                if (mostRestrictive == VisibilityLevel.Private)
+                    break;
             }
 
             current = current.ContainingSymbol;
         }
-        return true;
+
+        return mostRestrictive;
+    }
+
+    private static VisibilityLevel MapAccessibilityToVisibilityLevel(Accessibility accessibility)
+    {
+        return accessibility switch
+        {
+            Accessibility.Public => VisibilityLevel.Public,
+            Accessibility.Protected or Accessibility.ProtectedOrInternal => VisibilityLevel.Protected,
+            Accessibility.Internal or Accessibility.ProtectedAndInternal => VisibilityLevel.Internal,
+            _ => VisibilityLevel.Private
+        };
     }
 }

@@ -13,27 +13,80 @@ internal static class CrefAnalyzer
     {
         var crefAttribute = (XmlCrefAttributeSyntax)context.Node;
 
-        var symbol = crefAttribute.GetAssociatedSymbol(context.SemanticModel);
-        if (symbol is null)
+        var associatedSymbol = crefAttribute.GetAssociatedSymbol(context.SemanticModel);
+        if (associatedSymbol is null)
             return;
 
         var tree = context.Node.SyntaxTree;
         var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
 
-        if (!symbol.IsEligibleForAnalysis(options.VisibilityLevel))
+        if (!associatedSymbol.IsEligibleForAnalysis(options.VisibilityLevel))
             return;
 
         var cref = crefAttribute.Cref;
         var symbolInfo = context.SemanticModel.GetSymbolInfo(cref, context.CancellationToken);
+        var resolvedSymbol = symbolInfo.Symbol;
 
-        if (symbolInfo.Symbol is null && symbolInfo.CandidateSymbols.IsEmpty)
+        if (CheckGenericArgumentsVisibility(context, associatedSymbol, cref, resolvedSymbol))
+            return;
+
+        if (resolvedSymbol is null && symbolInfo.CandidateSymbols.IsEmpty)
         {
-            HandleUnresolvedCref(context, crefAttribute, cref.ToString(), cref.GetLocation(), symbol, options);
+            HandleUnresolvedCref(context, crefAttribute, cref.ToString(), cref.GetLocation(), associatedSymbol, options);
             return;
         }
 
+        if (resolvedSymbol is not null)
+            HandleResolvedCref(context, associatedSymbol, cref, resolvedSymbol);
+
         if (crefAttribute.IsInExceptionTag())
-            HandleExceptionTagCref(context, symbol, cref, cref.ToString(), symbolInfo.Symbol, options);
+            HandleExceptionTagCref(context, associatedSymbol, cref, cref.ToString(), resolvedSymbol, options);
+    }
+
+    private static bool CheckGenericArgumentsVisibility(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol? resolvedSymbol)
+    {
+        var crefText = cref.ToString();
+        if (resolvedSymbol is not (INamedTypeSymbol { IsGenericType: true } or IMethodSymbol { IsGenericMethod: true }) && crefText.IndexOf('{') == -1)
+            return false;
+
+        var associatedVisibility = associatedSymbol.GetEffectiveVisibilityLevel();
+        foreach (var typeArgList in cref.DescendantNodes().OfType<TypeArgumentListSyntax>())
+        {
+            foreach (var arg in typeArgList.Arguments)
+            {
+                var argSymbol = context.SemanticModel.GetSymbolInfo(arg, context.CancellationToken).Symbol;
+                if (argSymbol is null)
+                    continue;
+
+                var argVisibility = argSymbol.GetEffectiveVisibilityLevel();
+                if (argVisibility > associatedVisibility)
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        CommentSenseRules.InaccessibleCrefRule,
+                        cref.GetLocation(),
+                        (resolvedSymbol ?? argSymbol).ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                        associatedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static void HandleResolvedCref(SyntaxNodeAnalysisContext context, ISymbol associatedSymbol, CrefSyntax cref, ISymbol resolvedSymbol)
+    {
+        var associatedVisibility = associatedSymbol.GetEffectiveVisibilityLevel();
+        var resolvedVisibility = resolvedSymbol.GetEffectiveVisibilityLevel();
+
+        if (resolvedVisibility > associatedVisibility)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                CommentSenseRules.InaccessibleCrefRule,
+                cref.GetLocation(),
+                resolvedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat),
+                associatedSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+        }
     }
 
     private static void HandleUnresolvedCref(SyntaxNodeAnalysisContext context, XmlCrefAttributeSyntax crefAttribute, string crefText, Location location, ISymbol associatedSymbol, CommentSenseOptions options)

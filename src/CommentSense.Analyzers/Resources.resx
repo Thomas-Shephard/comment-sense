@@ -283,6 +283,15 @@
   <data name="DocumentationTagOrderMismatchDescription" xml:space="preserve">
     <value>XML documentation tags should follow a consistent order (inheritdoc, summary, typeparam, param, returns/value, exception, remarks) to improve readability.</value>
   </data>
+  <data name="InaccessibleCrefTitle" xml:space="preserve">
+    <value>Inaccessible XML documentation reference</value>
+  </data>
+  <data name="InaccessibleCrefMessage" xml:space="preserve">
+    <value>The cref reference '{0}' is less accessible than the member '{1}'</value>
+  </data>
+  <data name="InaccessibleCrefDescription" xml:space="preserve">
+    <value>The 'cref' attribute in XML documentation should not refer to a member with lower accessibility than the member being documented, as it will result in broken links in the generated documentation.</value>
+  </data>
   <data name="SuppressionJustification" xml:space="preserve">
     <value>Handled by CommentSense analyzer.</value>
   </data>
