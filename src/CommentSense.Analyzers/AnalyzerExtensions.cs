@@ -189,47 +189,28 @@ internal static class AnalyzerExtensions
     public static IEnumerable<ISymbol> GetInheritedSymbols(this ISymbol symbol)
     {
         if (symbol is INamedTypeSymbol type)
-        {
-            var currentBase = type.BaseType;
-            while (currentBase != null && currentBase.SpecialType != SpecialType.System_Object)
-            {
-                yield return currentBase;
-                currentBase = currentBase.BaseType;
-            }
+            return GetInheritedTypes(type);
 
-            foreach (var i in type.AllInterfaces)
-                yield return i;
+        return GetInheritedMembers(symbol);
+    }
 
-            yield break;
+    private static IEnumerable<ISymbol> GetInheritedTypes(INamedTypeSymbol type)
+    {
+        var currentBase = type.BaseType;
+        while (currentBase != null && currentBase.SpecialType != SpecialType.System_Object)
+        {
+            yield return currentBase;
+            currentBase = currentBase.BaseType;
         }
 
-        if (symbol is IMethodSymbol method)
-        {
-            var current = method.OverriddenMethod;
-            while (current != null)
-            {
-                yield return current;
-                current = current.OverriddenMethod;
-            }
-        }
-        else if (symbol is IPropertySymbol property)
-        {
-            var current = property.OverriddenProperty;
-            while (current != null)
-            {
-                yield return current;
-                current = current.OverriddenProperty;
-            }
-        }
-        else if (symbol is IEventSymbol @event)
-        {
-            var current = @event.OverriddenEvent;
-            while (current != null)
-            {
-                yield return current;
-                current = current.OverriddenEvent;
-            }
-        }
+        foreach (var i in type.AllInterfaces)
+            yield return i;
+    }
+
+    private static IEnumerable<ISymbol> GetInheritedMembers(ISymbol symbol)
+    {
+        foreach (var overridden in GetOverriddenMembers(symbol))
+            yield return overridden;
 
         var containingType = symbol.ContainingType;
         if (containingType == null) yield break;
@@ -238,12 +219,38 @@ internal static class AnalyzerExtensions
         {
             foreach (var member in i.GetMembers(symbol.Name).Where(m => m.Kind == symbol.Kind))
             {
-                if (SymbolEqualityComparer.Default.Equals(containingType.FindImplementationForInterfaceMember(member), symbol)
-                    || (containingType.TypeKind == TypeKind.Interface && MatchesInterfaceMember(symbol, member)))
+                if (IsImplementationOf(symbol, member, containingType))
                 {
                     yield return member;
                 }
             }
         }
+    }
+
+    private static IEnumerable<ISymbol> GetOverriddenMembers(ISymbol symbol)
+    {
+        return symbol switch
+        {
+            IMethodSymbol m => GetOverrides(m.OverriddenMethod, x => x.OverriddenMethod),
+            IPropertySymbol p => GetOverrides(p.OverriddenProperty, x => x.OverriddenProperty),
+            IEventSymbol e => GetOverrides(e.OverriddenEvent, x => x.OverriddenEvent),
+            _ => []
+        };
+    }
+
+    private static IEnumerable<T> GetOverrides<T>(T? initial, Func<T, T?> next) where T : class, ISymbol
+    {
+        var current = initial;
+        while (current != null)
+        {
+            yield return current;
+            current = next(current);
+        }
+    }
+
+    private static bool IsImplementationOf(ISymbol symbol, ISymbol member, INamedTypeSymbol containingType)
+    {
+        return SymbolEqualityComparer.Default.Equals(containingType.FindImplementationForInterfaceMember(member), symbol)
+               || (containingType.TypeKind == TypeKind.Interface && MatchesInterfaceMember(symbol, member));
     }
 }

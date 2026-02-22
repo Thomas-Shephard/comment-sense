@@ -54,10 +54,10 @@ internal static class InheritDocAnalyzer
     private static bool HasDocumentation(ISymbol symbol)
     {
         var xml = symbol.GetDocumentationCommentXml();
-        if (string.IsNullOrWhiteSpace(xml))
+        if (xml == null || string.IsNullOrWhiteSpace(xml))
             return false;
 
-        if (xml != null && !xml.Contains("<"))
+        if (!xml.Contains("<"))
             return false;
 
         if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))
