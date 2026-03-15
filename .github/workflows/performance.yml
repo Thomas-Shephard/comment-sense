@@ -8,6 +8,13 @@ on:
       - 'benchmarks/**'
   push:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      push_results:
+        description: 'Push benchmark results to gh-pages'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -39,18 +46,24 @@ jobs:
 
       - name: Ensure gh-pages branch exists
         if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if ! git fetch origin gh-pages --depth=1; then
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git fetch origin gh-pages --depth=1; then
+            echo "gh-pages exists. Tracking locally..."
+            git checkout -b gh-pages origin/gh-pages
+            git checkout -
+          else
             echo "gh-pages branch missing. Initializing..."
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
             git checkout --orphan gh-pages
             git rm -rf .
             git commit --allow-empty -m "Initial benchmark data storage"
-            git push origin gh-pages
-            git checkout ${{ github.ref_name }}
+            git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" gh-pages
+            git checkout -
           fi
-
       - name: Cleanup previous results
         run: rm -rf BenchmarkDotNet.Artifacts/results
 
@@ -84,7 +97,7 @@ jobs:
           tool: 'benchmarkdotnet'
           output-file-path: BenchmarkDotNet.Artifacts/results/combined-report.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          auto-push: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_results) }}
           summary-always: true
           comment-always: true
           alert-threshold: '105%'
