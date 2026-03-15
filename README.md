@@ -19,13 +19,14 @@ For CommentSense to analyze your documentation, your project must have XML docum
 ### General Documentation
 *   **CSENSE001**: Ensures public members have XML documentation (e.g., `<summary>`, `<inheritdoc />`, or other content tags).
     *   **Code Fix**: An automatic code fix is available to generate a `<summary>` placeholder. This fix supports **Fix All** in document, project, or solution.
-    *   *Note:* Using `<inheritdoc />` (without a `cref`) on a member that does not override or implement a base member will trigger this warning.
     *   *Default:* Analyzes members according to the `visibility_level` (default: `protected`).
     *   *Configurable:* Set the visibility threshold using `comment_sense.visibility_level`.
 *   **CSENSE018**: Warns when a member that overrides or implements a base member is missing explicit documentation (when configured to require it).
     *   **Code Fix**: An automatic code fix is available to insert an `<inheritdoc />` tag. This fix supports **Fix All** in document, project, or solution.
     *   *Note:* By default, these members are allowed to implicitly inherit documentation.
     *   *Configurable:* Set `comment_sense.allow_implicit_inheritdoc = false` to require explicit documentation (e.g., `<inheritdoc />`) for all inheriting members.
+*   **CSENSE026**: Validates that each `<inheritdoc />` resolves to a documented target.
+    *   *Note:* Without a `cref`, the symbol must inherit from a documented base/interface member or type. With a `cref`, the referenced symbol must resolve and be documented.
 *   **CSENSE016**: Flags "low quality" documentation in `<summary>`, `<remarks>`, `<example>`, `<returns>`, `<value>`, `<param>`, `<typeparam>`, and `<exception>` tags.
     *   **Code Fix:** An automatic code fix is available to correct capitalization and add missing ending punctuation.
     *   *Default:* Flags empty content or content that just repeats the symbol name.

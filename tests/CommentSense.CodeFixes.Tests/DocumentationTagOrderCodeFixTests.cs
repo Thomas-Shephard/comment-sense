@@ -17,7 +17,8 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
         { "dotnet_diagnostic.CSENSE002.severity", "none" },
         { "dotnet_diagnostic.CSENSE004.severity", "none" },
         { "dotnet_diagnostic.CSENSE006.severity", "none" },
-        { "dotnet_diagnostic.CSENSE016.severity", "none" }
+        { "dotnet_diagnostic.CSENSE016.severity", "none" },
+        { "dotnet_diagnostic.CSENSE026.severity", "none" }
     };
 
     [Test]
