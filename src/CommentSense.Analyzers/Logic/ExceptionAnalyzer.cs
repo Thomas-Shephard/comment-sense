@@ -13,7 +13,7 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class ExceptionAnalyzer
 {
-    internal static readonly SymbolDisplayFormat FullNameFormat = new(
+    private static readonly SymbolDisplayFormat FullNameFormat = new(
         globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
         genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters);
@@ -24,11 +24,12 @@ internal static class ExceptionAnalyzer
     }
 
     private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>> CompilationExceptionCache = new();
+    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, ImmutableHashSet<ITypeSymbol>>> CompilationInheritDocExceptionCache = new();
+    private static readonly ImmutableHashSet<ITypeSymbol> EmptyExceptionTypeSet = ImmutableHashSet.Create<ITypeSymbol>(SymbolEqualityComparer.Default);
 
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
-        var documentedExceptionElements = DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception);
-        var documentedTypes = GetDocumentedExceptionTypes(context, documentedExceptionElements);
+        var documentedTypes = GetEffectiveDocumentedExceptionTypes(context, symbol, xml);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor, options);
 
         ReportMissingExceptions(context, symbol, xml, options, thrownTypes, documentedTypes);
@@ -38,7 +39,7 @@ internal static class ExceptionAnalyzer
     private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, HashSet<ITypeSymbol> documentedTypes)
     {
         // CSENSE012: Missing Exception Documentation
-        if (DocumentationXmlExtensions.HasInheritDoc(xml) || DocumentationXmlExtensions.HasAutoValidTag(xml))
+        if (HasTopLevelIncludeTag(xml))
             return;
 
         var filteredThrownTypes = new List<ITypeSymbol>();
@@ -172,12 +173,161 @@ internal static class ExceptionAnalyzer
         return ns.StartsWith(targetNamespace, StringComparison.OrdinalIgnoreCase) && ns[targetNamespace.Length] == '.';
     }
 
-    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(SymbolAnalysisContext context, IEnumerable<XElement> exceptionElements)
+    private static bool HasTopLevelIncludeTag(XElement xml)
+    {
+        return DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Include, recursive: false).Any();
+    }
+
+    private static HashSet<ITypeSymbol> GetEffectiveDocumentedExceptionTypes(SymbolAnalysisContext context, ISymbol symbol, XElement xml)
+    {
+        var documentedTypes = GetDocumentedExceptionTypes(
+            context.Compilation,
+            DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false));
+
+        if (!HasTopLevelInheritDoc(xml))
+            return documentedTypes;
+
+        var recursionStack = new HashSet<ISymbol>(SymbolEqualityComparer.Default)
+        {
+            symbol
+        };
+
+        foreach (var target in GetInheritDocTargets(context.Compilation, symbol, context.CancellationToken))
+        {
+            documentedTypes.UnionWith(GetEffectiveExceptionTypesFromSymbol(target, context.Compilation, recursionStack, context.CancellationToken));
+        }
+
+        return documentedTypes;
+    }
+
+    private static ImmutableHashSet<ITypeSymbol> GetEffectiveExceptionTypesFromSymbol(
+        ISymbol symbol,
+        Compilation compilation,
+        HashSet<ISymbol> recursionStack,
+        CancellationToken cancellationToken)
+    {
+        var cache = CompilationInheritDocExceptionCache.GetValue(
+            compilation,
+            _ => new ConcurrentDictionary<ISymbol, ImmutableHashSet<ITypeSymbol>>(SymbolEqualityComparer.Default));
+
+        if (cache.TryGetValue(symbol, out var cached))
+            return cached;
+
+        if (!recursionStack.Add(symbol))
+            return EmptyExceptionTypeSet;
+
+        try
+        {
+            if (!DocumentationXmlExtensions.TryParseDocumentation(symbol.GetDocumentationCommentXml(cancellationToken: cancellationToken), out var xml))
+            {
+                cache.TryAdd(symbol, EmptyExceptionTypeSet);
+                return EmptyExceptionTypeSet;
+            }
+
+            var documentedTypes = GetDocumentedExceptionTypes(
+                compilation,
+                DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false));
+
+            if (HasTopLevelInheritDoc(xml))
+            {
+                foreach (var target in GetInheritDocTargets(compilation, symbol, cancellationToken))
+                {
+                    documentedTypes.UnionWith(GetEffectiveExceptionTypesFromSymbol(target, compilation, recursionStack, cancellationToken));
+                }
+            }
+
+            var result = documentedTypes.ToImmutableHashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+            cache.TryAdd(symbol, result);
+            return result;
+        }
+        finally
+        {
+            recursionStack.Remove(symbol);
+        }
+    }
+
+    private static bool HasTopLevelInheritDoc(XElement xml)
+    {
+        return DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.InheritDoc, recursive: false).Any();
+    }
+
+    private static ImmutableArray<ISymbol> GetInheritDocTargets(Compilation compilation, ISymbol symbol, CancellationToken cancellationToken)
+    {
+        var builder = ImmutableArray.CreateBuilder<ISymbol>();
+        var seenTargets = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+        ImmutableArray<ISymbol>? implicitTargets = null;
+
+        foreach (var declaringReference in symbol.DeclaringSyntaxReferences)
+        {
+            var syntax = declaringReference.GetSyntax(cancellationToken);
+            var docTrivia = DocumentationLocationExtensions.GetDocumentationCommentTrivia(syntax);
+            if (docTrivia is null)
+                continue;
+
+            var semanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
+            foreach (var node in docTrivia.Content)
+            {
+                if (!TryGetInheritDocNode(node, out var crefAttribute))
+                    continue;
+
+                if (crefAttribute is null)
+                {
+                    implicitTargets ??= InheritDocAnalyzer.GetImplicitTargetsForInheritDoc(symbol);
+                    AddTargets(implicitTargets.Value);
+                    continue;
+                }
+
+                var crefTarget = semanticModel.GetSymbolInfo(crefAttribute.Cref, cancellationToken).Symbol;
+                if (crefTarget is not null && seenTargets.Add(crefTarget))
+                    builder.Add(crefTarget);
+            }
+        }
+
+        return builder.ToImmutable();
+
+        void AddTargets(ImmutableArray<ISymbol> targets)
+        {
+            foreach (var target in targets)
+            {
+                if (seenTargets.Add(target))
+                    builder.Add(target);
+            }
+        }
+    }
+
+    private static bool TryGetInheritDocNode(SyntaxNode node, out XmlCrefAttributeSyntax? crefAttribute)
+    {
+        switch (node)
+        {
+            case XmlEmptyElementSyntax { Name.LocalName.ValueText: DocumentationTags.InheritDoc } emptyElement:
+                crefAttribute = GetCrefAttribute(emptyElement.Attributes);
+                return true;
+            case XmlElementSyntax { StartTag.Name.LocalName.ValueText: DocumentationTags.InheritDoc } element:
+                crefAttribute = GetCrefAttribute(element.StartTag.Attributes);
+                return true;
+            default:
+                crefAttribute = null;
+                return false;
+        }
+    }
+
+    private static XmlCrefAttributeSyntax? GetCrefAttribute(SyntaxList<XmlAttributeSyntax> attributes)
+    {
+        foreach (var attribute in attributes)
+        {
+            if (attribute is XmlCrefAttributeSyntax { Name.LocalName.ValueText: DocumentationAttributes.Cref } crefAttribute)
+                return crefAttribute;
+        }
+
+        return null;
+    }
+
+    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(Compilation compilation, IEnumerable<XElement> exceptionElements)
     {
         return new HashSet<ITypeSymbol>(
             exceptionElements
                 .Select(e => e.Attribute(DocumentationAttributes.Cref)?.Value)
-                .Select(cref => ResolveExceptionType(cref, context.Compilation))
+                .Select(cref => ResolveExceptionType(cref, compilation))
                 .OfType<ITypeSymbol>(),
             SymbolEqualityComparer.Default);
     }

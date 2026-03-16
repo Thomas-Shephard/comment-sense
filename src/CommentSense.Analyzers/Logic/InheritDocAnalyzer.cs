@@ -11,6 +11,8 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class InheritDocAnalyzer
 {
+    internal static ImmutableArray<ISymbol> GetImplicitTargetsForInheritDoc(ISymbol symbol) => GetImplicitTargets(symbol);
+
     public static bool Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml)
     {
         if (!HasTopLevelInheritDoc(xml))
