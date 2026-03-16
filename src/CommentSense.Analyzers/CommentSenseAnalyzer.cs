@@ -96,13 +96,8 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (DocumentationXmlExtensions.HasInheritDoc(element) &&
-            !DocumentationXmlExtensions.HasInheritDocWithCref(element) &&
-            !symbol.IsInheriting())
-        {
-            ReportMissingDocs(context, symbol);
+        if (InheritDocAnalyzer.Analyze(context, symbol, element))
             return;
-        }
 
         SummaryAnalyzer.Analyze(context, symbol, element, options);
         SupplementalAnalyzer.Analyze(context, symbol, element, options);

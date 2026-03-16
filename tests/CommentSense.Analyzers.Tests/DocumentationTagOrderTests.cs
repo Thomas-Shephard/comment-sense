@@ -16,7 +16,8 @@ public class DocumentationTagOrderTests : CommentSenseAnalyzerTestBase<CommentSe
         (CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId, ReportDiagnostic.Suppress),
         (CommentSenseDiagnosticIds.MissingReturnValueDocumentationId, ReportDiagnostic.Suppress),
         (CommentSenseDiagnosticIds.MissingValueDocumentationId, ReportDiagnostic.Suppress),
-        (CommentSenseDiagnosticIds.LowQualityDocumentationId, ReportDiagnostic.Suppress)
+        (CommentSenseDiagnosticIds.LowQualityDocumentationId, ReportDiagnostic.Suppress),
+        (CommentSenseDiagnosticIds.InvalidInheritDocTargetId, ReportDiagnostic.Suppress)
     ];
 
     [Test]
