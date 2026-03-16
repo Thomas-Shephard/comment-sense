@@ -26,12 +26,7 @@ internal static class InheritDocAnalyzer
 
     private static bool HasTopLevelInheritDoc(XElement xml)
     {
-        foreach (var _ in DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.InheritDoc, recursive: false))
-        {
-            return true;
-        }
-
-        return false;
+        return DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.InheritDoc, recursive: false).Any();
     }
 
     private static bool HasInvalidInheritDoc(SymbolAnalysisContext context, ISymbol symbol)

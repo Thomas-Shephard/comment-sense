@@ -78,12 +78,12 @@ internal static class InterfaceMemberMatchingExtensions
         if (baseProperty.Parameters.Length != property.Parameters.Length)
             return false;
 
+        var allParameterTypesMatch = true;
         for (int i = 0; i < baseProperty.Parameters.Length; i++)
         {
-            if (!SymbolEqualityComparer.Default.Equals(baseProperty.Parameters[i].Type, property.Parameters[i].Type))
-                return false;
+            allParameterTypesMatch &= SymbolEqualityComparer.Default.Equals(baseProperty.Parameters[i].Type, property.Parameters[i].Type);
         }
 
-        return true;
+        return allParameterTypesMatch;
     }
 }
