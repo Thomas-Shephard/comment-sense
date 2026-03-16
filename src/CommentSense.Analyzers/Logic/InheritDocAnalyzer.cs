@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Xml.Linq;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
@@ -12,7 +13,7 @@ internal static class InheritDocAnalyzer
 {
     public static bool Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml)
     {
-        if (!DocumentationXmlExtensions.HasInheritDoc(xml))
+        if (!HasTopLevelInheritDoc(xml))
             return false;
 
         if (!HasInvalidInheritDoc(context, symbol))
@@ -23,39 +24,84 @@ internal static class InheritDocAnalyzer
         return true;
     }
 
+    private static bool HasTopLevelInheritDoc(XElement xml)
+    {
+        foreach (var _ in DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.InheritDoc, recursive: false))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     private static bool HasInvalidInheritDoc(SymbolAnalysisContext context, ISymbol symbol)
     {
         ImmutableArray<ISymbol>? implicitTargets = null;
 
         foreach (var declaringReference in symbol.DeclaringSyntaxReferences)
         {
-            var syntax = declaringReference.GetSyntax(context.CancellationToken);
-            var docTrivia = DocumentationLocationExtensions.GetDocumentationCommentTrivia(syntax);
-            if (docTrivia is null)
+            if (!TryGetDocumentationContext(context, declaringReference, out var docTrivia, out var semanticModel))
                 continue;
 
-            var semanticModel = context.Compilation.GetSemanticModel(syntax.SyntaxTree);
-            foreach (var node in docTrivia.DescendantNodes())
-            {
-                if (!TryGetInheritDocNode(node, out var crefAttribute))
-                    continue;
-
-                if (crefAttribute is not null)
-                {
-                    var symbolInfo = semanticModel.GetSymbolInfo(crefAttribute.Cref, context.CancellationToken);
-                    if (symbolInfo.Symbol is null || !symbolInfo.Symbol.HasValidDocumentation())
-                        return true;
-
-                    continue;
-                }
-
-                implicitTargets ??= GetImplicitTargets(symbol);
-                if (!HasDocumentedTarget(implicitTargets.Value))
-                    return true;
-            }
+            if (HasInvalidInheritDocInTrivia(context, symbol, docTrivia, semanticModel, ref implicitTargets))
+                return true;
         }
 
         return false;
+    }
+
+    private static bool TryGetDocumentationContext(
+        SymbolAnalysisContext context,
+        SyntaxReference declaringReference,
+        [NotNullWhen(true)] out DocumentationCommentTriviaSyntax? docTrivia,
+        out SemanticModel semanticModel)
+    {
+        var syntax = declaringReference.GetSyntax(context.CancellationToken);
+        semanticModel = context.Compilation.GetSemanticModel(syntax.SyntaxTree);
+        docTrivia = DocumentationLocationExtensions.GetDocumentationCommentTrivia(syntax);
+        return docTrivia is not null;
+    }
+
+    private static bool HasInvalidInheritDocInTrivia(
+        SymbolAnalysisContext context,
+        ISymbol symbol,
+        DocumentationCommentTriviaSyntax docTrivia,
+        SemanticModel semanticModel,
+        ref ImmutableArray<ISymbol>? implicitTargets)
+    {
+        foreach (var node in docTrivia.Content)
+        {
+            if (!TryGetInheritDocNode(node, out var crefAttribute))
+                continue;
+
+            if (crefAttribute is not null)
+            {
+                if (IsInvalidCrefTarget(context, semanticModel, crefAttribute))
+                    return true;
+
+                continue;
+            }
+
+            if (IsInvalidImplicitTarget(symbol, ref implicitTargets))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsInvalidCrefTarget(
+        SymbolAnalysisContext context,
+        SemanticModel semanticModel,
+        XmlCrefAttributeSyntax crefAttribute)
+    {
+        var symbolInfo = semanticModel.GetSymbolInfo(crefAttribute.Cref, context.CancellationToken);
+        return symbolInfo.Symbol is null || !symbolInfo.Symbol.HasValidDocumentation();
+    }
+
+    private static bool IsInvalidImplicitTarget(ISymbol symbol, ref ImmutableArray<ISymbol>? implicitTargets)
+    {
+        implicitTargets ??= GetImplicitTargets(symbol);
+        return !HasDocumentedTarget(implicitTargets.Value);
     }
 
     private static bool TryGetInheritDocNode(SyntaxNode node, out XmlCrefAttributeSyntax? crefAttribute)
@@ -103,7 +149,10 @@ internal static class InheritDocAnalyzer
 
         var builder = ImmutableArray.CreateBuilder<ISymbol>();
         AddOverrideTargets(symbol, builder);
-        AddInterfaceTargets(symbol, builder);
+
+        if (symbol.ContainingType is { AllInterfaces.IsEmpty: false } containingType)
+            AddInterfaceTargets(symbol, containingType, builder);
+
         return builder.ToImmutable();
     }
 
@@ -152,107 +201,52 @@ internal static class InheritDocAnalyzer
         }
     }
 
-    private static void AddInterfaceTargets(ISymbol symbol, ImmutableArray<ISymbol>.Builder builder)
+    private static void AddInterfaceTargets(ISymbol symbol, INamedTypeSymbol containingType, ImmutableArray<ISymbol>.Builder builder)
     {
-        var containingType = symbol.ContainingType;
-        if (containingType is null || containingType.AllInterfaces.IsEmpty)
-            return;
-
         if (containingType.TypeKind == TypeKind.Interface)
         {
-            foreach (var implementedInterface in containingType.AllInterfaces)
-            {
-                foreach (var interfaceMember in implementedInterface.GetMembers(symbol.Name))
-                {
-                    if (MatchesInterfaceMember(symbol, interfaceMember))
-                        builder.Add(interfaceMember);
-                }
-            }
-
+            AddInterfaceTargetsForInterfaceSymbol(symbol, containingType, builder);
             return;
         }
 
+        AddInterfaceTargetsForClassSymbol(symbol, containingType, builder);
+    }
+
+    private static void AddInterfaceTargetsForInterfaceSymbol(
+        ISymbol symbol,
+        INamedTypeSymbol containingType,
+        ImmutableArray<ISymbol>.Builder builder)
+    {
         foreach (var implementedInterface in containingType.AllInterfaces)
         {
             foreach (var interfaceMember in implementedInterface.GetMembers(symbol.Name))
             {
-                if (interfaceMember.Kind != symbol.Kind)
-                    continue;
-
-                if (!SymbolEqualityComparer.Default.Equals(containingType.FindImplementationForInterfaceMember(interfaceMember), symbol))
-                    continue;
-
-                builder.Add(interfaceMember);
+                if (symbol.MatchesInterfaceMemberSignature(interfaceMember))
+                    builder.Add(interfaceMember);
             }
         }
     }
 
-    private static bool MatchesInterfaceMember(ISymbol symbol, ISymbol interfaceMember)
+    private static void AddInterfaceTargetsForClassSymbol(
+        ISymbol symbol,
+        INamedTypeSymbol containingType,
+        ImmutableArray<ISymbol>.Builder builder)
+    {
+        foreach (var implementedInterface in containingType.AllInterfaces)
+        {
+            foreach (var interfaceMember in implementedInterface.GetMembers(symbol.Name))
+            {
+                if (IsImplicitInterfaceImplementationMatch(symbol, containingType, interfaceMember))
+                    builder.Add(interfaceMember);
+            }
+        }
+    }
+
+    private static bool IsImplicitInterfaceImplementationMatch(ISymbol symbol, INamedTypeSymbol containingType, ISymbol interfaceMember)
     {
         if (interfaceMember.Kind != symbol.Kind)
             return false;
 
-        return symbol switch
-        {
-            IEventSymbol eventSymbol when interfaceMember is IEventSymbol baseEvent
-                => SymbolEqualityComparer.Default.Equals(baseEvent.Type, eventSymbol.Type),
-            IMethodSymbol methodSymbol when interfaceMember is IMethodSymbol baseMethod
-                => MatchesMethod(methodSymbol, baseMethod),
-            IPropertySymbol propertySymbol when interfaceMember is IPropertySymbol baseProperty
-                => MatchesProperty(propertySymbol, baseProperty),
-            _ => false
-        };
-    }
-
-    private static bool MatchesMethod(IMethodSymbol method, IMethodSymbol baseMethod)
-    {
-        if (baseMethod.IsStatic != method.IsStatic)
-            return false;
-
-        if (baseMethod.ReturnsByRef != method.ReturnsByRef || baseMethod.RefKind != method.RefKind)
-            return false;
-
-        if (baseMethod.TypeParameters.Length != method.TypeParameters.Length)
-            return false;
-
-        if (baseMethod.Parameters.Length != method.Parameters.Length)
-            return false;
-
-        var substitutedBaseMethod = baseMethod;
-        if (method.TypeParameters.Length > 0)
-            substitutedBaseMethod = baseMethod.Construct([.. method.TypeParameters]);
-
-        if (!SymbolEqualityComparer.Default.Equals(substitutedBaseMethod.ReturnType, method.ReturnType) &&
-            !method.ReturnType.InheritsFromOrEquals(substitutedBaseMethod.ReturnType))
-        {
-            return false;
-        }
-
-        return !substitutedBaseMethod.Parameters
-            .Where((parameter, index) => parameter.RefKind != method.Parameters[index].RefKind ||
-                                         !SymbolEqualityComparer.Default.Equals(parameter.Type, method.Parameters[index].Type))
-            .Any();
-    }
-
-    private static bool MatchesProperty(IPropertySymbol property, IPropertySymbol baseProperty)
-    {
-        if (baseProperty.IsStatic != property.IsStatic)
-            return false;
-
-        if (baseProperty.ReturnsByRef != property.ReturnsByRef || baseProperty.RefKind != property.RefKind)
-            return false;
-
-        if (!SymbolEqualityComparer.Default.Equals(baseProperty.Type, property.Type) &&
-            !property.Type.InheritsFromOrEquals(baseProperty.Type))
-        {
-            return false;
-        }
-
-        if (baseProperty.Parameters.Length != property.Parameters.Length)
-            return false;
-
-        return !baseProperty.Parameters
-            .Where((parameter, index) => !SymbolEqualityComparer.Default.Equals(parameter.Type, property.Parameters[index].Type))
-            .Any();
+        return SymbolEqualityComparer.Default.Equals(containingType.FindImplementationForInterfaceMember(interfaceMember), symbol);
     }
 }

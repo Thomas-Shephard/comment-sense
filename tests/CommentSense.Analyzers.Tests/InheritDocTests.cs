@@ -1,6 +1,7 @@
 using CommentSense.TestHelpers;
 using CommentSense.Core;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -697,6 +698,30 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
     }
 
     [Test]
+    public async Task IndexerInInterfaceWithInheritDocDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Base interface.</summary>
+            public interface IBase
+            {
+                /// <summary>Indexer.</summary>
+                /// <param name="x">Param x.</param>
+                /// <value>Gets a value by index.</value>
+                int this[int x] { get; }
+            }
+
+            /// <summary>Derived interface.</summary>
+            public interface IDerived : IBase
+            {
+                /// <inheritdoc/>
+                int this[int x] { get; }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
     public async Task InterfaceMemberWithDifferentReturnTypeDoesNotInheritDoc()
     {
         const string testCode = """
@@ -740,6 +765,28 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
     }
 
     [Test]
+    public async Task InterfaceMemberWithDifferentParameterTypeDoesNotInheritDoc()
+    {
+        const string testCode = """
+            /// <summary>Base interface.</summary>
+            public interface IBase
+            {
+                /// <summary>Method M.</summary>
+                /// <param name="x">Param x.</param>
+                void M(int x);
+            }
+
+            /// <summary>Derived interface.</summary>
+            public interface IDerived : IBase
+            {
+                /// <inheritdoc/>
+                void {|CSENSE026:M|}(string x);
+            }
+            """;
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
     public async Task InterfacePropertyWithDifferentTypeDoesNotInheritDoc()
     {
         const string testCode = """
@@ -759,6 +806,34 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
             }
             """;
         await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task InterfaceIndexerWithDifferentParameterTypeDoesNotInheritDoc()
+    {
+        const string testCode = """
+            /// <summary>Base interface.</summary>
+            public interface IBase
+            {
+                /// <summary>Indexer.</summary>
+                /// <param name="x">Param x.</param>
+                /// <value>Gets a value by index.</value>
+                int this[int x] { get; }
+            }
+
+            /// <summary>Derived interface.</summary>
+            public interface IDerived : IBase
+            {
+                /// <inheritdoc/>
+                int this[string x] { get; }
+            }
+            """;
+
+        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.InvalidInheritDocTargetId, DiagnosticSeverity.Warning)
+            .WithSpan(14, 9, 14, 13)
+            .WithArguments("this[]");
+
+        await VerifyCSenseAsync(testCode, expectedDiagnostics: [expected]);
     }
 
     [Test]
@@ -960,6 +1035,31 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
                 public static int {|CSENSE026:P|} => 0;
             }
             """;
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task InheritDocOnMethodMatchingInterfacePropertyNameReportsDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Interface IBase.</summary>
+            public interface IBase
+            {
+                /// <summary>Property P description.</summary>
+                /// <value>Integer value.</value>
+                int P { get; }
+            }
+
+            /// <summary>Class MyClass description.</summary>
+            public class MyClass : IBase
+            {
+                int IBase.P => 0;
+
+                /// <inheritdoc/>
+                public void {|CSENSE026:P|}() {}
+            }
+            """;
+
         await VerifyCSenseAsync(testCode);
     }
 

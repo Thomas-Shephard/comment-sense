@@ -117,62 +117,7 @@ internal static class AnalyzerExtensions
 
     private static bool IsInheritingInterfaceMember(ISymbol symbol, INamedTypeSymbol containingType)
     {
-        return containingType.AllInterfaces.Any(i => i.GetMembers(symbol.Name).Any(m => MatchesInterfaceMember(symbol, m)));
-    }
-
-    private static bool MatchesInterfaceMember(ISymbol symbol, ISymbol baseMember)
-    {
-        if (baseMember.Kind != symbol.Kind)
-            return false;
-
-        return symbol switch
-        {
-            IEventSymbol eventSymbol when baseMember is IEventSymbol baseEvent => SymbolEqualityComparer.Default.Equals(baseEvent.Type, eventSymbol.Type),
-            IMethodSymbol methodSymbol when baseMember is IMethodSymbol baseMethod => MatchesMethod(methodSymbol, baseMethod),
-            IPropertySymbol propertySymbol when baseMember is IPropertySymbol baseProperty => MatchesProperty(propertySymbol, baseProperty),
-            _ => false
-        };
-    }
-
-    private static bool MatchesMethod(IMethodSymbol method, IMethodSymbol baseMethod)
-    {
-        if (baseMethod.IsStatic != method.IsStatic)
-            return false;
-
-        if (baseMethod.ReturnsByRef != method.ReturnsByRef || baseMethod.RefKind != method.RefKind)
-            return false;
-
-        if (baseMethod.TypeParameters.Length != method.TypeParameters.Length)
-            return false;
-
-        if (baseMethod.Parameters.Length != method.Parameters.Length)
-            return false;
-
-        var substitutedBase = baseMethod;
-        if (method.TypeParameters.Length > 0)
-            substitutedBase = baseMethod.Construct([.. method.TypeParameters]);
-
-        if (!SymbolEqualityComparer.Default.Equals(substitutedBase.ReturnType, method.ReturnType) && !method.ReturnType.InheritsFromOrEquals(substitutedBase.ReturnType))
-            return false;
-
-        return !substitutedBase.Parameters.Where((t, j) => t.RefKind != method.Parameters[j].RefKind || !SymbolEqualityComparer.Default.Equals(t.Type, method.Parameters[j].Type)).Any();
-    }
-
-    private static bool MatchesProperty(IPropertySymbol property, IPropertySymbol baseProperty)
-    {
-        if (baseProperty.IsStatic != property.IsStatic)
-            return false;
-
-        if (baseProperty.ReturnsByRef != property.ReturnsByRef || baseProperty.RefKind != property.RefKind)
-            return false;
-
-        if (!SymbolEqualityComparer.Default.Equals(baseProperty.Type, property.Type) && !property.Type.InheritsFromOrEquals(baseProperty.Type))
-            return false;
-
-        if (baseProperty.Parameters.Length != property.Parameters.Length)
-            return false;
-
-        return !baseProperty.Parameters.Where((t, j) => !SymbolEqualityComparer.Default.Equals(t.Type, property.Parameters[j].Type)).Any();
+        return containingType.AllInterfaces.Any(i => i.GetMembers(symbol.Name).Any(symbol.MatchesInterfaceMemberSignature));
     }
 
     private static bool IsImplicitInterfaceImplementation(ISymbol symbol, INamedTypeSymbol containingType)
