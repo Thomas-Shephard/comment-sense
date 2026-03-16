@@ -301,6 +301,15 @@
   <data name="InvalidInheritDocTargetDescription" xml:space="preserve">
     <value>The &lt;inheritdoc /&gt; tag must resolve to a documented target through the inheritance chain or an explicit cref reference.</value>
   </data>
+  <data name="PropertySummaryPatternTitle" xml:space="preserve">
+    <value>Property summary does not follow recommended pattern</value>
+  </data>
+  <data name="PropertySummaryPatternMessage" xml:space="preserve">
+    <value>The summary for property '{0}' should start with '{1}'</value>
+  </data>
+  <data name="PropertySummaryPatternDescription" xml:space="preserve">
+    <value>Property summaries should begin with standard phrases based on visible accessors, such as 'Gets', 'Sets', 'Gets or sets', or 'Gets or initializes'.</value>
+  </data>
   <data name="SuppressionJustification" xml:space="preserve">
     <value>Handled by CommentSense analyzer.</value>
   </data>

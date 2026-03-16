@@ -34,6 +34,7 @@ internal static class CommentSenseOptionsLoader
         var minSummaryLength = GetIntOption(options, globalOptions, "min_summary_length", CommentSenseOptions.Default.MinSummaryLength);
         var requireEndingPunctuation = GetBoolOption(options, globalOptions, "require_ending_punctuation", CommentSenseOptions.Default.RequireEndingPunctuation);
         var requireCapitalization = GetBoolOption(options, globalOptions, "require_capitalization", CommentSenseOptions.Default.RequireCapitalization);
+        var requirePropertyPatterns = GetBoolOption(options, globalOptions, "require_property_patterns", CommentSenseOptions.Default.RequirePropertyPatterns);
         var excludeConstants = GetBoolOption(options, globalOptions, "exclude_constants", CommentSenseOptions.Default.ExcludeConstants);
         var excludeEnums = GetBoolOption(options, globalOptions, "exclude_enums", CommentSenseOptions.Default.ExcludeEnums);
 
@@ -59,6 +60,7 @@ internal static class CommentSenseOptionsLoader
             minSummaryLength,
             requireEndingPunctuation,
             requireCapitalization,
+            requirePropertyPatterns,
             excludeConstants,
             excludeEnums,
             similarityThreshold,

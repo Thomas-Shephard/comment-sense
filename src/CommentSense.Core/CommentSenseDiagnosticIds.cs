@@ -30,6 +30,7 @@ internal static class CommentSenseDiagnosticIds
     public const string DocumentationTagOrderMismatchId = "CSENSE024";
     public const string InaccessibleCrefId = "CSENSE025";
     public const string InvalidInheritDocTargetId = "CSENSE026";
+    public const string PropertySummaryPatternId = "CSENSE027";
 
     // Suppressions
     public const string SuppressMissingXmlCommentId = "CSENSESUP001";
