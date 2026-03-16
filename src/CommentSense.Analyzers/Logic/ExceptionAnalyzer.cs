@@ -24,24 +24,29 @@ internal static class ExceptionAnalyzer
     }
 
     private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>> CompilationExceptionCache = new();
-    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, ImmutableHashSet<ITypeSymbol>>> CompilationInheritDocExceptionCache = new();
+    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, InheritedExceptionResolution>> CompilationInheritDocExceptionCache = new();
     private static readonly ImmutableHashSet<ITypeSymbol> EmptyExceptionTypeSet = ImmutableHashSet.Create<ITypeSymbol>(SymbolEqualityComparer.Default);
+    private static readonly InheritedExceptionResolution EmptyInheritedExceptionResolution = new(EmptyExceptionTypeSet, HasUnknownInclude: false);
+
+    private readonly record struct EffectiveDocumentedExceptions(HashSet<ITypeSymbol> Types, bool HasUnknownInheritedDocumentation);
+    private readonly record struct InheritedExceptionResolution(ImmutableHashSet<ITypeSymbol> Types, bool HasUnknownInclude);
 
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
-        var documentedTypes = GetEffectiveDocumentedExceptionTypes(context, symbol, xml);
+        var effectiveDocumentation = GetEffectiveDocumentedExceptionTypes(context, symbol, xml);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor, options);
 
-        ReportMissingExceptions(context, symbol, xml, options, thrownTypes, documentedTypes);
+        ReportMissingExceptions(context, symbol, xml, options, thrownTypes, effectiveDocumentation);
         ReportLowQualityExceptions(context, symbol, xml, options);
     }
 
-    private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, HashSet<ITypeSymbol> documentedTypes)
+    private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, EffectiveDocumentedExceptions effectiveDocumentation)
     {
         // CSENSE012: Missing Exception Documentation
-        if (HasTopLevelIncludeTag(xml))
+        if (HasTopLevelIncludeTag(xml) || effectiveDocumentation.HasUnknownInheritedDocumentation)
             return;
 
+        var documentedTypes = effectiveDocumentation.Types;
         var filteredThrownTypes = new List<ITypeSymbol>();
         foreach (var thrownType in thrownTypes)
         {
@@ -178,29 +183,32 @@ internal static class ExceptionAnalyzer
         return DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Include, recursive: false).Any();
     }
 
-    private static HashSet<ITypeSymbol> GetEffectiveDocumentedExceptionTypes(SymbolAnalysisContext context, ISymbol symbol, XElement xml)
+    private static EffectiveDocumentedExceptions GetEffectiveDocumentedExceptionTypes(SymbolAnalysisContext context, ISymbol symbol, XElement xml)
     {
         var documentedTypes = GetDocumentedExceptionTypes(
             context.Compilation,
             DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false));
 
         if (!HasTopLevelInheritDoc(xml))
-            return documentedTypes;
+            return new EffectiveDocumentedExceptions(documentedTypes, HasUnknownInheritedDocumentation: false);
 
         var recursionStack = new HashSet<ISymbol>(SymbolEqualityComparer.Default)
         {
             symbol
         };
+        bool hasUnknownInheritedDocumentation = false;
 
         foreach (var target in GetInheritDocTargets(context.Compilation, symbol, context.CancellationToken))
         {
-            documentedTypes.UnionWith(GetEffectiveExceptionTypesFromSymbol(target, context.Compilation, recursionStack, context.CancellationToken));
+            var inheritedResolution = GetEffectiveExceptionTypesFromSymbol(target, context.Compilation, recursionStack, context.CancellationToken);
+            documentedTypes.UnionWith(inheritedResolution.Types);
+            hasUnknownInheritedDocumentation |= inheritedResolution.HasUnknownInclude;
         }
 
-        return documentedTypes;
+        return new EffectiveDocumentedExceptions(documentedTypes, hasUnknownInheritedDocumentation);
     }
 
-    private static ImmutableHashSet<ITypeSymbol> GetEffectiveExceptionTypesFromSymbol(
+    private static InheritedExceptionResolution GetEffectiveExceptionTypesFromSymbol(
         ISymbol symbol,
         Compilation compilation,
         HashSet<ISymbol> recursionStack,
@@ -208,35 +216,44 @@ internal static class ExceptionAnalyzer
     {
         var cache = CompilationInheritDocExceptionCache.GetValue(
             compilation,
-            _ => new ConcurrentDictionary<ISymbol, ImmutableHashSet<ITypeSymbol>>(SymbolEqualityComparer.Default));
+            _ => new ConcurrentDictionary<ISymbol, InheritedExceptionResolution>(SymbolEqualityComparer.Default));
 
         if (cache.TryGetValue(symbol, out var cached))
             return cached;
 
         if (!recursionStack.Add(symbol))
-            return EmptyExceptionTypeSet;
+            return EmptyInheritedExceptionResolution;
 
         try
         {
             if (!DocumentationXmlExtensions.TryParseDocumentation(symbol.GetDocumentationCommentXml(cancellationToken: cancellationToken), out var xml))
             {
-                cache.TryAdd(symbol, EmptyExceptionTypeSet);
-                return EmptyExceptionTypeSet;
+                cache.TryAdd(symbol, EmptyInheritedExceptionResolution);
+                return EmptyInheritedExceptionResolution;
             }
 
             var documentedTypes = GetDocumentedExceptionTypes(
                 compilation,
                 DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false));
+            var hasUnknownInclude = HasTopLevelIncludeTag(xml);
 
             if (HasTopLevelInheritDoc(xml))
             {
-                foreach (var target in GetInheritDocTargets(compilation, symbol, cancellationToken))
+                var inheritDocTargets = GetInheritDocTargets(compilation, symbol, cancellationToken);
+                if (inheritDocTargets.IsEmpty && !HasResolvableDeclaringSyntaxReference(compilation, symbol))
+                    hasUnknownInclude = true;
+
+                foreach (var target in inheritDocTargets)
                 {
-                    documentedTypes.UnionWith(GetEffectiveExceptionTypesFromSymbol(target, compilation, recursionStack, cancellationToken));
+                    var inheritedResolution = GetEffectiveExceptionTypesFromSymbol(target, compilation, recursionStack, cancellationToken);
+                    documentedTypes.UnionWith(inheritedResolution.Types);
+                    hasUnknownInclude |= inheritedResolution.HasUnknownInclude;
                 }
             }
 
-            var result = documentedTypes.ToImmutableHashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+            var result = new InheritedExceptionResolution(
+                documentedTypes.ToImmutableHashSet<ITypeSymbol>(SymbolEqualityComparer.Default),
+                hasUnknownInclude);
             cache.TryAdd(symbol, result);
             return result;
         }
@@ -259,67 +276,83 @@ internal static class ExceptionAnalyzer
 
         foreach (var declaringReference in symbol.DeclaringSyntaxReferences)
         {
-            var syntax = declaringReference.GetSyntax(cancellationToken);
-            var docTrivia = DocumentationLocationExtensions.GetDocumentationCommentTrivia(syntax);
-            if (docTrivia is null)
-                continue;
-
-            var semanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
-            foreach (var node in docTrivia.Content)
-            {
-                if (!TryGetInheritDocNode(node, out var crefAttribute))
-                    continue;
-
-                if (crefAttribute is null)
-                {
-                    implicitTargets ??= InheritDocAnalyzer.GetImplicitTargetsForInheritDoc(symbol);
-                    AddTargets(implicitTargets.Value);
-                    continue;
-                }
-
-                var crefTarget = semanticModel.GetSymbolInfo(crefAttribute.Cref, cancellationToken).Symbol;
-                if (crefTarget is not null && seenTargets.Add(crefTarget))
-                    builder.Add(crefTarget);
-            }
+            AddInheritDocTargetsFromDeclaration(
+                compilation,
+                symbol,
+                declaringReference,
+                builder,
+                seenTargets,
+                ref implicitTargets,
+                cancellationToken);
         }
 
         return builder.ToImmutable();
+    }
 
-        void AddTargets(ImmutableArray<ISymbol> targets)
+    private static bool HasResolvableDeclaringSyntaxReference(Compilation compilation, ISymbol symbol)
+    {
+        foreach (var declaringReference in symbol.DeclaringSyntaxReferences)
         {
-            foreach (var target in targets)
+            if (compilation.ContainsSyntaxTree(declaringReference.SyntaxTree))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void AddInheritDocTargetsFromDeclaration(
+        Compilation compilation,
+        ISymbol symbol,
+        SyntaxReference declaringReference,
+        ImmutableArray<ISymbol>.Builder builder,
+        HashSet<ISymbol> seenTargets,
+        ref ImmutableArray<ISymbol>? implicitTargets,
+        CancellationToken cancellationToken)
+    {
+        if (!compilation.ContainsSyntaxTree(declaringReference.SyntaxTree))
+            return;
+
+        var syntax = declaringReference.GetSyntax(cancellationToken);
+        var docTrivia = DocumentationLocationExtensions.GetDocumentationCommentTrivia(syntax);
+        if (docTrivia is null)
+            return;
+
+        var semanticModel = compilation.GetSemanticModel(declaringReference.SyntaxTree);
+        foreach (var node in docTrivia.Content)
+        {
+            if (!InheritDocAnalyzer.TryGetInheritDocNode(node, out var crefAttribute))
+                continue;
+
+            if (crefAttribute is null)
             {
-                if (seenTargets.Add(target))
-                    builder.Add(target);
+                implicitTargets ??= InheritDocAnalyzer.GetImplicitTargetsForInheritDoc(symbol);
+                AddDistinctTargets(implicitTargets.Value, builder, seenTargets);
+                continue;
             }
+
+            var crefTarget = semanticModel.GetSymbolInfo(crefAttribute.Cref, cancellationToken).Symbol;
+            AddDistinctTarget(crefTarget, builder, seenTargets);
         }
     }
 
-    private static bool TryGetInheritDocNode(SyntaxNode node, out XmlCrefAttributeSyntax? crefAttribute)
+    private static void AddDistinctTargets(
+        ImmutableArray<ISymbol> targets,
+        ImmutableArray<ISymbol>.Builder builder,
+        HashSet<ISymbol> seenTargets)
     {
-        switch (node)
+        foreach (var target in targets)
         {
-            case XmlEmptyElementSyntax { Name.LocalName.ValueText: DocumentationTags.InheritDoc } emptyElement:
-                crefAttribute = GetCrefAttribute(emptyElement.Attributes);
-                return true;
-            case XmlElementSyntax { StartTag.Name.LocalName.ValueText: DocumentationTags.InheritDoc } element:
-                crefAttribute = GetCrefAttribute(element.StartTag.Attributes);
-                return true;
-            default:
-                crefAttribute = null;
-                return false;
+            AddDistinctTarget(target, builder, seenTargets);
         }
     }
 
-    private static XmlCrefAttributeSyntax? GetCrefAttribute(SyntaxList<XmlAttributeSyntax> attributes)
+    private static void AddDistinctTarget(
+        ISymbol? target,
+        ImmutableArray<ISymbol>.Builder builder,
+        HashSet<ISymbol> seenTargets)
     {
-        foreach (var attribute in attributes)
-        {
-            if (attribute is XmlCrefAttributeSyntax { Name.LocalName.ValueText: DocumentationAttributes.Cref } crefAttribute)
-                return crefAttribute;
-        }
-
-        return null;
+        if (target is not null && seenTargets.Add(target))
+            builder.Add(target);
     }
 
     private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(Compilation compilation, IEnumerable<XElement> exceptionElements)

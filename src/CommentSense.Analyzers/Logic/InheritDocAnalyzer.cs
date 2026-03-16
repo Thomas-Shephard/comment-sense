@@ -101,7 +101,7 @@ internal static class InheritDocAnalyzer
         return !HasDocumentedTarget(implicitTargets.Value);
     }
 
-    private static bool TryGetInheritDocNode(SyntaxNode node, out XmlCrefAttributeSyntax? crefAttribute)
+    internal static bool TryGetInheritDocNode(SyntaxNode node, out XmlCrefAttributeSyntax? crefAttribute)
     {
         switch (node)
         {

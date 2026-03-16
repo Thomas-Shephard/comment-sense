@@ -157,7 +157,136 @@ public class InheritDocExceptionTests : CommentSenseAnalyzerTestBase<CommentSens
     }
 
     [Test]
-    public async Task InheritDocResolutionCacheIsReusedForSharedTarget()
+    public async Task InheritDocCrefTargetWithIncludeSkipsExceptionValidation()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>Type.</summary>
+            public class Worker
+            {
+                /// <include file="Docs.xml" path="/doc/members/member[@name='M:Worker.Source']/*"/>
+                public void Source() { }
+
+                /// <inheritdoc cref="Source"/>
+                public void Execute()
+                {
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task IncludeInInheritedInheritDocChainSkipsExceptionValidation()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>Type.</summary>
+            public class Worker
+            {
+                /// <include file="Docs.xml" path="/doc/members/member[@name='M:Worker.Source']/*"/>
+                public void Source() { }
+
+                /// <inheritdoc cref="Source"/>
+                public void Middle() { }
+
+                /// <inheritdoc cref="Middle"/>
+                public void Execute()
+                {
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task MetadataInheritDocTargetWithoutResolvableChainSkipsExceptionValidation()
+    {
+        const string testCode = """
+            using System;
+            using RefLib;
+
+            /// <summary>Type.</summary>
+            public class Worker : Middle
+            {
+                /// <inheritdoc/>
+                public override void Execute()
+                {
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        const string referencedCode = """
+            using System;
+
+            namespace RefLib;
+
+            /// <summary>Base type.</summary>
+            public class Base
+            {
+                /// <summary>Executes operation.</summary>
+                /// <exception cref="InvalidOperationException">Thrown on failure.</exception>
+                public virtual void Execute() { }
+            }
+
+            /// <summary>Middle type.</summary>
+            public class Middle : Base
+            {
+                /// <inheritdoc/>
+                public override void Execute() { }
+            }
+            """;
+
+        await VerifyCSenseAsync(
+            testCode,
+            expectDiagnostic: false,
+            solutionTransform: (solution, projectId) =>
+            {
+                var project = solution.GetProject(projectId) ?? throw new InvalidOperationException();
+                var referencedProjectId = ProjectId.CreateNewId();
+                solution = solution.AddProject(referencedProjectId, "RefLib", "RefLib", LanguageNames.CSharp);
+                solution = solution.AddMetadataReferences(referencedProjectId, project.MetadataReferences);
+                solution = solution.WithProjectParseOptions(referencedProjectId, project.ParseOptions ?? throw new InvalidOperationException());
+                solution = solution.WithProjectCompilationOptions(referencedProjectId, project.CompilationOptions ?? throw new InvalidOperationException());
+                solution = solution.AddDocument(DocumentId.CreateNewId(referencedProjectId), "RefLib.cs", referencedCode);
+                solution = solution.AddProjectReferences(projectId, [new ProjectReference(referencedProjectId)]);
+                return solution;
+            });
+    }
+
+    [Test]
+    public async Task PartialTypeWithUndocumentedDeclarationStillResolvesInheritedExceptions()
+    {
+        const string testCode = """
+            using System;
+
+            /// <summary>Base docs.</summary>
+            /// <exception cref="InvalidOperationException">Thrown by derived initialization.</exception>
+            public class BaseType { }
+
+            /// <inheritdoc/>
+            public partial class Worker(int value) : BaseType
+            {
+                private readonly int _x = value > 0 ? value : throw new InvalidOperationException();
+            }
+
+            public partial class Worker
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task MultipleMembersCanInheritExceptionsFromSameCrefTarget()
     {
         const string testCode = """
             using System;
