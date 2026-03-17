@@ -431,7 +431,7 @@ internal static class ExceptionAnalyzer
             return null;
 
         cancellationToken.ThrowIfCancellationRequested();
-        var normalizedTypeName = DocumentationSyntaxExtensions.NormalizeCref(info.TypeName);
+        var normalizedTypeName = StripGlobalAlias(DocumentationSyntaxExtensions.NormalizeCref(info.TypeName));
         var typeNameWithoutGenerics = RemoveGenerics(normalizedTypeName.AsSpan());
 
         if (TryResolveByMetadataName(compilation, normalizedTypeName, typeNameWithoutGenerics, cancellationToken) is { } metadataType)
@@ -461,9 +461,6 @@ internal static class ExceptionAnalyzer
 
     private static ITypeSymbol? TryResolveByMetadataName(Compilation compilation, string normalizedTypeName, string typeNameWithoutGenerics, CancellationToken cancellationToken)
     {
-        if (!typeNameWithoutGenerics.Contains('.'))
-            return null;
-
         cancellationToken.ThrowIfCancellationRequested();
         var metadataCandidate = StripGlobalAlias(normalizedTypeName);
         if (!metadataCandidate.Contains('<'))
@@ -502,55 +499,59 @@ internal static class ExceptionAnalyzer
             return null;
 
         var metadataName = new System.Text.StringBuilder(typeName.Length);
-        for (int i = 0; i < typeName.Length; i++)
+        int index = 0;
+        while (index < typeName.Length)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            char current = typeName[i];
+            char current = typeName[index];
             if (current != '<')
             {
                 metadataName.Append(current);
+                index++;
                 continue;
             }
 
-            int depth = 0;
-            int arity = 1;
-            int j = i + 1;
-            bool foundClosingBracket = false;
-            for (; j < typeName.Length; j++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                switch (typeName[j])
-                {
-                    case '<':
-                        depth++;
-                        break;
-                    case '>':
-                        if (depth == 0)
-                        {
-                            foundClosingBracket = true;
-                            break;
-                        }
-
-                        depth--;
-                        break;
-                    case ',' when depth == 0:
-                        arity++;
-                        break;
-                }
-
-                if (foundClosingBracket)
-                    break;
-            }
-
-            if (!foundClosingBracket)
+            if (!TryFindGenericArity(typeName, index, cancellationToken, out int arity, out int closingBracketIndex))
                 return null;
 
             metadataName.Append('`');
             metadataName.Append(arity);
-            i = j;
+            index = closingBracketIndex + 1;
         }
 
         return metadataName.ToString();
+    }
+
+    private static bool TryFindGenericArity(string typeName, int openingBracketIndex, CancellationToken cancellationToken, out int arity, out int closingBracketIndex)
+    {
+        int depth = 0;
+        arity = 1;
+        closingBracketIndex = -1;
+
+        for (int i = openingBracketIndex + 1; i < typeName.Length; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            switch (typeName[i])
+            {
+                case '<':
+                    depth++;
+                    break;
+                case '>':
+                    if (depth == 0)
+                    {
+                        closingBracketIndex = i;
+                        return true;
+                    }
+
+                    depth--;
+                    break;
+                case ',' when depth == 0:
+                    arity++;
+                    break;
+            }
+        }
+
+        return false;
     }
 
     private static ITypeSymbol? TryResolveSystemTypeBySimpleName(Compilation compilation, string simpleName, CancellationToken cancellationToken)

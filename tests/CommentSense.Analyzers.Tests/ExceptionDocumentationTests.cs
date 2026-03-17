@@ -2252,6 +2252,20 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
 
         Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("LocalException", localCompilation), Is.Not.Null);
 
+        var globalCompilation = CSharpCompilation.Create(
+            "GlobalTest",
+            syntaxTrees: [CSharpSyntaxTree.ParseText("""
+                using System;
+                public class RootException : Exception { }
+                """)],
+            references: [mscorlibReference]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("global::RootException", globalCompilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:global::RootException", globalCompilation), Is.Not.Null);
+        }
+
         var options = CommentSenseOptions.Default;
         var exceptionType = compilation.GetTypeByMetadataName("System.Exception") ?? compilation.GetSpecialType(SpecialType.System_Object);
 
