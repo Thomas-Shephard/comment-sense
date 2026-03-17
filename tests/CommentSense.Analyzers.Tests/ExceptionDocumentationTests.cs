@@ -2217,7 +2217,8 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     [Test]
     public void InternalMethodsCoverage()
     {
-        var compilation = CSharpCompilation.Create("Test", references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var mscorlibReference = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
+        var compilation = CSharpCompilation.Create("Test", references: [mscorlibReference]);
 
         using (Assert.EnterMultipleScope())
         {
@@ -2226,12 +2227,43 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("", compilation), Is.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:System.Exception", compilation), Is.Not.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("System.Exception", compilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("global::System.Exception", compilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("ArgumentNullException", compilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:System.Collections.Generic.List<System.String>", compilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:System.Exception<System.String>", compilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:System.Collections.Generic.Dictionary<System.String,System.Collections.Generic.Dictionary<System.Int32,System.String>>", compilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:System.Collections.Generic.List<System.String", compilation), Is.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("M:SomeMethod", compilation), Is.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("!:SomeBadCref", compilation), Is.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("!", compilation), Is.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:", compilation), Is.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("123", compilation), Is.Null);
             Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("System.123", compilation), Is.Null);
+        }
+
+        var localCompilation = CSharpCompilation.Create(
+            "LocalTest",
+            syntaxTrees: [CSharpSyntaxTree.ParseText("""
+                using System;
+                namespace Demo;
+                public class LocalException : Exception { }
+                """)],
+            references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+
+        Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("LocalException", localCompilation), Is.Not.Null);
+
+        var globalCompilation = CSharpCompilation.Create(
+            "GlobalTest",
+            syntaxTrees: [CSharpSyntaxTree.ParseText("""
+                using System;
+                public class RootException : Exception { }
+                """)],
+            references: [mscorlibReference]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("global::RootException", globalCompilation), Is.Not.Null);
+            Assert.That(Logic.ExceptionAnalyzer.ResolveExceptionType("T:global::RootException", globalCompilation), Is.Not.Null);
         }
 
         var options = CommentSenseOptions.Default;

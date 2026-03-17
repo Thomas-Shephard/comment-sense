@@ -431,66 +431,152 @@ internal static class ExceptionAnalyzer
             return null;
 
         cancellationToken.ThrowIfCancellationRequested();
-        var normalizedTypeName = DocumentationSyntaxExtensions.NormalizeCref(info.TypeName);
+        var normalizedTypeName = StripGlobalAlias(DocumentationSyntaxExtensions.NormalizeCref(info.TypeName));
         var typeNameWithoutGenerics = RemoveGenerics(normalizedTypeName.AsSpan());
 
+        if (TryResolveByMetadataName(compilation, normalizedTypeName, typeNameWithoutGenerics, cancellationToken) is { } metadataType)
+            return metadataType;
+
         // Extract simple name of the target type to use fast lookup (ignoring generic arguments)
-        var nameSpan = normalizedTypeName.AsSpan();
+        var nameSpan = typeNameWithoutGenerics.AsSpan();
         int lastDotIndex = nameSpan.LastIndexOf('.');
+        bool isUnqualifiedName = lastDotIndex == -1;
         var lastPart = lastDotIndex == -1 ? nameSpan : nameSpan.Slice(lastDotIndex + 1);
-        int genericStartIndex = lastPart.IndexOf('<');
-        var simpleNameSpan = genericStartIndex == -1 ? lastPart : lastPart.Slice(0, genericStartIndex);
+        var simpleNameSpan = lastPart;
 
         var simpleName = simpleNameSpan.ToString();
 
         if (string.IsNullOrWhiteSpace(simpleName) || !SyntaxFacts.IsValidIdentifier(simpleName))
             return null;
 
-        // Try direct lookup (only for non-generic types as GetTypeByMetadataName requires backticks for generics)
-        if (genericStartIndex == -1 && !normalizedTypeName.Contains('<'))
+        var symbols = GetSymbolsByName(compilation, simpleName, cancellationToken);
+        var resolved = FindBestExceptionMatch(symbols, normalizedTypeName, typeNameWithoutGenerics, cancellationToken);
+        if (resolved != null)
+            return resolved;
+
+        return isUnqualifiedName
+            ? TryResolveSystemTypeBySimpleName(compilation, simpleName, cancellationToken)
+            : null;
+    }
+
+    private static ITypeSymbol? TryResolveByMetadataName(Compilation compilation, string normalizedTypeName, string typeNameWithoutGenerics, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var metadataCandidate = StripGlobalAlias(normalizedTypeName);
+        if (!metadataCandidate.Contains('<'))
         {
-            var type = compilation.GetTypeByMetadataName(normalizedTypeName);
-            if (type != null)
-                return type;
+            var directMatch = compilation.GetTypeByMetadataName(metadataCandidate);
+            if (directMatch != null)
+                return directMatch;
         }
 
-        var symbols = GetSymbolsByName(compilation, simpleName, cancellationToken);
-        return FindBestExceptionMatch(symbols, normalizedTypeName, typeNameWithoutGenerics, cancellationToken);
+        var simpleCandidate = StripGlobalAlias(typeNameWithoutGenerics);
+        if (!simpleCandidate.Equals(metadataCandidate, StringComparison.Ordinal))
+        {
+            var simpleMatch = compilation.GetTypeByMetadataName(simpleCandidate);
+            if (simpleMatch != null)
+                return simpleMatch;
+        }
+
+        var genericCandidate = TryBuildGenericMetadataName(metadataCandidate, cancellationToken);
+        if (genericCandidate == null)
+            return null;
+
+        return compilation.GetTypeByMetadataName(genericCandidate);
+    }
+
+    private static string StripGlobalAlias(string typeName)
+    {
+        const string globalAliasPrefix = "global::";
+        return typeName.StartsWith(globalAliasPrefix, StringComparison.Ordinal)
+            ? typeName.Substring(globalAliasPrefix.Length)
+            : typeName;
+    }
+
+    private static string? TryBuildGenericMetadataName(string typeName, CancellationToken cancellationToken)
+    {
+        if (typeName.IndexOf('<') <= 0)
+            return null;
+
+        var metadataName = new System.Text.StringBuilder(typeName.Length);
+        int index = 0;
+        while (index < typeName.Length)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            char current = typeName[index];
+            if (current != '<')
+            {
+                metadataName.Append(current);
+                index++;
+                continue;
+            }
+
+            if (!TryFindGenericArity(typeName, index, cancellationToken, out int arity, out int closingBracketIndex))
+                return null;
+
+            metadataName.Append('`');
+            metadataName.Append(arity);
+            index = closingBracketIndex + 1;
+        }
+
+        return metadataName.ToString();
+    }
+
+    private static bool TryFindGenericArity(string typeName, int openingBracketIndex, CancellationToken cancellationToken, out int arity, out int closingBracketIndex)
+    {
+        int depth = 0;
+        arity = 1;
+        closingBracketIndex = -1;
+
+        for (int i = openingBracketIndex + 1; i < typeName.Length; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            switch (typeName[i])
+            {
+                case '<':
+                    depth++;
+                    break;
+                case '>':
+                    if (depth == 0)
+                    {
+                        closingBracketIndex = i;
+                        return true;
+                    }
+
+                    depth--;
+                    break;
+                case ',' when depth == 0:
+                    arity++;
+                    break;
+            }
+        }
+
+        return false;
+    }
+
+    private static ITypeSymbol? TryResolveSystemTypeBySimpleName(Compilation compilation, string simpleName, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return compilation.GetTypeByMetadataName("System." + simpleName);
     }
 
     private static List<ITypeSymbol> GetSymbolsByName(Compilation compilation, string simpleName, CancellationToken cancellationToken)
     {
-        // Try lookup by name (e.g. "ArgumentNullException" instead of "System.ArgumentNullException")
-        var symbols = compilation.GetSymbolsWithName(simpleName, SymbolFilter.Type, cancellationToken)
-                                 .OfType<ITypeSymbol>()
-                                 .Where(t => !t.IsImplicitlyDeclared)
-                                 .ToList();
+        cancellationToken.ThrowIfCancellationRequested();
 
-        if (symbols.Count != 0)
-            return symbols;
+        // Use Roslyn's name index and prioritize current assembly symbols first.
+        var indexedSymbols = compilation.GetSymbolsWithName(simpleName, SymbolFilter.Type, cancellationToken)
+            .Where(s => s.Name.Equals(simpleName, StringComparison.Ordinal))
+            .OfType<ITypeSymbol>()
+            .Where(t => !t.IsImplicitlyDeclared)
+            .ToList();
 
-        var stack = new Stack<INamespaceSymbol>();
-        stack.Push(compilation.GlobalNamespace);
-        while (stack.Count > 0)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var ns = stack.Pop();
-            foreach (var member in ns.GetMembers())
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                switch (member)
-                {
-                    case INamespaceSymbol nested:
-                        stack.Push(nested);
-                        break;
-                    case ITypeSymbol type when type.Name == simpleName:
-                        symbols.Add(type);
-                        break;
-                }
-            }
-        }
+        if (indexedSymbols.Count == 0)
+            return indexedSymbols;
 
-        return symbols;
+        return indexedSymbols
+            .OrderByDescending(symbol => SymbolEqualityComparer.Default.Equals(symbol.ContainingAssembly, compilation.Assembly))
+            .ToList();
     }
 
     private static ITypeSymbol? FindBestExceptionMatch(List<ITypeSymbol> symbols, string normalizedTypeName, string typeNameWithoutGenerics, CancellationToken cancellationToken)
