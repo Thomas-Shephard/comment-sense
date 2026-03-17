@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 using CommentSense.Core;
@@ -13,7 +12,10 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class GhostReferenceAnalyzer
 {
-    private static readonly ConcurrentDictionary<ImmutableArray<string>, Regex> RegexCache = new(new NameListComparer());
+    private const int RegexCacheCapacity = 256;
+    private static readonly object RegexCacheLock = new();
+    private static readonly Dictionary<ImmutableArray<string>, LinkedListNode<RegexCacheEntry>> RegexCache = new(new NameListComparer());
+    private static readonly LinkedList<RegexCacheEntry> RegexCacheLru = [];
 
     public static void Analyze(SyntaxNodeAnalysisContext context, XmlTextSyntax xmlText, ISymbol symbol, CommentSenseOptions options)
     {
@@ -197,14 +199,56 @@ internal static class GhostReferenceAnalyzer
         return name.Any(char.IsUpper) || name.Contains('_') || name.Any(char.IsDigit);
     }
 
+    private sealed record RegexCacheEntry(ImmutableArray<string> Key, Regex Regex);
+
     private static Regex GetRegex(ImmutableArray<string> names)
     {
-        return RegexCache.GetOrAdd(names, static n =>
+        if (TryGetCachedRegex(names) is { } cachedRegex)
+            return cachedRegex;
+
+        var pattern = $@"\b({string.Join("|", names.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
+        var createdRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+        return AddRegexToCache(names, createdRegex);
+    }
+
+    private static Regex? TryGetCachedRegex(ImmutableArray<string> key)
+    {
+        lock (RegexCacheLock)
         {
-            var uniqueNames = n.Distinct(StringComparer.OrdinalIgnoreCase);
-            var pattern = $@"\b({string.Join("|", uniqueNames.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
-            return new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
-        });
+            if (!RegexCache.TryGetValue(key, out var existingNode))
+                return null;
+
+            RegexCacheLru.Remove(existingNode);
+            RegexCacheLru.AddFirst(existingNode);
+            return existingNode.Value.Regex;
+        }
+    }
+
+    private static Regex AddRegexToCache(ImmutableArray<string> key, Regex regex)
+    {
+        lock (RegexCacheLock)
+        {
+            if (RegexCache.TryGetValue(key, out var existingNode))
+            {
+                RegexCacheLru.Remove(existingNode);
+                RegexCacheLru.AddFirst(existingNode);
+                return existingNode.Value.Regex;
+            }
+
+            var entry = new RegexCacheEntry(key, regex);
+            var node = new LinkedListNode<RegexCacheEntry>(entry);
+            RegexCacheLru.AddFirst(node);
+            RegexCache[key] = node;
+
+            if (RegexCache.Count > RegexCacheCapacity)
+            {
+                var lruKey = RegexCacheLru.Last.Value.Key;
+                RegexCacheLru.RemoveLast();
+                RegexCache.Remove(lruKey);
+            }
+
+            return regex;
+        }
     }
 
     internal sealed class NameListComparer : IEqualityComparer<ImmutableArray<string>>
