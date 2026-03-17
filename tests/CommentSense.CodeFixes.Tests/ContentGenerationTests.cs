@@ -71,6 +71,21 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
     }
 
     [Test]
+    public async Task AddMissingParamPreservesTabsAndMixedTrivia()
+    {
+        const string source = "/// <summary>Test class.</summary>\npublic class Test\n{\n\t/// <summary>Summary with <see cref=\"System.String\" />.</summary>\n\t/// <remarks><![CDATA[\tTabbed remarks.]]></remarks>\n\tpublic void Method(int {|CSENSE002:x|}) { }\n}";
+        const string fixedSource = "/// <summary>Test class.</summary>\npublic class Test\n{\n\t/// <summary>Summary with <see cref=\"System.String\" />.</summary>\n\t/// <param name=\"x\">TODO</param>\n\t/// <remarks><![CDATA[\tTabbed remarks.]]></remarks>\n\tpublic void Method(int x) { }\n}";
+
+        var options = new Dictionary<string, string>(DisableUnrelatedRules)
+        {
+            ["indent_style"] = "tab",
+            ["indent_size"] = "4"
+        };
+
+        await VerifyCodeFixAsync(source, fixedSource, options);
+    }
+
+    [Test]
     public async Task AddMissingInheritDoc()
     {
         const string source = """

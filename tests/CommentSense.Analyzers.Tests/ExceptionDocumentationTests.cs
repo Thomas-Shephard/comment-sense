@@ -72,6 +72,78 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     }
 
     [Test]
+    public async Task CollectionExpressionThrowWithoutDocumentationReportsDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            using System.Collections.Generic;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>Builds a collection of values.</summary>
+                /// <param name="shouldThrow">Controls whether the method throws.</param>
+                /// <returns>The generated values.</returns>
+                public List<int> {|CSENSE012:BuildValues|}(bool shouldThrow)
+                {
+                    return [1, shouldThrow ? 2 : throw new InvalidOperationException()];
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task CollectionExpressionThrowWithDocumentationDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            using System;
+            using System.Collections.Generic;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>Builds a collection of values.</summary>
+                /// <param name="shouldThrow">Controls whether the method throws.</param>
+                /// <returns>The generated values.</returns>
+                /// <exception cref="T:System.InvalidOperationException">Thrown when value generation fails.</exception>
+                public List<int> BuildValues(bool shouldThrow)
+                {
+                    return [1, shouldThrow ? 2 : throw new InvalidOperationException()];
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task CollectionExpressionMultipleThrowsWithoutDocumentationReportMultipleDiagnostics()
+    {
+        const string testCode = """
+            using System;
+            using System.Collections.Generic;
+            /// <summary>This is a summary for the class.</summary>
+            public class MyClass
+            {
+                /// <summary>Builds a collection of values.</summary>
+                /// <param name="throwInvalidOp">Determines whether to throw an invalid operation exception.</param>
+                /// <param name="throwArgument">Determines whether to throw an argument exception.</param>
+                /// <returns>The generated values.</returns>
+                public List<int> {|CSENSE012:{|CSENSE012:BuildValues|}|}(bool throwInvalidOp, bool throwArgument)
+                {
+                    return
+                    [
+                        throwInvalidOp ? throw new InvalidOperationException() : 1,
+                        throwArgument ? throw new ArgumentException(nameof(throwArgument)) : 2
+                    ];
+                }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
     public async Task MultipleExceptionsWithoutDocumentationReportMultipleDiagnostics()
     {
         const string testCode = """
