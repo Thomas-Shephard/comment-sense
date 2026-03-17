@@ -7,3 +7,4 @@ CSENSE023 | Documentation | Warning | Stray exception documentation
 CSENSE024 | Documentation | Warning | XML documentation tag order mismatch
 CSENSE025 | Documentation | Warning | Inaccessible XML documentation reference
 CSENSE026 | Documentation | Warning | Invalid inheritdoc target
+CSENSE027 | Documentation | Warning | Property summary pattern mismatch

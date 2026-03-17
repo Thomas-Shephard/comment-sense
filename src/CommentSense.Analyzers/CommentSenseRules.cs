@@ -257,6 +257,15 @@ internal static class CommentSenseRules
         isEnabledByDefault: true,
         description: CreateResourceString(nameof(Resources.InvalidInheritDocTargetDescription)));
 
+    public static readonly DiagnosticDescriptor PropertySummaryPatternRule = new(
+        CommentSenseDiagnosticIds.PropertySummaryPatternId,
+        CreateResourceString(nameof(Resources.PropertySummaryPatternTitle)),
+        CreateResourceString(nameof(Resources.PropertySummaryPatternMessage)),
+        Category,
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: CreateResourceString(nameof(Resources.PropertySummaryPatternDescription)));
+
     public static readonly ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =
     [
         DisabledDocumentationParsingRule,
@@ -285,6 +294,7 @@ internal static class CommentSenseRules
         StrayExceptionDocumentationRule,
         DocumentationTagOrderMismatchRule,
         InaccessibleCrefRule,
-        InvalidInheritDocTargetRule
+        InvalidInheritDocTargetRule,
+        PropertySummaryPatternRule
     ];
 }

@@ -79,6 +79,9 @@ Ensures parameters and type parameters are correctly documented and referenced.
     *   *Default:* Disabled.
 *   **CSENSE015**: Flags stray or duplicate `<value>` tags.
     *   **Code Fix:** An automatic code fix is available to remove stray tags. This fix supports **Fix All** in document, project, or solution.
+*   **CSENSE027**: Enforces property summary prefixes based on visible accessors (`Gets`, `Sets`, `Gets or sets`, `Gets or initializes`).
+    *   *Configurable:* Enable with `comment_sense.require_property_patterns = true`.
+    *   *Boolean properties:* Requires `a value indicating whether` immediately after the prefix.
 
 ## Automatic Suppression
 CommentSense automatically suppresses several built-in C# compiler diagnostics that overlap with its own rules. This prevents duplicate warnings and ensures a cleaner "Error List" experience.
@@ -133,6 +136,20 @@ comment_sense.similarity_threshold = 0.8
 # Recommended: 0.5 to 0.7
 # Default: 0.5
 comment_sense.rename_similarity_threshold = 0.5
+```
+
+### Property Summary Pattern Analysis
+Enable summary prefix validation for properties.
+```ini
+[*.cs]
+# Default: false
+# Enforces prefixes based on visible accessors:
+# - get only: "Gets ..."
+# - set only: "Sets ..."
+# - get + set: "Gets or sets ..."
+# - get + init: "Gets or initializes ..."
+# For bool properties, also requires "a value indicating whether" after the prefix.
+comment_sense.require_property_patterns = true
 ```
 
 ### Langword Analysis

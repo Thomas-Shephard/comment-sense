@@ -16,6 +16,7 @@ public class CommentSenseOptionsTests
             ["comment_sense.exclude_enums"] = "true",
             ["comment_sense.enable_conditional_suppression"] = "true",
             ["comment_sense.scan_called_methods_for_exceptions"] = "true",
+            ["comment_sense.require_property_patterns"] = "true",
             ["comment_sense.low_quality_terms"] = "LocalTerm"
         });
         var globalOptions = new MapOptions(new Dictionary<string, string>());
@@ -31,6 +32,7 @@ public class CommentSenseOptionsTests
             Assert.That(options.ExcludeEnums, Is.True);
             Assert.That(options.EnableConditionalSuppression, Is.True);
             Assert.That(options.ScanCalledMethodsForExceptions, Is.True);
+            Assert.That(options.RequirePropertyPatterns, Is.True);
             Assert.That(options.LowQualityTerms, Contains.Item("LocalTerm"));
         }
     }
@@ -50,6 +52,7 @@ public class CommentSenseOptionsTests
             ["comment_sense.ignored_exception_namespaces"] = "System.Text",
             ["comment_sense.visibility_level"] = "Internal",
             ["comment_sense.allow_implicit_inheritdoc"] = "false",
+            ["comment_sense.require_property_patterns"] = "true",
             ["comment_sense.exclude_constants"] = "true"
         });
 
@@ -68,6 +71,7 @@ public class CommentSenseOptionsTests
             Assert.That(options.IgnoredExceptionNamespaces, Contains.Item("System.Text"));
             Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Internal));
             Assert.That(options.AllowImplicitInheritDoc, Is.False);
+            Assert.That(options.RequirePropertyPatterns, Is.True);
             Assert.That(options.ExcludeConstants, Is.True);
         }
     }
@@ -104,13 +108,15 @@ public class CommentSenseOptionsTests
         {
             ["comment_sense.min_summary_length"] = "not-an-int",
             ["comment_sense.visibility_level"] = "InvalidLevel",
-            ["comment_sense.require_ending_punctuation"] = "not-a-bool"
+            ["comment_sense.require_ending_punctuation"] = "not-a-bool",
+            ["comment_sense.require_property_patterns"] = "not-a-bool"
         });
         var globalOptions = new MapOptions(new Dictionary<string, string>
         {
             ["comment_sense.min_summary_length"] = "15",
             ["comment_sense.visibility_level"] = "Internal",
-            ["comment_sense.require_ending_punctuation"] = "true"
+            ["comment_sense.require_ending_punctuation"] = "true",
+            ["comment_sense.require_property_patterns"] = "true"
         });
 
         var provider = new CustomProvider(localOptions, globalOptions);
@@ -122,6 +128,7 @@ public class CommentSenseOptionsTests
             Assert.That(options.MinSummaryLength, Is.EqualTo(15));
             Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Internal));
             Assert.That(options.RequireEndingPunctuation, Is.True);
+            Assert.That(options.RequirePropertyPatterns, Is.True);
         }
     }
 
@@ -298,6 +305,7 @@ public class CommentSenseOptionsTests
             Assert.That(options.ExcludeEnums, Is.False);
             Assert.That(options.EnableConditionalSuppression, Is.False);
             Assert.That(options.ScanCalledMethodsForExceptions, Is.False);
+            Assert.That(options.RequirePropertyPatterns, Is.False);
         }
     }
 
@@ -395,7 +403,7 @@ public class CommentSenseOptionsTests
             Assert.That(o1, Is.EqualTo(o3));
             Assert.That(o1.GetHashCode(), Is.EqualTo(o3.GetHashCode()));
             Assert.That(o1.ToString(), Is.Not.Null);
-            var (_, _, _, _, _, _, _, minSummaryLength, _, _, _, _, _, _, _, _, _, _) = o1;
+            var (_, _, _, _, _, _, _, minSummaryLength, _, _, _, _, _, _, _, _, _, _, _) = o1;
             Assert.That(minSummaryLength, Is.EqualTo(o1.MinSummaryLength));
         }
     }
