@@ -87,6 +87,32 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     }
 
     [Test]
+    public async Task RegexCacheEvictionPathIsExercised()
+    {
+        const int methodCount = 270;
+        var methods = string.Join(Environment.NewLine, Enumerable.Range(0, methodCount).Select(i => $$"""
+                    /// <summary>Handles {|CSENSE020:p{{i}}|} correctly.</summary>
+                    /// <param name="p{{i}}">The value.</param>
+                    public void M{{i}}(int p{{i}}) { }
+            """));
+
+        var code = $$"""
+            using System;
+            namespace Test;
+            public class C {
+            {{methods}}
+            }
+            """;
+
+        await VerifyCSenseAsync(code, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.LowQualityDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
+    [Test]
     public async Task FastPathHandlesCaseVariantParametersCorrectly()
     {
         var padding = new string(' ', 50001);

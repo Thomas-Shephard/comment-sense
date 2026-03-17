@@ -25,11 +25,13 @@ internal static class ExceptionAnalyzer
 
     private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>> CompilationExceptionCache = new();
     private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, InheritedExceptionResolution>> CompilationInheritDocExceptionCache = new();
+    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<string, ExceptionTypeResolution>> CompilationExceptionFallbackCache = new();
     private static readonly ImmutableHashSet<ITypeSymbol> EmptyExceptionTypeSet = ImmutableHashSet.Create<ITypeSymbol>(SymbolEqualityComparer.Default);
     private static readonly InheritedExceptionResolution EmptyInheritedExceptionResolution = new(EmptyExceptionTypeSet, HasUnknownInclude: false);
 
     private readonly record struct EffectiveDocumentedExceptions(HashSet<ITypeSymbol> Types, bool HasUnknownInheritedDocumentation);
     private readonly record struct InheritedExceptionResolution(ImmutableHashSet<ITypeSymbol> Types, bool HasUnknownInclude);
+    private readonly record struct ExceptionTypeResolution(ITypeSymbol? Type);
 
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
@@ -110,7 +112,7 @@ internal static class ExceptionAnalyzer
                 continue;
             }
 
-            var resolved = ResolveExceptionType(cref, context.Compilation);
+            var resolved = ResolveExceptionType(cref, context.Compilation, context.CancellationToken);
             var displayName = resolved?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) ?? cref ?? "<unknown>";
 
             if (resolved == null)
@@ -187,7 +189,8 @@ internal static class ExceptionAnalyzer
     {
         var documentedTypes = GetDocumentedExceptionTypes(
             context.Compilation,
-            DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false));
+            DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false),
+            context.CancellationToken);
 
         if (!HasTopLevelInheritDoc(xml))
             return new EffectiveDocumentedExceptions(documentedTypes, HasUnknownInheritedDocumentation: false);
@@ -234,7 +237,8 @@ internal static class ExceptionAnalyzer
 
             var documentedTypes = GetDocumentedExceptionTypes(
                 compilation,
-                DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false));
+                DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false),
+                cancellationToken);
             var hasUnknownInclude = HasTopLevelIncludeTag(xml);
 
             if (HasTopLevelInheritDoc(xml))
@@ -355,14 +359,18 @@ internal static class ExceptionAnalyzer
             builder.Add(target);
     }
 
-    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(Compilation compilation, IEnumerable<XElement> exceptionElements)
+    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(Compilation compilation, IEnumerable<XElement> exceptionElements, CancellationToken cancellationToken = default)
     {
-        return new HashSet<ITypeSymbol>(
-            exceptionElements
-                .Select(e => e.Attribute(DocumentationAttributes.Cref)?.Value)
-                .Select(cref => ResolveExceptionType(cref, compilation))
-                .OfType<ITypeSymbol>(),
-            SymbolEqualityComparer.Default);
+        var documentedTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+        foreach (var exceptionElement in exceptionElements)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var cref = exceptionElement.Attribute(DocumentationAttributes.Cref)?.Value;
+            if (ResolveExceptionType(cref, compilation, cancellationToken) is { } resolved)
+                documentedTypes.Add(resolved);
+        }
+
+        return documentedTypes;
     }
 
     private sealed record CrefInfo(char? Prefix, string TypeName, string OriginalCref)
@@ -393,11 +401,12 @@ internal static class ExceptionAnalyzer
         };
     }
 
-    internal static ITypeSymbol? ResolveExceptionType(string? cref, Compilation compilation)
+    internal static ITypeSymbol? ResolveExceptionType(string? cref, Compilation compilation, CancellationToken cancellationToken = default)
     {
         if (cref == null || string.IsNullOrWhiteSpace(cref))
             return null;
 
+        cancellationToken.ThrowIfCancellationRequested();
         cref = cref.Trim();
         var info = CrefInfo.Parse(cref);
 
@@ -405,14 +414,23 @@ internal static class ExceptionAnalyzer
         if (resolved is ITypeSymbol ts)
             return ts;
 
-        return ResolveExceptionTypeFallback(info, compilation);
+        var fallbackCache = CompilationExceptionFallbackCache.GetValue(
+            compilation,
+            _ => new ConcurrentDictionary<string, ExceptionTypeResolution>(StringComparer.Ordinal));
+
+        var cachedResult = fallbackCache.GetOrAdd(
+            cref,
+            _ => new ExceptionTypeResolution(ResolveExceptionTypeFallback(info, compilation, cancellationToken)));
+
+        return cachedResult.Type;
     }
 
-    private static ITypeSymbol? ResolveExceptionTypeFallback(CrefInfo info, Compilation compilation)
+    private static ITypeSymbol? ResolveExceptionTypeFallback(CrefInfo info, Compilation compilation, CancellationToken cancellationToken)
     {
         if (!info.IsPotentiallyValidException)
             return null;
 
+        cancellationToken.ThrowIfCancellationRequested();
         var normalizedTypeName = DocumentationSyntaxExtensions.NormalizeCref(info.TypeName);
         var typeNameWithoutGenerics = RemoveGenerics(normalizedTypeName.AsSpan());
 
@@ -436,14 +454,14 @@ internal static class ExceptionAnalyzer
                 return type;
         }
 
-        var symbols = GetSymbolsByName(compilation, simpleName);
-        return FindBestExceptionMatch(symbols, normalizedTypeName, typeNameWithoutGenerics);
+        var symbols = GetSymbolsByName(compilation, simpleName, cancellationToken);
+        return FindBestExceptionMatch(symbols, normalizedTypeName, typeNameWithoutGenerics, cancellationToken);
     }
 
-    private static List<ITypeSymbol> GetSymbolsByName(Compilation compilation, string simpleName)
+    private static List<ITypeSymbol> GetSymbolsByName(Compilation compilation, string simpleName, CancellationToken cancellationToken)
     {
         // Try lookup by name (e.g. "ArgumentNullException" instead of "System.ArgumentNullException")
-        var symbols = compilation.GetSymbolsWithName(simpleName, SymbolFilter.Type)
+        var symbols = compilation.GetSymbolsWithName(simpleName, SymbolFilter.Type, cancellationToken)
                                  .OfType<ITypeSymbol>()
                                  .Where(t => !t.IsImplicitlyDeclared)
                                  .ToList();
@@ -455,9 +473,11 @@ internal static class ExceptionAnalyzer
         stack.Push(compilation.GlobalNamespace);
         while (stack.Count > 0)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var ns = stack.Pop();
             foreach (var member in ns.GetMembers())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 switch (member)
                 {
                     case INamespaceSymbol nested:
@@ -473,12 +493,13 @@ internal static class ExceptionAnalyzer
         return symbols;
     }
 
-    private static ITypeSymbol? FindBestExceptionMatch(List<ITypeSymbol> symbols, string normalizedTypeName, string typeNameWithoutGenerics)
+    private static ITypeSymbol? FindBestExceptionMatch(List<ITypeSymbol> symbols, string normalizedTypeName, string typeNameWithoutGenerics, CancellationToken cancellationToken)
     {
         ITypeSymbol? genericFallback = null;
 
         foreach (var t in symbols)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var fullName = t.ToDisplayString(FullNameFormat);
             var minName = t.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
             if (fullName == normalizedTypeName || minName == normalizedTypeName || t.Name == normalizedTypeName)
@@ -612,10 +633,11 @@ internal static class ExceptionAnalyzer
 
         foreach (var syntaxReference in symbol.DeclaringSyntaxReferences)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var syntax = syntaxReference.GetSyntax(cancellationToken);
             var semanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
 
-            var nodes = GetDescendantNodesOfInterest(syntax, isPrimaryCtor);
+            var nodes = GetDescendantNodesOfInterest(syntax, isPrimaryCtor, cancellationToken);
             var exceptions = IdentifyThrownExceptions(nodes, semanticModel, options, exceptionCache, cancellationToken);
 
             thrownTypes.UnionWith(exceptions);
@@ -629,22 +651,99 @@ internal static class ExceptionAnalyzer
         return GetThrownTypes(context.Compilation, symbol, isPrimaryCtor, options, context.CancellationToken);
     }
 
-    private static IEnumerable<SyntaxNode> GetDescendantNodesOfInterest(SyntaxNode root, bool isPrimaryCtor)
+    private static IEnumerable<SyntaxNode> GetDescendantNodesOfInterest(SyntaxNode root, bool isPrimaryCtor, CancellationToken cancellationToken)
     {
-        return root.DescendantNodes(n =>
+        foreach (var analysisRoot in GetAnalysisRoots(root, isPrimaryCtor))
         {
-            // Ensure we don't block the root node (ClassDeclaration is BaseTypeDeclaration)
-            if (n == root)
-                return true;
+            foreach (var node in analysisRoot.DescendantNodesAndSelf(n => ShouldDescendIntoNode(analysisRoot, n, isPrimaryCtor)))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (IsNodeOfInterest(node))
+                    yield return node;
+            }
+        }
+    }
 
-            if (n is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax or BaseTypeDeclarationSyntax)
-                return false;
+    private static IEnumerable<SyntaxNode> GetAnalysisRoots(SyntaxNode root, bool isPrimaryCtor)
+    {
+        if (isPrimaryCtor)
+            return EnumerateSingleRoot(root);
 
-            if (isPrimaryCtor && IsExcludedPrimaryConstructorMember(n))
-                return false;
+        return root switch
+        {
+            BaseMethodDeclarationSyntax methodDeclaration => GetMethodAnalysisRoots(methodDeclaration),
+            PropertyDeclarationSyntax propertyDeclaration => GetPropertyAnalysisRoots(propertyDeclaration),
+            IndexerDeclarationSyntax indexerDeclaration => GetIndexerAnalysisRoots(indexerDeclaration),
+            _ => EnumerateSingleRoot(root)
+        };
+    }
 
+    private static IEnumerable<SyntaxNode> EnumerateSingleRoot(SyntaxNode root)
+    {
+        yield return root;
+    }
+
+    private static IEnumerable<SyntaxNode> GetMethodAnalysisRoots(BaseMethodDeclarationSyntax methodDeclaration)
+    {
+        if (methodDeclaration is ConstructorDeclarationSyntax { Initializer: { } initializer })
+            yield return initializer;
+
+        if (methodDeclaration.ExpressionBody is { Expression: { } methodExpression })
+            yield return methodExpression;
+
+        if (methodDeclaration.Body is { } methodBody)
+            yield return methodBody;
+    }
+
+    private static IEnumerable<SyntaxNode> GetPropertyAnalysisRoots(PropertyDeclarationSyntax propertyDeclaration)
+    {
+        if (propertyDeclaration.Initializer is { Value: { } propertyInitializer })
+            yield return propertyInitializer;
+
+        if (propertyDeclaration.ExpressionBody is { Expression: { } propertyExpression })
+            yield return propertyExpression;
+
+        if (propertyDeclaration.AccessorList is { } propertyAccessorList)
+            yield return propertyAccessorList;
+    }
+
+    private static IEnumerable<SyntaxNode> GetIndexerAnalysisRoots(IndexerDeclarationSyntax indexerDeclaration)
+    {
+        if (indexerDeclaration.ExpressionBody is { Expression: { } indexerExpression })
+            yield return indexerExpression;
+
+        if (indexerDeclaration.AccessorList is { } indexerAccessorList)
+            yield return indexerAccessorList;
+    }
+
+    private static bool ShouldDescendIntoNode(SyntaxNode analysisRoot, SyntaxNode node, bool isPrimaryCtor)
+    {
+        // Ensure we don't block the root node (ClassDeclaration is BaseTypeDeclaration)
+        if (node == analysisRoot)
             return true;
-        });
+
+        if (node is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax or BaseTypeDeclarationSyntax)
+            return false;
+
+        if (isPrimaryCtor && IsExcludedPrimaryConstructorMember(node))
+            return false;
+
+        return true;
+    }
+
+    private static bool IsNodeOfInterest(SyntaxNode node)
+    {
+        return node is ThrowStatementSyntax
+                    or ThrowExpressionSyntax
+                    or InvocationExpressionSyntax
+                    or ObjectCreationExpressionSyntax
+                    or ImplicitObjectCreationExpressionSyntax
+                    or ConstructorInitializerSyntax
+                    or MemberAccessExpressionSyntax
+                    or MemberBindingExpressionSyntax
+                    or IdentifierNameSyntax
+                    or ElementAccessExpressionSyntax
+                    or ElementBindingExpressionSyntax;
     }
 
     private static bool IsExcludedPrimaryConstructorMember(SyntaxNode n)
@@ -668,9 +767,11 @@ internal static class ExceptionAnalyzer
 
         foreach (var node in nodes)
         {
+            token.ThrowIfCancellationRequested();
             var exceptions = GetExceptionsFromNode(node, semanticModel, options, exceptionType, exceptionCache, token);
             foreach (var exception in exceptions)
             {
+                token.ThrowIfCancellationRequested();
                 if (exception != null && !IsCaughtLocally(node, exception, semanticModel))
                 {
                     yield return exception;
@@ -689,14 +790,14 @@ internal static class ExceptionAnalyzer
             ObjectCreationExpressionSyntax objectCreation => GetExceptionsFromObjectCreation(objectCreation, semanticModel, options, exceptionCache, token),
             ImplicitObjectCreationExpressionSyntax implicitObjectCreation => GetExceptionsFromImplicitObjectCreation(implicitObjectCreation, semanticModel, options, exceptionCache, token),
             ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions =>
-                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache),
+                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             MemberAccessExpressionSyntax ma when options.ScanCalledMethodsForExceptions => GetExceptionsFromMemberAccess(ma, semanticModel, exceptionCache, token),
             MemberBindingExpressionSyntax mb when options.ScanCalledMethodsForExceptions => GetExceptionsFromMemberBinding(mb, semanticModel, exceptionCache, token),
             IdentifierNameSyntax id when options.ScanCalledMethodsForExceptions => GetExceptionsFromIdentifier(id, semanticModel, exceptionCache, token),
             ElementAccessExpressionSyntax elementAccess when options.ScanCalledMethodsForExceptions =>
-                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(elementAccess, token).Symbol, semanticModel.Compilation, exceptionCache),
+                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(elementAccess, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             ElementBindingExpressionSyntax eb when options.ScanCalledMethodsForExceptions =>
-                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(eb, token).Symbol, semanticModel.Compilation, exceptionCache),
+                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(eb, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             _ => []
         };
     }
@@ -730,14 +831,14 @@ internal static class ExceptionAnalyzer
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromObjectCreation(ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
         return options.ScanCalledMethodsForExceptions
-            ? GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(objectCreation, token).Symbol, semanticModel.Compilation, exceptionCache)
+            ? GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(objectCreation, token).Symbol, semanticModel.Compilation, exceptionCache, token)
             : [];
     }
 
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromImplicitObjectCreation(ImplicitObjectCreationExpressionSyntax implicitObjectCreation, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
         return options.ScanCalledMethodsForExceptions
-            ? GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(implicitObjectCreation, token).Symbol, semanticModel.Compilation, exceptionCache)
+            ? GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(implicitObjectCreation, token).Symbol, semanticModel.Compilation, exceptionCache, token)
             : [];
     }
 
@@ -746,7 +847,7 @@ internal static class ExceptionAnalyzer
         // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
         return ma.Parent is InvocationExpressionSyntax parentInvocation && parentInvocation.Expression == ma
             ? []
-            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ma, token).Symbol, semanticModel.Compilation, exceptionCache);
+            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ma, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }
 
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberBinding(MemberBindingExpressionSyntax mb, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
@@ -754,7 +855,7 @@ internal static class ExceptionAnalyzer
         // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
         return mb.Parent is InvocationExpressionSyntax parentInvocationMb && parentInvocationMb.Expression == mb
             ? []
-            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(mb, token).Symbol, semanticModel.Compilation, exceptionCache);
+            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(mb, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }
 
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromIdentifier(IdentifierNameSyntax id, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
@@ -767,7 +868,7 @@ internal static class ExceptionAnalyzer
 
         return isRedundant
             ? []
-            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(id, token).Symbol, semanticModel.Compilation, exceptionCache);
+            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(id, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }
 
     private static IEnumerable<ITypeSymbol> GetExceptionsFromInvocation(InvocationExpressionSyntax invocation, SemanticModel semanticModel, ITypeSymbol exceptionType, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
@@ -775,11 +876,12 @@ internal static class ExceptionAnalyzer
         var symbol = semanticModel.GetSymbolInfo(invocation, token).Symbol;
 
         var guardException = GetExceptionTypeFromGuardClause(invocation, symbol, exceptionType);
-        var exceptions = GetExceptionsFromSymbol(symbol, semanticModel.Compilation, exceptionCache);
+        var exceptions = GetExceptionsFromSymbol(symbol, semanticModel.Compilation, exceptionCache, token);
 
         bool guardExceptionFound = false;
         foreach (var exception in exceptions)
         {
+            token.ThrowIfCancellationRequested();
             if (guardException != null && SymbolEqualityComparer.Default.Equals(exception, guardException))
                 guardExceptionFound = true;
 
@@ -790,24 +892,26 @@ internal static class ExceptionAnalyzer
             yield return guardException;
     }
 
-    private static IEnumerable<ITypeSymbol> GetExceptionsFromSymbol(ISymbol? symbol, Compilation compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> cache)
+    private static IEnumerable<ITypeSymbol> GetExceptionsFromSymbol(ISymbol? symbol, Compilation compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> cache, CancellationToken token = default)
     {
+        token.ThrowIfCancellationRequested();
         if (symbol is not (IMethodSymbol or IPropertySymbol or IEventSymbol))
             return [];
 
-        return cache.GetOrAdd(symbol, s => [.. GetExceptionsFromSymbolInternal(s, compilation)]);
+        return cache.GetOrAdd(symbol, s => [.. GetExceptionsFromSymbolInternal(s, compilation, token)]);
     }
 
-    private static IEnumerable<ITypeSymbol> GetExceptionsFromSymbolInternal(ISymbol symbol, Compilation compilation)
+    private static IEnumerable<ITypeSymbol> GetExceptionsFromSymbolInternal(ISymbol symbol, Compilation compilation, CancellationToken token)
     {
         if (symbol is IMethodSymbol { MethodKind: MethodKind.DelegateInvoke } delegateMethod)
         {
             symbol = delegateMethod.ContainingType;
         }
 
-        foreach (var cref in DocumentationXmlExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml()))
+        foreach (var cref in DocumentationXmlExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml(cancellationToken: token)))
         {
-            if (ResolveExceptionType(cref, compilation) is { } resolved)
+            token.ThrowIfCancellationRequested();
+            if (ResolveExceptionType(cref, compilation, token) is { } resolved)
             {
                 yield return resolved;
             }
