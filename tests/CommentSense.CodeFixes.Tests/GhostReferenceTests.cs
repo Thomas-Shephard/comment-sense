@@ -66,6 +66,21 @@ public class GhostReferenceTests : CommentSenseCodeFixTestBase<CommentSenseAnaly
     }
 
     [Test]
+    public async Task ParameterInTabIndentedSummaryPreservesMixedTrivia()
+    {
+        const string source = "public class Test\n{\n\t/// <summary>\n\t/// Uses {|CSENSE020:inputData|}, <see cref=\"System.String\" /> and <![CDATA[\traw]]>.\n\t/// </summary>\n\tpublic void Process(string inputData) { }\n}";
+        const string fixedSource = "public class Test\n{\n\t/// <summary>\n\t/// Uses <paramref name=\"inputData\" />, <see cref=\"System.String\" /> and <![CDATA[\traw]]>.\n\t/// </summary>\n\tpublic void Process(string inputData) { }\n}";
+
+        var options = new Dictionary<string, string>(DisableUnrelatedRules)
+        {
+            ["indent_style"] = "tab",
+            ["indent_size"] = "4"
+        };
+
+        await VerifyCodeFixAsync(source, fixedSource, options);
+    }
+
+    [Test]
     public async Task ConstructorParameterInSummaryWrapsInParamRef()
     {
         const string source = """

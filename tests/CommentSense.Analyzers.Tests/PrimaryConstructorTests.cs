@@ -135,6 +135,18 @@ public class PrimaryConstructorTests : CommentSenseAnalyzerTestBase<CommentSense
     }
 
     [Test]
+    public async Task FileLocalPrimaryConstructorDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            file class MyClass(int p1)
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
     public async Task GenericTypePrimaryConstructorMissingParameterDocumentationReportsDiagnostic()
     {
         await VerifyCSenseAsync("""

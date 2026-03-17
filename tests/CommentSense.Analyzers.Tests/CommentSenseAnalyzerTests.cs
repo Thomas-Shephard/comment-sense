@@ -19,6 +19,43 @@ public class CommentSenseAnalyzerTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
+    public async Task PublicRefStructWithoutDocumentationReportsDiagnostic()
+    {
+        const string testCode = """
+            public ref struct {|CSENSE001:BufferReader|}
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    public async Task DocumentedPublicRefStructDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>Provides span-based reading support.</summary>
+            public ref struct BufferReader
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task PublicReadonlyRefStructWithoutDocumentationReportsDiagnostic()
+    {
+        const string testCode = """
+            public readonly ref struct {|CSENSE001:BufferCursor|}
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
     public async Task PublicMethodWithoutDocumentationReportsDiagnostic()
     {
         const string testCode = """
