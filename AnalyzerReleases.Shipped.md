@@ -1,3 +1,16 @@
+## Release 1.0.0
+
+### New Rules
+
+Rule ID | Category | Severity | Notes
+--------|----------|----------|--------------------
+CSENSE022 | Documentation | Warning | Stray summary documentation
+CSENSE023 | Documentation | Warning | Stray exception documentation
+CSENSE024 | Documentation | Warning | XML documentation tag order mismatch
+CSENSE025 | Documentation | Warning | Inaccessible XML documentation reference
+CSENSE026 | Documentation | Warning | Invalid inheritdoc target
+CSENSE027 | Documentation | Warning | Property summary pattern mismatch
+
 ## Release 0.3.0
 
 ### New Rules
