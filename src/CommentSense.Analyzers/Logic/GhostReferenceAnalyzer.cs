@@ -203,42 +203,22 @@ internal static class GhostReferenceAnalyzer
 
     private static Regex GetRegex(ImmutableArray<string> names)
     {
-        if (TryGetCachedRegex(names) is { } cachedRegex)
-            return cachedRegex;
-
-        var pattern = $@"\b({string.Join("|", names.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
-        var createdRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
-        return AddRegexToCache(names, createdRegex);
-    }
-
-    private static Regex? TryGetCachedRegex(ImmutableArray<string> key)
-    {
         lock (RegexCacheLock)
         {
-            if (!RegexCache.TryGetValue(key, out var existingNode))
-                return null;
-
-            RegexCacheLru.Remove(existingNode);
-            RegexCacheLru.AddFirst(existingNode);
-            return existingNode.Value.Regex;
-        }
-    }
-
-    private static Regex AddRegexToCache(ImmutableArray<string> key, Regex regex)
-    {
-        lock (RegexCacheLock)
-        {
-            if (RegexCache.TryGetValue(key, out var existingNode))
+            if (RegexCache.TryGetValue(names, out var existingNode))
             {
                 RegexCacheLru.Remove(existingNode);
                 RegexCacheLru.AddFirst(existingNode);
                 return existingNode.Value.Regex;
             }
 
-            var entry = new RegexCacheEntry(key, regex);
+            var pattern = $@"\b({string.Join("|", names.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
+            var createdRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+
+            var entry = new RegexCacheEntry(names, createdRegex);
             var node = new LinkedListNode<RegexCacheEntry>(entry);
             RegexCacheLru.AddFirst(node);
-            RegexCache[key] = node;
+            RegexCache[names] = node;
 
             if (RegexCache.Count > RegexCacheCapacity)
             {
@@ -247,7 +227,7 @@ internal static class GhostReferenceAnalyzer
                 RegexCache.Remove(lruKey);
             }
 
-            return regex;
+            return createdRegex;
         }
     }
 
