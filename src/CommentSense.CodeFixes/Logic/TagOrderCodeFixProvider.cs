@@ -23,12 +23,8 @@ public class TagOrderCodeFixProvider : CodeFixProviderBase
     ];
 
     /// <inheritdoc />
-    public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
+    public sealed override Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root == null)
-            return;
-
         foreach (var diagnostic in context.Diagnostics)
         {
             context.RegisterCodeFix(
@@ -38,35 +34,27 @@ public class TagOrderCodeFixProvider : CodeFixProviderBase
                     equivalenceKey: nameof(TagOrderCodeFixProvider)),
                 diagnostic);
         }
+
+        return Task.CompletedTask;
     }
 
-    private static async Task<Document> FixOrderAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
+    internal static async Task<Document> FixOrderAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root == null)
-            return document;
+        var root = Guard.AgainstNull(await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false));
 
         var node = root.FindNode(diagnostic.Location.SourceSpan, findInsideTrivia: true);
         var docTrivia = node.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>();
-        if (docTrivia == null)
+        if (docTrivia is null)
             return document;
 
         var options = CommentSenseOptions.GetOptions(document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider, root.SyntaxTree);
 
         var originalContent = docTrivia.Content;
         var tagNodes = originalContent.Where(n => n is XmlElementSyntax or XmlEmptyElementSyntax).ToList();
-        if (tagNodes.Count < 2)
-            return document;
 
         var sortedTags = tagNodes
             .OrderBy(t => GetTagPriority(t, options.TagOrder))
             .ToList();
-
-        // Check if order actually changed
-        bool identical = !tagNodes.Where((t, i) => !ReferenceEquals(t, sortedTags[i])).Any();
-
-        if (identical)
-            return document;
 
         var resultList = originalContent.ToList();
         var tagIndices = new List<int>();

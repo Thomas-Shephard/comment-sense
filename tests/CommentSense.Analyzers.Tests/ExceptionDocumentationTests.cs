@@ -1,10 +1,13 @@
 using System.Collections.Immutable;
+using System.Collections.Concurrent;
 using CommentSense.Core;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
+using System.Reflection;
 
 namespace CommentSense.Analyzers.Tests;
 
@@ -2405,7 +2408,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     [Test]
     public async Task AnalyzerMissingSystemExceptionHandledGracefully()
     {
-        const string testCode = "public class C { public void M() { } }";
+        const string testCode = "public class C { public void M() { throw null; } }";
 
         await VerifyCSenseAsync(testCode,
             expectDiagnostic: false,
@@ -2413,6 +2416,24 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)],
             referenceAssemblies: ReferenceAssemblies.Net.Net100,
             solutionTransform: (solution, projectId) => solution.WithProjectMetadataReferences(projectId, []));
+    }
+
+    [Test]
+    public void IdentifyThrownExceptionsReturnsEmptyWhenSystemExceptionCannotBeResolved()
+    {
+        var tree = CSharpSyntaxTree.ParseText("public class C { public void M() { throw null; } }");
+        var compilation = CSharpCompilation.Create("Test", [tree], references: []);
+        var semanticModel = compilation.GetSemanticModel(tree);
+        var nodes = tree.GetRoot().DescendantNodes().OfType<ThrowStatementSyntax>();
+
+        var method = typeof(Logic.ExceptionAnalyzer).GetMethod("IdentifyThrownExceptions", BindingFlags.NonPublic | BindingFlags.Static)
+                     ?? throw new InvalidOperationException();
+
+        var invoked = method.Invoke(null,
+            [nodes, semanticModel, CommentSenseOptions.Default, new ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>(SymbolEqualityComparer.Default), CancellationToken.None]);
+        var result = invoked as IEnumerable<ITypeSymbol> ?? throw new InvalidOperationException();
+
+        Assert.That(result, Is.Empty);
     }
 
     [Test]

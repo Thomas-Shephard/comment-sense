@@ -1,7 +1,10 @@
 using CommentSense.Analyzers;
 using CommentSense.CodeFixes.Logic;
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using NUnit.Framework;
+using System.Reflection;
 
 namespace CommentSense.CodeFixes.Tests;
 
@@ -228,5 +231,68 @@ public class DocumentationSynchronizationTests : CommentSenseCodeFixTestBase<Com
             """;
 
         await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task RenameStraySelfClosingParamTag()
+    {
+        const string source = """
+            /// <summary>Test class.</summary>
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                /// {|CSENSE003:<param name="p11" />|}
+                public void M(int {|CSENSE002:p1|}) { }
+            }
+            """;
+
+        const string fixedSource = """
+            /// <summary>Test class.</summary>
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                /// <param name="p1" />
+                public void M(int p1) { }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task FixDocumentAsyncReturnsDocumentForUnsupportedXmlNodeKind()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary>Documentation</summary>
+                public void M(int value) { }
+            }
+            """;
+
+        using var workspace = new AdhocWorkspace();
+        var document = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("Test.cs", source);
+        var root = await document.GetSyntaxRootAsync() ?? throw new InvalidOperationException();
+        var xmlText = root.DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First(x => x.ToString().Contains("Documentation"));
+        var symbol = await document.GetSemanticModelAsync() is { } semanticModel
+            ? semanticModel.GetDeclaredSymbol(root.DescendantNodes().OfType<MethodDeclarationSyntax>().First())
+            : null;
+
+        var match = new DocumentationSynchronizationLogic.MatchResult(
+            xmlText,
+            "param",
+            "value1",
+            "value",
+            1.0,
+            symbol ?? throw new InvalidOperationException());
+
+        var method = typeof(DocumentationSynchronizationCodeFixProvider).GetMethod("FixDocumentAsync", BindingFlags.NonPublic | BindingFlags.Static)
+                     ?? throw new InvalidOperationException();
+
+        var invoked = method.Invoke(null, [document, match, CancellationToken.None]);
+        var task = invoked as Task<Document> ?? throw new InvalidOperationException();
+        var result = await task;
+
+        Assert.That(result, Is.EqualTo(document));
     }
 }

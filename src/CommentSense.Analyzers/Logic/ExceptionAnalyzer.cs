@@ -848,7 +848,7 @@ internal static class ExceptionAnalyzer
     private static IEnumerable<ITypeSymbol> IdentifyThrownExceptions(IEnumerable<SyntaxNode> nodes, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
         var exceptionType = semanticModel.Compilation.GetTypeByMetadataName("System.Exception");
-        if (exceptionType == null)
+        if (exceptionType is null)
             yield break;
 
         foreach (var node in nodes)
@@ -963,19 +963,19 @@ internal static class ExceptionAnalyzer
 
         var guardException = GetExceptionTypeFromGuardClause(invocation, symbol, exceptionType);
         var exceptions = GetExceptionsFromSymbol(symbol, semanticModel.Compilation, exceptionCache, token);
+        var seen = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+        var candidates = exceptions
+            .Cast<ITypeSymbol?>()
+            .Append(guardException)
+            .Where(static exception => exception is not null)
+            .Cast<ITypeSymbol>();
 
-        bool guardExceptionFound = false;
-        foreach (var exception in exceptions)
+        foreach (var exception in candidates)
         {
             token.ThrowIfCancellationRequested();
-            if (guardException != null && SymbolEqualityComparer.Default.Equals(exception, guardException))
-                guardExceptionFound = true;
-
-            yield return exception;
+            if (seen.Add(exception))
+                yield return exception;
         }
-
-        if (guardException != null && !guardExceptionFound)
-            yield return guardException;
     }
 
     private static IEnumerable<ITypeSymbol> GetExceptionsFromSymbol(ISymbol? symbol, Compilation compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> cache, CancellationToken token = default)

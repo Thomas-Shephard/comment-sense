@@ -3,8 +3,10 @@ using CommentSense.Analyzers;
 using CommentSense.CodeFixes.Logic;
 using CommentSense.Core;
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Testing;
+using Microsoft.CodeAnalysis.Text;
 using NUnit.Framework;
 
 namespace CommentSense.CodeFixes.Tests;
@@ -35,7 +37,7 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
             public class MyClass { }
             """;
 
-        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, DiagnosticSeverity.Warning)
             .WithSpan(2, 5, 2, 19)
             .WithArguments("inheritdoc", "summary");
 
@@ -66,7 +68,7 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
             }
             """;
 
-        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, DiagnosticSeverity.Warning)
             .WithSpan(2, 5, 2, 66)
             .WithArguments("exception", "remarks");
 
@@ -89,7 +91,7 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
             public class MyClass { }
             """;
 
-        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, DiagnosticSeverity.Warning)
             .WithSpan(3, 5, 3, 38)
             .WithArguments("summary", "exception");
 
@@ -123,7 +125,7 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
             { "comment_sense.tag_order", "summary, param, remarks" }
         };
 
-        var expectedFinal = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+        var expectedFinal = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, DiagnosticSeverity.Warning)
             .WithSpan(3, 5, 3, 43)
             .WithArguments("param", "remarks");
 
@@ -151,7 +153,7 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
             { "comment_sense.tag_order", "remarks" }
         };
 
-        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, DiagnosticSeverity.Warning)
             .WithSpan(2, 5, 2, 38)
             .WithArguments("remarks", "summary");
 
@@ -188,7 +190,7 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
             public class MyClass { }
             """;
 
-        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, Microsoft.CodeAnalysis.DiagnosticSeverity.Warning)
+        var expected = new DiagnosticResult(CommentSenseDiagnosticIds.DocumentationTagOrderMismatchId, DiagnosticSeverity.Warning)
             .WithSpan(3, 4, 3, 37)
             .WithArguments("summary", "remarks");
 
@@ -216,5 +218,28 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
         var priority = TagOrderCodeFixProvider.GetTagPriority(tag, tagOrder);
 
         Assert.That(priority, Is.EqualTo(100));
+    }
+
+    [Test]
+    public async Task FixOrderAsyncReturnsDocumentWhenDocumentationTriviaCannotBeFound()
+    {
+        const string source = "public class MyClass { }";
+
+        using var workspace = new AdhocWorkspace();
+        var document = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("Test.cs", source);
+        var tree = await document.GetSyntaxTreeAsync() ?? throw new InvalidOperationException();
+        var diagnostic = Diagnostic.Create(
+            "ID",
+            "Category",
+            "Message",
+            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            warningLevel: 1,
+            location: Location.Create(tree, new TextSpan(0, 5)));
+
+        var result = await TagOrderCodeFixProvider.FixOrderAsync(document, diagnostic, CancellationToken.None);
+
+        Assert.That(result, Is.EqualTo(document));
     }
 }

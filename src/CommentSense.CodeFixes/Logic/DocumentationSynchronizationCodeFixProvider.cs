@@ -31,13 +31,9 @@ public class DocumentationSynchronizationCodeFixProvider : CodeFixProviderBase
     {
         internal override async Task<Document> FixDocumentInternalAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
         {
-            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            if (root == null)
-                return document;
+            var root = Guard.AgainstNull(await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false));
 
-            var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-            if (semanticModel == null)
-                return document;
+            var semanticModel = Guard.AgainstNull(await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false));
 
             var options = CommentSenseOptionsLoader.GetOptions(document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider, root.SyntaxTree);
 
@@ -50,9 +46,6 @@ public class DocumentationSynchronizationCodeFixProvider : CodeFixProviderBase
                 if (match != null)
                     allMatches.Add(match.Value);
             }
-
-            if (allMatches.Count == 0)
-                return document;
 
             var consumedNodes = new HashSet<XmlNodeSyntax>();
             var consumedNames = new HashSet<(ISymbol, string)>();
@@ -67,9 +60,6 @@ public class DocumentationSynchronizationCodeFixProvider : CodeFixProviderBase
                 consumedNodes.Add(match.Node);
                 consumedNames.Add((match.Symbol, match.NewName));
             }
-
-            if (renames.Count == 0)
-                return document;
 
             var newRoot = root.ReplaceNodes(renames.Keys, (oldNode, newNode) =>
             {
@@ -91,13 +81,9 @@ public class DocumentationSynchronizationCodeFixProvider : CodeFixProviderBase
     /// <inheritdoc />
     public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root == null)
-            return;
+        var root = Guard.AgainstNull(await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false));
 
-        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
-        if (semanticModel == null)
-            return;
+        var semanticModel = Guard.AgainstNull(await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false));
 
         var options = CommentSenseOptionsLoader.GetOptions(context.Document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider, root.SyntaxTree);
 
@@ -120,16 +106,17 @@ public class DocumentationSynchronizationCodeFixProvider : CodeFixProviderBase
 
     private static async Task<Document> FixDocumentAsync(Document document, DocumentationSynchronizationLogic.MatchResult match, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root == null)
-            return document;
+        var root = Guard.AgainstNull(await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false));
 
-        var newNode = match.Node switch
+        XmlNodeSyntax? newNode = match.Node switch
         {
             XmlElementSyntax element => element.WithStartTag(DocumentationSynchronizationLogic.RenameAttribute(element.StartTag, match.NewName)),
             XmlEmptyElementSyntax emptyElement => emptyElement.WithAttributes(DocumentationSynchronizationLogic.RenameAttribute(emptyElement.Attributes, match.NewName)),
-            _ => match.Node
+            _ => null
         };
+
+        if (newNode is null)
+            return document;
 
         return document.WithSyntaxRoot(root.ReplaceNode(match.Node, newNode));
     }

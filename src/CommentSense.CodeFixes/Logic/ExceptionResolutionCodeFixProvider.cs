@@ -6,7 +6,6 @@ using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
@@ -24,9 +23,6 @@ public class ExceptionResolutionCodeFixProvider : CodeFixProviderBase
     /// <inheritdoc />
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root == null) return;
-
         foreach (var diagnostic in context.Diagnostics)
         {
             if (diagnostic.Properties.TryGetValue(DocumentationAttributes.CrefProperty, out var suggestedCref) && suggestedCref != null)
@@ -43,12 +39,12 @@ public class ExceptionResolutionCodeFixProvider : CodeFixProviderBase
 
     private static async Task<Document> FixCrefAsync(Document document, TextSpan diagnosticSpan, string suggestedCref, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root == null) return document;
+        var root = Guard.AgainstNull(await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false));
 
         var node = root.FindNode(diagnosticSpan, findInsideTrivia: true);
         var crefAttr = node.FirstAncestorOrSelf<XmlCrefAttributeSyntax>();
-        if (crefAttr == null) return document;
+        if (crefAttr is null)
+            return document;
 
         var newCref = DocumentationSyntaxExtensions.ParseCref(suggestedCref);
         var newCrefAttr = crefAttr.WithCref(newCref);

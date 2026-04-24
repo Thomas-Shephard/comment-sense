@@ -27,8 +27,7 @@ public class LowQualityDocumentationCodeFixProvider : CodeFixProviderBase
     /// <inheritdoc />
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        if (await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false) is not { } root)
-            return;
+        var root = Guard.AgainstNull(await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false));
 
         var options = CommentSenseOptions.GetOptions(context.Document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider, root.SyntaxTree);
 
@@ -55,12 +54,12 @@ public class LowQualityDocumentationCodeFixProvider : CodeFixProviderBase
 
     private static async Task<Document> FixDocumentAsync(Document document, TextSpan span, CommentSenseOptions options, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root == null || FindXmlNode(root, span) is not XmlElementSyntax xmlElement)
+        var root = Guard.AgainstNull(await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false));
+        if (FindXmlNode(root, span) is not XmlElementSyntax xmlElement)
             return document;
 
         var updatedElement = FixElement(xmlElement, options);
-        return updatedElement == xmlElement ? document : document.WithSyntaxRoot(root.ReplaceNode(xmlElement, updatedElement));
+        return document.WithSyntaxRoot(root.ReplaceNode(xmlElement, updatedElement));
     }
 
     private static XmlElementSyntax FixElement(XmlElementSyntax xmlElement, CommentSenseOptions options)

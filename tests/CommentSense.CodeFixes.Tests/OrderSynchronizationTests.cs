@@ -480,4 +480,99 @@ public class OrderSynchronizationTests : CommentSenseCodeFixTestBase<CommentSens
 
         Assert.That(result, Is.EqualTo(doc));
     }
+
+    [Test]
+    public async Task FixOrderAsyncReordersWhenMemberDeclarationExists()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary>Summary</summary>
+                /// <param name="p2">Second</param>
+                /// <param name="p1">First</param>
+                public void Method(int p1, int p2) { }
+            }
+            """;
+
+        using var workspace = new AdhocWorkspace();
+        var doc = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("Test.cs", source);
+        var tree = await doc.GetSyntaxTreeAsync() ?? throw new InvalidOperationException();
+        var root = await tree.GetRootAsync();
+        var targetNode = root.DescendantNodes(descendIntoTrivia: true)
+            .OfType<XmlElementSyntax>()
+            .First(e => e.GetNameAttribute() == "p1");
+
+        var diagnostic = Diagnostic.Create(
+            "ID",
+            "Category",
+            "Message",
+            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            warningLevel: 1,
+            location: targetNode.GetLocation());
+
+        var result = await OrderSynchronizationCodeFixProvider.FixOrderAsync(doc, diagnostic, CancellationToken.None);
+        var resultText = (await result.GetTextAsync()).ToString();
+
+        Assert.That(resultText.IndexOf("name=\"p1\"", StringComparison.Ordinal), Is.LessThan(resultText.IndexOf("name=\"p2\"", StringComparison.Ordinal)));
+    }
+
+    [Test]
+    public async Task FixOrderAsyncReturnsDocumentWhenDeclaredSymbolIsUnavailable()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <param name="p2">Second</param>
+                /// <param name="p1">First</param>
+                public int field;
+            }
+            """;
+
+        using var workspace = new AdhocWorkspace();
+        var document = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("Test.cs", source);
+        var root = await document.GetSyntaxRootAsync() ?? throw new InvalidOperationException();
+        var targetNode = root.DescendantNodes(descendIntoTrivia: true)
+            .OfType<XmlElementSyntax>()
+            .First(e => e.GetNameAttribute() == "p1");
+
+        var diagnostic = Diagnostic.Create(
+            "ID",
+            "Category",
+            "Message",
+            DiagnosticSeverity.Warning,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            warningLevel: 1,
+            location: targetNode.GetLocation());
+
+        var result = await OrderSynchronizationCodeFixProvider.FixOrderAsync(document, diagnostic, CancellationToken.None);
+
+        Assert.That(result, Is.EqualTo(document));
+    }
+
+    [Test]
+    public void GetTriviaParentReturnsNullForDetachedDocumentationTrivia()
+    {
+        var docTrivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.SingleLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>());
+
+        var result = OrderSynchronizationCodeFixProvider.GetTriviaParent(docTrivia);
+
+        Assert.That(result, Is.Null);
+    }
+
+    [Test]
+    public void GetMemberDeclarationReturnsNullForDetachedDocumentationTrivia()
+    {
+        var docTrivia = SyntaxFactory.DocumentationCommentTrivia(
+            SyntaxKind.SingleLineDocumentationCommentTrivia,
+            SyntaxFactory.List<XmlNodeSyntax>());
+
+        var result = OrderSynchronizationCodeFixProvider.GetMemberDeclaration(docTrivia);
+
+        Assert.That(result, Is.Null);
+    }
 }
