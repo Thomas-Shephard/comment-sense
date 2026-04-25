@@ -27,8 +27,7 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
     /// <inheritdoc />
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root == null) return;
+        var root = Guard.AgainstNull(await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false));
 
         var registeredTags = new HashSet<(DocumentationCommentTriviaSyntax, string)>();
 
@@ -59,29 +58,32 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
 
     internal static async Task<Document> FixOrderAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root == null) return document;
+        var root = Guard.AgainstNull(await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false));
 
         var xmlNode = FindXmlNode(root, diagnostic.Location.SourceSpan);
         if (xmlNode == null) return document;
 
-        var docTrivia = xmlNode.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>();
-        if (docTrivia == null) return document;
+        var docTrivia = Guard.AgainstNull(xmlNode.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>());
 
-        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-        if (semanticModel == null) return document;
+        var semanticModel = Guard.AgainstNull(await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false));
 
-        var memberDeclaration = docTrivia.ParentTrivia.Token.Parent?.FirstAncestorOrSelf<MemberDeclarationSyntax>();
-        if (memberDeclaration == null) return document;
+        var memberDeclaration = GetMemberDeclaration(docTrivia);
+        return Guard.WhenNotNull(memberDeclaration, declaration =>
+        {
+            var symbol = semanticModel.GetDeclaredSymbol(declaration, cancellationToken);
+            if (symbol is null)
+                return document;
 
-        var symbol = semanticModel.GetDeclaredSymbol(memberDeclaration, cancellationToken);
-        if (symbol == null) return document;
+            var tagName = xmlNode.GetTagName();
+            var expectedOrder = symbol.GetExpectedMemberNames(tagName);
 
-        var tagName = xmlNode.GetTagName();
-        var expectedOrder = symbol.GetExpectedMemberNames(tagName);
-
-        return ReorderTags(document, root, docTrivia, tagName, expectedOrder);
+            return ReorderTags(document, root, docTrivia, tagName, expectedOrder);
+        }, document);
     }
+
+    internal static SyntaxNode? GetTriviaParent(DocumentationCommentTriviaSyntax docTrivia) => docTrivia.ParentTrivia.Token.Parent;
+
+    internal static MemberDeclarationSyntax? GetMemberDeclaration(DocumentationCommentTriviaSyntax docTrivia) => GetTriviaParent(docTrivia)?.FirstAncestorOrSelf<MemberDeclarationSyntax>();
 
     internal static Document ReorderTags(Document document, SyntaxNode root, DocumentationCommentTriviaSyntax docTrivia, string tagName, ImmutableArray<string> expectedOrder)
     {

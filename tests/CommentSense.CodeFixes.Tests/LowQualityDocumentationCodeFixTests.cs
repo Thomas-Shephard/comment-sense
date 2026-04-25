@@ -1,7 +1,11 @@
 using CommentSense.Analyzers;
+using CommentSense.Core;
 using CommentSense.CodeFixes.Logic;
 using CommentSense.TestHelpers;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 using NUnit.Framework;
+using System.Reflection;
 
 namespace CommentSense.CodeFixes.Tests;
 
@@ -984,5 +988,20 @@ public class LowQualityDocumentationCodeFixTests : CommentSenseCodeFixTestBase<C
             """;
 
         await VerifyCodeFixAsync(source, fixedSource, QualityOptions);
+    }
+
+    [Test]
+    public async Task FixDocumentAsyncReturnsDocumentWhenXmlElementCannotBeRelocated()
+    {
+        using var workspace = new AdhocWorkspace();
+        var document = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("Test.cs", "public class C { }");
+        var method = typeof(LowQualityDocumentationCodeFixProvider).GetMethod("FixDocumentAsync", BindingFlags.NonPublic | BindingFlags.Static)
+                     ?? throw new InvalidOperationException();
+
+        var invoked = method.Invoke(null, [document, new TextSpan(0, 1), CommentSenseOptions.Default, CancellationToken.None]);
+        var task = invoked as Task<Document> ?? throw new InvalidOperationException();
+        var result = await task;
+
+        Assert.That(result, Is.EqualTo(document));
     }
 }

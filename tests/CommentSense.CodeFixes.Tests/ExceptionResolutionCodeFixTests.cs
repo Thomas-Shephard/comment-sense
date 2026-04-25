@@ -1,8 +1,10 @@
 using CommentSense.Analyzers;
 using CommentSense.CodeFixes.Logic;
 using CommentSense.TestHelpers;
-using Microsoft.CodeAnalysis.Testing;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 using NUnit.Framework;
+using System.Reflection;
 
 namespace CommentSense.CodeFixes.Tests;
 
@@ -362,5 +364,20 @@ public class ExceptionResolutionCodeFixTests : CommentSenseCodeFixTestBase<Comme
             """;
 
         await VerifyCodeFixAsync(testCode, fixedCode);
+    }
+
+    [Test]
+    public async Task FixCrefAsyncReturnsDocumentWhenCrefAttributeCannotBeRelocated()
+    {
+        using var workspace = new AdhocWorkspace();
+        var document = workspace.AddProject("Test", LanguageNames.CSharp).AddDocument("Test.cs", "public class C { }");
+        var method = typeof(ExceptionResolutionCodeFixProvider).GetMethod("FixCrefAsync", BindingFlags.NonPublic | BindingFlags.Static)
+                     ?? throw new InvalidOperationException();
+
+        var invoked = method.Invoke(null, [document, new TextSpan(0, 1), "System.Exception", CancellationToken.None]);
+        var task = invoked as Task<Document> ?? throw new InvalidOperationException();
+        var result = await task;
+
+        Assert.That(result, Is.EqualTo(document));
     }
 }

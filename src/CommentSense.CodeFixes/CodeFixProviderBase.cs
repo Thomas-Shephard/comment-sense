@@ -37,9 +37,7 @@ public abstract class CodeFixProviderBase : CodeFixProvider
         private async Task<Document> FixDocumentAsync(Document document, FixAllContext fixAllContext, CancellationToken cancellationToken)
         {
             var diagnostics = await fixAllContext.GetDocumentDiagnosticsAsync(document).ConfigureAwait(false);
-            return diagnostics.IsEmpty
-                ? document
-                : await FixDocumentInternalAsync(document, diagnostics, cancellationToken).ConfigureAwait(false);
+            return await ApplyDocumentFixesAsync(document, diagnostics, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task<Solution> FixProjectAsync(Project project, FixAllContext fixAllContext, CancellationToken cancellationToken)
@@ -70,6 +68,13 @@ public abstract class CodeFixProviderBase : CodeFixProvider
             }
 
             return newSolution;
+        }
+
+        internal Task<Document> ApplyDocumentFixesAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
+        {
+            return diagnostics.IsEmpty
+                ? Task.FromResult(document)
+                : FixDocumentInternalAsync(document, diagnostics, cancellationToken);
         }
 
         internal abstract Task<Document> FixDocumentInternalAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken);
@@ -125,55 +130,50 @@ public abstract class CodeFixProviderBase : CodeFixProvider
     /// <returns>The updated <paramref name="document"/>.</returns>
     protected static async Task<Document> ReplaceTextWithNodesAsync(Document document, TextSpan diagnosticSpan, Func<XmlTextSyntax, int, int, int, IEnumerable<XmlNodeSyntax>> createReplacementNodes, CancellationToken cancellationToken)
     {
-        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-        if (root == null) return document;
+        var root = Guard.AgainstNull(await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false));
 
         var xmlText = FindXmlText(root, diagnosticSpan);
-        if (xmlText == null) return document;
+        if (xmlText is null)
+            return document;
 
-        var tokenToSplit = xmlText.TextTokens.FirstOrDefault(t => t.Span.Contains(diagnosticSpan));
-        if (tokenToSplit.IsKind(SyntaxKind.None))
-        {
-            tokenToSplit = xmlText.TextTokens.FirstOrDefault(t => t.Span.IntersectsWith(diagnosticSpan));
-        }
-
-        if (tokenToSplit.IsKind(SyntaxKind.None)) return document;
+        var tokenToSplit = xmlText.TextTokens
+            .Where(t => t.Span.Contains(diagnosticSpan) || t.Span.IntersectsWith(diagnosticSpan))
+            .OrderByDescending(t => t.Span.Contains(diagnosticSpan))
+            .FirstOrDefault();
+        if (tokenToSplit.RawKind == 0)
+            return document;
 
         var tokenIndex = xmlText.TextTokens.IndexOf(tokenToSplit);
         var relativeStart = Math.Max(0, diagnosticSpan.Start - tokenToSplit.SpanStart);
         var relativeEnd = Math.Min(tokenToSplit.Span.Length, diagnosticSpan.End - tokenToSplit.SpanStart);
 
-        var docTrivia = xmlText.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>();
-        if (docTrivia == null) return document;
+        var docTrivia = Guard.AgainstNull(xmlText.FirstAncestorOrSelf<DocumentationCommentTriviaSyntax>());
 
         var replacementNodes = createReplacementNodes(xmlText, tokenIndex, relativeStart, relativeEnd);
 
-        var parent = xmlText.Parent;
-        if (parent == null) return document;
+        var parent = Guard.AgainstNull(xmlText.Parent);
 
-        var updatedParent = parent switch
+        return Guard.WhenNotNull(TryCreateUpdatedParent(parent, xmlText, replacementNodes), updatedParent =>
         {
-            XmlElementSyntax xmlElement => (SyntaxNode)xmlElement.WithContent(xmlElement.Content.ReplaceRange(xmlText, replacementNodes)),
-            DocumentationCommentTriviaSyntax docTriviaContent => docTriviaContent.WithContent(docTriviaContent.Content.ReplaceRange(xmlText, replacementNodes)),
+            var newDocTrivia = parent == docTrivia
+                ? (DocumentationCommentTriviaSyntax)updatedParent
+                : docTrivia.ReplaceNode(parent, updatedParent);
+            var oldTrivia = docTrivia.ParentTrivia;
+            var token = root.FindToken(oldTrivia.SpanStart);
+
+            var newToken = token.ReplaceTrivia(oldTrivia, SyntaxFactory.Trivia(newDocTrivia));
+            return document.WithSyntaxRoot(root.ReplaceToken(token, newToken));
+        }, document);
+    }
+
+    internal static SyntaxNode? TryCreateUpdatedParent(SyntaxNode parent, XmlTextSyntax xmlText, IEnumerable<XmlNodeSyntax> replacementNodes)
+    {
+        return parent switch
+        {
+            XmlElementSyntax xmlElement => xmlElement.WithContent(xmlElement.Content.ReplaceRange(xmlText, replacementNodes)),
+            DocumentationCommentTriviaSyntax documentationComment => documentationComment.WithContent(documentationComment.Content.ReplaceRange(xmlText, replacementNodes)),
             _ => null
         };
-
-        if (updatedParent == null) return document;
-
-        var newDocTrivia = parent == docTrivia
-            ? (DocumentationCommentTriviaSyntax)updatedParent
-            : docTrivia.ReplaceNode(parent, updatedParent);
-        var oldTrivia = docTrivia.ParentTrivia;
-        var token = oldTrivia.Token;
-
-        if (token == default)
-            token = root.FindToken(oldTrivia.SpanStart);
-
-        if (token == default)
-            return document;
-
-        var newToken = token.ReplaceTrivia(oldTrivia, SyntaxFactory.Trivia(newDocTrivia));
-        return document.WithSyntaxRoot(root.ReplaceToken(token, newToken));
     }
 
     /// <summary>

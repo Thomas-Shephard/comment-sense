@@ -36,8 +36,7 @@ public class RedundancyRemovalCodeFixProvider : CodeFixProviderBase
     {
         internal override async Task<Document> FixDocumentInternalAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
         {
-            if (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false) is not { } root)
-                return document;
+            var root = Guard.AgainstNull(await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false));
 
             var nodesToRemove = new HashSet<XmlNodeSyntax>();
             var xmlNodes = diagnostics
@@ -52,22 +51,15 @@ public class RedundancyRemovalCodeFixProvider : CodeFixProviderBase
                     nodesToRemove.Add(whitespace);
             }
 
-            if (nodesToRemove.Count == 0)
-                return document;
-
-            var newRoot = root.RemoveNodes(nodesToRemove, SyntaxRemoveOptions.KeepNoTrivia);
-
-            return newRoot is not null
-                ? document.WithSyntaxRoot(newRoot)
-                : document;
+            var newRoot = Guard.AgainstNull(root.RemoveNodes(nodesToRemove, SyntaxRemoveOptions.KeepNoTrivia));
+            return document.WithSyntaxRoot(newRoot);
         }
     }
 
     /// <inheritdoc />
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        if (await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false) is not { } root)
-            return;
+        var root = Guard.AgainstNull(await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false));
 
         var targets = context.Diagnostics
             .Select(d => (Diagnostic: d, XmlNode: FindXmlNode(root, d.Location.SourceSpan)))

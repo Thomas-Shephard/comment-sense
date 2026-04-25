@@ -36,23 +36,19 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
     {
         internal override async Task<Document> FixDocumentInternalAsync(Document document, ImmutableArray<Diagnostic> diagnostics, CancellationToken cancellationToken)
         {
-            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            if (root == null)
-                return document;
+            var root = Guard.AgainstNull(await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false));
 
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
             var options = CommentSenseOptions.GetOptions(document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider, root.SyntaxTree);
 
             // Group diagnostics by member and capture symbol upfront
             var memberGroups = GetMemberGroups(root, semanticModel, diagnostics, cancellationToken);
-            if (memberGroups.Count == 0)
-                return document;
 
             var groupsByMember = memberGroups.ToDictionary(g => g.Member, g => g);
 
             var newRoot = root.ReplaceNodes(groupsByMember.Keys, (oldNode, newNode) =>
             {
-                if (newNode is not MemberDeclarationSyntax member)
+                if (newNode is not { } member)
                     return newNode;
 
                 var (_, diagList, symbol) = groupsByMember[oldNode];
@@ -190,9 +186,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
     /// <inheritdoc />
     public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
-        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
-        if (root == null)
-            return;
+        var root = Guard.AgainstNull(await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false));
 
         foreach (var diagnostic in context.Diagnostics)
         {
@@ -214,12 +208,12 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
                 case CommentSenseDiagnosticIds.MissingParameterDocumentationId:
                     tagName = DocumentationTags.Param;
                     diagnostic.Properties.TryGetValue(DocumentationAttributes.NameProperty, out name);
-                    title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingNamedTagTitle, tagName, name ?? string.Empty, Resources.DocumentationPlaceholder);
+                    title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingNamedTagTitle, tagName, Guard.AgainstNull(name), Resources.DocumentationPlaceholder);
                     break;
                 case CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId:
                     tagName = DocumentationTags.TypeParam;
                     diagnostic.Properties.TryGetValue(DocumentationAttributes.NameProperty, out name);
-                    title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingNamedTagTitle, tagName, name ?? string.Empty, Resources.DocumentationPlaceholder);
+                    title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingNamedTagTitle, tagName, Guard.AgainstNull(name), Resources.DocumentationPlaceholder);
                     break;
                 case CommentSenseDiagnosticIds.MissingReturnValueDocumentationId:
                     tagName = DocumentationTags.Returns;
@@ -232,7 +226,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
                 case CommentSenseDiagnosticIds.MissingExceptionDocumentationId:
                     tagName = DocumentationTags.Exception;
                     diagnostic.Properties.TryGetValue(DocumentationAttributes.CrefProperty, out name);
-                    title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingCrefTagTitle, tagName, name ?? string.Empty, Resources.DocumentationPlaceholder);
+                    title = string.Format(CultureInfo.InvariantCulture, Resources.AddMissingCrefTagTitle, tagName, Guard.AgainstNull(name), Resources.DocumentationPlaceholder);
                     break;
                 case CommentSenseDiagnosticIds.MissingInheritDocId:
                     title = Resources.AddInheritDocTitle;
