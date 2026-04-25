@@ -1,11 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Xml.Linq;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace CommentSense.Analyzers.Logic;
 
@@ -22,17 +21,16 @@ internal static class SummaryAnalyzer
     private const string BoolGetsOrSetsPrefix = $"{GetsOrSetsPrefix} {BoolValuePrefix}";
     private const string BoolGetsOrInitializesPrefix = $"{GetsOrInitializesPrefix} {BoolValuePrefix}";
 
-    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, DocumentationComment documentation, CommentSenseOptions options)
     {
         var seenSummary = false;
-        var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
         var displayName = symbol.GetDisplayName();
         var minimallyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
-        // Check for low-quality documentation against multiple symbol formats (e.g., friendly name and qualified name)
-        foreach (var (summaryElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Summary, topLevelOnly: false))
+        foreach (var summaryElement in documentation.GetElements(DocumentationTags.Summary, recursive: true))
         {
-            bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, summaryElement, effectiveTarget);
+            var location = summaryElement.GetLocation();
+            bool isTopLevel = documentation.IsTopLevel(summaryElement);
 
             if (!isTopLevel || seenSummary)
             {
@@ -53,14 +51,14 @@ internal static class SummaryAnalyzer
         }
     }
 
-    private static void AnalyzePropertySummaryPattern(SymbolAnalysisContext context, ISymbol symbol, XElement summaryElement, Location location, CommentSenseOptions options)
+    private static void AnalyzePropertySummaryPattern(SymbolAnalysisContext context, ISymbol symbol, XmlNodeSyntax summaryElement, Location location, CommentSenseOptions options)
     {
         if (!options.RequirePropertyPatterns || symbol is not IPropertySymbol property)
             return;
 
         var expectedPrefix = GetExpectedPropertyPrefix(property);
         var disallowOrContinuation = expectedPrefix is GetsPrefix or SetsPrefix;
-        var summaryText = summaryElement.Value.AsSpan().TrimStart();
+        var summaryText = summaryElement.GetInnerText().AsSpan().TrimStart();
         if (summaryText.IsEmpty || StartsWithPattern(summaryText, expectedPrefix.AsSpan(), disallowOrContinuation))
             return;
 

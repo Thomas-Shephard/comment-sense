@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Xml.Linq;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -9,30 +8,29 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class ReturnValueAnalyzer
 {
-    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, DocumentationComment documentation, CommentSenseOptions options)
     {
-        Analyze(context, symbol, symbol, xml, options);
+        Analyze(context, symbol, symbol, documentation, options);
     }
 
-    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, ISymbol targetSymbol, XElement xml, CommentSenseOptions options)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, ISymbol targetSymbol, DocumentationComment documentation, CommentSenseOptions options)
     {
         if (targetSymbol is IPropertySymbol property)
         {
-            AnalyzeProperty(context, property, targetSymbol, xml, options);
+            AnalyzeProperty(context, property, targetSymbol, documentation, options);
         }
         else if (symbol is IMethodSymbol methodSymbol)
         {
-            AnalyzeMethod(context, methodSymbol, targetSymbol, xml, options);
+            AnalyzeMethod(context, methodSymbol, targetSymbol, documentation, options);
         }
     }
 
-    private static void AnalyzeProperty(SymbolAnalysisContext context, IPropertySymbol property, ISymbol targetSymbol, XElement xml, CommentSenseOptions options)
+    private static void AnalyzeProperty(SymbolAnalysisContext context, IPropertySymbol property, ISymbol targetSymbol, DocumentationComment documentation, CommentSenseOptions options)
     {
-        var hasInheritDoc = DocumentationXmlExtensions.HasInheritDoc(xml);
-        var hasAutoValidTag = DocumentationXmlExtensions.HasAutoValidTag(xml);
+        var hasInheritDoc = documentation.HasInheritDoc();
+        var hasAutoValidTag = documentation.HasAutoValidTag();
 
-        // CSENSE014: Missing <value> documentation
-        if (property.GetMethod is not null && !DocumentationXmlExtensions.HasValueTag(xml) && !hasInheritDoc && !hasAutoValidTag)
+        if (property.GetMethod is not null && !documentation.HasValueTag() && !hasInheritDoc && !hasAutoValidTag)
         {
             var location = targetSymbol.Locations.GetPrimaryLocation();
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, DocumentationTags.Value);
@@ -40,18 +38,16 @@ internal static class ReturnValueAnalyzer
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingValueDocumentationRule, location, properties, symbolName));
         }
 
-        // CSENSE013: Stray <returns> tag on property
-        foreach (var (_, location) in targetSymbol.GetTargetElementsWithLocations(xml, DocumentationTags.Returns, topLevelOnly: false))
+        foreach (var element in documentation.GetElements(DocumentationTags.Returns, recursive: true))
         {
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, location, targetSymbol.GetDisplayName()));
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayReturnValueDocumentationRule, element.GetLocation(), targetSymbol.GetDisplayName()));
         }
 
-        // CSENSE015: Stray <value> tag on property (and quality check)
         var seenValue = false;
-        var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
-        foreach (var (element, location) in targetSymbol.GetTargetElementsWithLocations(xml, DocumentationTags.Value, topLevelOnly: false))
+        foreach (var element in documentation.GetElements(DocumentationTags.Value, recursive: true))
         {
-            bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, element, effectiveTarget);
+            var location = element.GetLocation();
+            bool isTopLevel = documentation.IsTopLevel(element);
 
             if (!isTopLevel || seenValue)
             {
@@ -68,17 +64,16 @@ internal static class ReturnValueAnalyzer
         }
     }
 
-    private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol, ISymbol targetSymbol, XElement xml, CommentSenseOptions options)
+    private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol, ISymbol targetSymbol, DocumentationComment documentation, CommentSenseOptions options)
     {
-        var hasInheritDoc = DocumentationXmlExtensions.HasInheritDoc(xml);
-        var hasAutoValidTag = DocumentationXmlExtensions.HasAutoValidTag(xml);
+        var hasInheritDoc = documentation.HasInheritDoc();
+        var hasAutoValidTag = documentation.HasAutoValidTag();
 
         var isTask = methodSymbol.ReturnType.IsTaskType();
         var isVoid = methodSymbol.ReturnsVoid;
         var returnsRequired = !isVoid && !isTask;
 
-        // CSENSE006: Missing <returns> documentation
-        if (returnsRequired && !DocumentationXmlExtensions.HasReturnsTag(xml) && !hasInheritDoc && !hasAutoValidTag)
+        if (returnsRequired && !documentation.HasReturnsTag() && !hasInheritDoc && !hasAutoValidTag)
         {
             var location = targetSymbol.Locations.GetPrimaryLocation();
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, DocumentationTags.Returns);
@@ -86,13 +81,11 @@ internal static class ReturnValueAnalyzer
             context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.MissingReturnValueDocumentationRule, location, properties, symbolName));
         }
 
-        // CSENSE013: Stray <returns> tag (on void, nested, or duplicate)
-        // CSENSE016: Low quality <returns> documentation
         var seenReturns = false;
-        var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
-        foreach (var (element, location) in targetSymbol.GetTargetElementsWithLocations(xml, DocumentationTags.Returns, topLevelOnly: false))
+        foreach (var element in documentation.GetElements(DocumentationTags.Returns, recursive: true))
         {
-            bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, element, effectiveTarget);
+            var location = element.GetLocation();
+            bool isTopLevel = documentation.IsTopLevel(element);
 
             if (!isTopLevel || isVoid || seenReturns)
             {
@@ -108,10 +101,9 @@ internal static class ReturnValueAnalyzer
             }
         }
 
-        // CSENSE015: Stray <value> tag on method
-        foreach (var (_, location) in targetSymbol.GetTargetElementsWithLocations(xml, DocumentationTags.Value, topLevelOnly: false))
+        foreach (var element in documentation.GetElements(DocumentationTags.Value, recursive: true))
         {
-            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayValueDocumentationRule, location, targetSymbol.GetDisplayName()));
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayValueDocumentationRule, element.GetLocation(), targetSymbol.GetDisplayName()));
         }
     }
 }

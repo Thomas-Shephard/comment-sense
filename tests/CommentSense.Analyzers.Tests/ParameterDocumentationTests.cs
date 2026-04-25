@@ -321,4 +321,25 @@ public class ParameterDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
 
         await VerifyCSenseAsync(testCode);
     }
+
+    [Test]
+    public async Task PartialMethodWithParameterDocumentationSplitAcrossDeclarationsDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public partial class MyClass
+            {
+                /// <summary>Executes the operation.</summary>
+                public partial void MyMethod(int p1);
+            }
+
+            public partial class MyClass
+            {
+                /// <param name="p1">The first parameter.</param>
+                public partial void MyMethod(int p1) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
 }

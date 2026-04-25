@@ -1,9 +1,11 @@
 using System.Xml.Linq;
+using System.Collections.Immutable;
 using CommentSense.Core.Utilities;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Moq;
 using NUnit.Framework;
 
 namespace CommentSense.Core.Tests.Utilities;
@@ -210,6 +212,111 @@ public class DocumentationExtensionsTests
     {
         const string xml = """<member><typeparam name="T">The type.</typeparam></member>""";
         Assert.That(DocumentationXmlExtensions.HasValidDocumentation(xml), Is.True);
+    }
+
+    [Test]
+    public void HasValidDocumentationWithPartialTypeDocumentationSplitAcrossDeclarationsReturnsTrue()
+    {
+        const string source = """
+            /// <summary>This is a summary for the class.</summary>
+            public partial class TestClass<T> {}
+
+            /// <typeparam name="T">The type parameter.</typeparam>
+            public partial class TestClass<T> {}
+            """;
+        var symbol = GetSymbolFromSource(source, "TestClass");
+        Assert.That(symbol.HasValidDocumentation(), Is.True);
+    }
+
+    [Test]
+    public void GetTypeParamNamesPreservesDeclarationOrderAcrossPartialDeclarations()
+    {
+        const string firstSource = """
+            /// <typeparam name="T1">First type parameter.</typeparam>
+            public partial class TestClass<T1, T2> {}
+            """;
+        const string secondSource = """
+            /// <typeparam name="T2">Second type parameter.</typeparam>
+            public partial class TestClass<T1, T2> {}
+            """;
+
+        var symbol = GetSymbolFromSources(
+            ("z-last.cs", secondSource),
+            ("a-first.cs", firstSource),
+            "TestClass");
+
+        var documentationComment = DocumentationComment.FromSymbol(symbol);
+        Assert.That(documentationComment, Is.Not.Null);
+
+        var expected = DocumentationXmlExtensions.GetTypeParamNames(symbol.GetDocumentationCommentXml()).ToList();
+        var result = documentationComment.GetAttributeValues("typeparam", "name", topLevelOnly: true);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Has.Count.EqualTo(2));
+            Assert.That(result, Is.EqualTo(expected));
+        }
+    }
+
+    [Test]
+    public void GetElementsPreservesPartialMethodDeclarationOrder()
+    {
+        const string source = """
+            public partial class MyClass
+            {
+                /// <summary>Executes the operation.</summary>
+                public partial void MyMethod(int p1);
+            }
+
+            public partial class MyClass
+            {
+                /// <param name="p1">The first parameter.</param>
+                public partial void MyMethod(int p1) { }
+            }
+            """;
+
+        var symbol = GetSymbolFromSource(source, "MyMethod");
+        var documentationComment = DocumentationComment.FromSymbol(symbol);
+        Assert.That(documentationComment, Is.Not.Null);
+
+        var result = documentationComment.GetElements(recursive: false).Select(static element => element.GetTagName()).ToList();
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Has.Count.EqualTo(2));
+            Assert.That(result[0], Is.EqualTo("summary"));
+            Assert.That(result[1], Is.EqualTo("param"));
+        }
+    }
+
+    [Test]
+    public void GetMethodDeclarationOrderWithoutSyntaxReferencesReturnsImplementationOrder()
+    {
+        var method = new Mock<IMethodSymbol>();
+        method.SetupGet(symbol => symbol.DeclaringSyntaxReferences).Returns(ImmutableArray<SyntaxReference>.Empty);
+
+        Assert.That(InvokeGetMethodDeclarationOrder(method.Object), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void AddIfMissingIgnoresDuplicateSymbol()
+    {
+        var methodSymbol = (IMethodSymbol)RoslynTestUtils.GetSymbolFromSource("public class C { public void M() {} }", "M");
+        var methods = new List<IMethodSymbol> { methodSymbol };
+
+        InvokeAddIfMissing(methods, methodSymbol);
+        Assert.That(methods, Has.Count.EqualTo(1));
+    }
+
+    [Test]
+    public void OrderMethodSymbolsSingleMethodReturnsSameList()
+    {
+        var methodSymbol = (IMethodSymbol)RoslynTestUtils.GetSymbolFromSource("public class C { public void M() {} }", "M");
+        var result = InvokeOrderMethodSymbols([methodSymbol]);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Has.Count.EqualTo(1));
+            Assert.That(SymbolEqualityComparer.Default.Equals(result[0], methodSymbol), Is.True);
+        }
     }
 
     [Test]
@@ -1064,5 +1171,95 @@ public class DocumentationExtensionsTests
     private static ISymbol GetSymbolFromSource(string source, string symbolName)
     {
         return RoslynTestUtils.GetSymbolFromSource(source, symbolName, parseDocumentation: true);
+    }
+
+    private static int InvokeGetMethodDeclarationOrder(IMethodSymbol methodSymbol)
+    {
+        var method = typeof(DocumentationComment).GetMethod("GetMethodDeclarationOrder", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                     ?? throw new InvalidOperationException("Could not find GetMethodDeclarationOrder.");
+
+        return (int)(method.Invoke(null, [methodSymbol]) ?? throw new InvalidOperationException("GetMethodDeclarationOrder returned null."));
+    }
+
+    private static void InvokeAddIfMissing(List<IMethodSymbol> methods, IMethodSymbol candidate)
+    {
+        var method = typeof(DocumentationComment).GetMethod("AddIfMissing", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                     ?? throw new InvalidOperationException("Could not find AddIfMissing.");
+
+        method.Invoke(null, [methods, candidate]);
+    }
+
+    private static List<IMethodSymbol> InvokeOrderMethodSymbols(List<IMethodSymbol> methods)
+    {
+        var method = typeof(DocumentationComment).GetMethod("OrderMethodSymbols", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                     ?? throw new InvalidOperationException("Could not find OrderMethodSymbols.");
+
+        return (List<IMethodSymbol>)(method.Invoke(null, [methods]) ?? throw new InvalidOperationException("OrderMethodSymbols returned null."));
+    }
+
+    private static Mock<IMethodSymbol> CreateMethodSymbolMock(ITypeSymbol returnType, ImmutableArray<IParameterSymbol>? parameters = null)
+    {
+        var method = new Mock<IMethodSymbol>();
+        method.SetupGet(symbol => symbol.MethodKind).Returns(MethodKind.Ordinary);
+        method.SetupGet(symbol => symbol.Arity).Returns(0);
+        method.SetupGet(symbol => symbol.ReturnType).Returns(returnType);
+        method.SetupGet(symbol => symbol.Parameters).Returns(parameters ?? ImmutableArray<IParameterSymbol>.Empty);
+        return method;
+    }
+
+    private static Mock<IParameterSymbol> CreateParameterSymbolMock(ITypeSymbol type)
+    {
+        var parameter = new Mock<IParameterSymbol>();
+        parameter.SetupGet(symbol => symbol.Type).Returns(type);
+        return parameter;
+    }
+
+    private static CSharpCompilation CreateCompilation()
+    {
+        return CSharpCompilation.Create(
+            "TestAssembly",
+            references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+    }
+
+    private static ISymbol GetSymbolFromSources((string FilePath, string Source) first, (string FilePath, string Source) second, string symbolName)
+    {
+        var parseOptions = new CSharpParseOptions(
+            languageVersion: LanguageVersion.Latest,
+            documentationMode: DocumentationMode.Parse);
+
+        var firstTree = CSharpSyntaxTree.ParseText(first.Source, parseOptions, path: first.FilePath);
+        var secondTree = CSharpSyntaxTree.ParseText(second.Source, parseOptions, path: second.FilePath);
+
+        var compilation = CSharpCompilation.Create(
+                "TestAssembly",
+                options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true))
+            .AddReferences(AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
+                .Select(a => MetadataReference.CreateFromFile(a.Location)))
+            .AddSyntaxTrees(firstTree, secondTree);
+
+        var diagnostics = compilation.GetDiagnostics();
+        if (diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+        {
+            var errors = string.Join(Environment.NewLine, diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            Assert.Fail($"Compilation failed:{Environment.NewLine}{errors}");
+        }
+
+        foreach (var syntaxTree in compilation.SyntaxTrees)
+        {
+            var semanticModel = compilation.GetSemanticModel(syntaxTree);
+            var declaration = syntaxTree.GetRoot().DescendantNodes()
+                .OfType<BaseTypeDeclarationSyntax>()
+                .FirstOrDefault(node => node.Identifier.ValueText == symbolName);
+
+            if (declaration == null)
+                continue;
+
+            var symbol = semanticModel.GetDeclaredSymbol(declaration);
+            if (symbol != null)
+                return symbol;
+        }
+
+        throw new InvalidOperationException($"Could not find symbol for '{symbolName}' in the provided source code.");
     }
 }

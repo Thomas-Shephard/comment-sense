@@ -1,11 +1,34 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Text;
 
 namespace CommentSense.Core.Utilities;
 
 internal static class DocumentationSyntaxExtensions
 {
+    private static readonly Dictionary<SyntaxKind, string> PredefinedCrefAliases = new()
+    {
+        [SyntaxKind.BoolKeyword] = "System.Boolean",
+        [SyntaxKind.ByteKeyword] = "System.Byte",
+        [SyntaxKind.SByteKeyword] = "System.SByte",
+        [SyntaxKind.ShortKeyword] = "System.Int16",
+        [SyntaxKind.UShortKeyword] = "System.UInt16",
+        [SyntaxKind.IntKeyword] = "System.Int32",
+        [SyntaxKind.UIntKeyword] = "System.UInt32",
+        [SyntaxKind.LongKeyword] = "System.Int64",
+        [SyntaxKind.ULongKeyword] = "System.UInt64",
+        [SyntaxKind.FloatKeyword] = "System.Single",
+        [SyntaxKind.DoubleKeyword] = "System.Double",
+        [SyntaxKind.DecimalKeyword] = "System.Decimal",
+        [SyntaxKind.CharKeyword] = "System.Char",
+        [SyntaxKind.StringKeyword] = "System.String",
+        [SyntaxKind.ObjectKeyword] = "System.Object",
+        [SyntaxKind.VoidKeyword] = "System.Void",
+    };
+
+    public static bool IsElement(this XmlNodeSyntax xmlNode) => xmlNode is XmlElementSyntax or XmlEmptyElementSyntax;
+
     public static string GetTagName(this XmlNodeSyntax xmlNode)
     {
         return xmlNode switch
@@ -37,26 +60,123 @@ internal static class DocumentationSyntaxExtensions
         return null;
     }
 
-    private static string GetTextAttributeValue(XmlTextAttributeSyntax textAttr)
+    public static string? GetAttributeValue(this XmlNodeSyntax xmlNode, string attributeName)
     {
-        if (textAttr.TextTokens.Count == 0)
+        var attributes = xmlNode switch
+        {
+            XmlElementSyntax element => element.StartTag.Attributes,
+            XmlEmptyElementSyntax emptyElement => emptyElement.Attributes,
+            _ => default
+        };
+
+        foreach (var attribute in attributes)
+        {
+            switch (attribute)
+            {
+                case XmlNameAttributeSyntax nameAttr when nameAttr.Name.LocalName.ValueText == attributeName:
+                    return nameAttr.Identifier.Identifier.ValueText;
+                case XmlCrefAttributeSyntax crefAttr when crefAttr.Name.LocalName.ValueText == attributeName:
+                    return GetCrefAttributeValue(crefAttr.Cref);
+                case XmlTextAttributeSyntax textAttr when textAttr.Name.LocalName.ValueText == attributeName:
+                    return GetTextAttributeValue(textAttr);
+            }
+        }
+
+        return null;
+    }
+
+    public static bool HasChildElements(this XmlNodeSyntax xmlNode)
+    {
+        return xmlNode is XmlElementSyntax element && element.Content.Any(static child => child is XmlElementSyntax or XmlEmptyElementSyntax);
+    }
+
+    public static string GetInnerText(this XmlNodeSyntax xmlNode)
+    {
+        return xmlNode switch
+        {
+            XmlElementSyntax element => GetInnerText(element.Content),
+            XmlTextSyntax text => GetTokenText(text.TextTokens),
+            XmlCDataSectionSyntax cdata => GetTokenText(cdata.TextTokens),
+            _ => string.Empty
+        };
+    }
+
+    private static string GetTokenText(SyntaxTokenList tokens)
+    {
+        if (tokens.Count == 0)
             return string.Empty;
 
-        if (textAttr.TextTokens.Count == 1)
-            return textAttr.TextTokens[0].ValueText;
+        if (tokens.Count == 1)
+            return tokens[0].ValueText;
 
         int capacity = 0;
-        foreach (var token in textAttr.TextTokens)
+        foreach (var token in tokens)
         {
             capacity += token.ValueText.Length;
         }
 
-        var sb = new System.Text.StringBuilder(capacity);
-        foreach (var token in textAttr.TextTokens)
+        var sb = new StringBuilder(capacity);
+        foreach (var token in tokens)
         {
             sb.Append(token.ValueText);
         }
+
         return sb.ToString();
+    }
+
+    private static string GetInnerText(SyntaxList<XmlNodeSyntax> content)
+    {
+        if (content.Count == 0)
+            return string.Empty;
+
+        var sb = new StringBuilder();
+        AppendInnerText(content, sb);
+        return sb.ToString();
+    }
+
+    private static void AppendInnerText(SyntaxList<XmlNodeSyntax> content, StringBuilder sb)
+    {
+        foreach (var node in content)
+        {
+            switch (node)
+            {
+                case XmlTextSyntax text:
+                    foreach (var token in text.TextTokens)
+                        sb.Append(token.ValueText);
+                    break;
+                case XmlCDataSectionSyntax cdata:
+                    foreach (var token in cdata.TextTokens)
+                        sb.Append(token.ValueText);
+                    break;
+                case XmlElementSyntax element:
+                    AppendInnerText(element.Content, sb);
+                    break;
+            }
+        }
+    }
+
+    private static string GetCrefAttributeValue(CrefSyntax cref)
+    {
+        switch (cref.ToString())
+        {
+            case "nint":
+                return "System.IntPtr";
+            case "nuint":
+                return "System.UIntPtr";
+        }
+
+        if (cref is TypeCrefSyntax { Type: PredefinedTypeSyntax predefinedType } &&
+            PredefinedCrefAliases.TryGetValue(predefinedType.Keyword.Kind(), out var alias))
+        {
+            return alias;
+        }
+
+        return cref.ToString();
+    }
+
+    private static string GetTextAttributeValue(XmlTextAttributeSyntax textAttr)
+    {
+        return GetTokenText(textAttr.TextTokens);
     }
 
     public static XmlTextSyntax? GetAssociatedWhitespaceToRemove(this XmlNodeSyntax xmlNode)

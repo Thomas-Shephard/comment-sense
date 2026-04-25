@@ -236,4 +236,22 @@ public class TypeParameterDocumentationTests : CommentSenseAnalyzerTestBase<Comm
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false, compilerDiagnostics: CompilerDiagnostics.None);
     }
+
+    [Test]
+    public async Task PartialTypeWithTypeParameterDocumentationSplitAcrossDeclarationsDoesNotReportDiagnostic()
+    {
+        const string testCode = """
+            /// <summary>This is a summary for the class.</summary>
+            public partial class MyClass<T>
+            {
+            }
+
+            /// <typeparam name="T">The type parameter T.</typeparam>
+            public partial class MyClass<T>
+            {
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
 }

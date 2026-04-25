@@ -88,6 +88,129 @@ public class DocumentationSyntaxExtensionsTests
     }
 
     [Test]
+    public void GetAttributeValueForNameAttributeReturnsValue()
+    {
+        var tree = CSharpSyntaxTree.ParseText("/// <param name=\"x\">P</param>\npublic void M(int x) {}");
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlElementSyntax>().First();
+        Assert.That(node.GetAttributeValue("name"), Is.EqualTo("x"));
+    }
+
+    [Test]
+    public void GetAttributeValueForTextAttributeReturnsValue()
+    {
+        var attr = SyntaxFactory.XmlTextAttribute(
+            SyntaxFactory.XmlName("path"),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken),
+            SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("docs.xml")),
+            SyntaxFactory.Token(SyntaxKind.DoubleQuoteToken));
+        var node = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("include"), SyntaxFactory.List<XmlAttributeSyntax>([attr]));
+        Assert.That(node.GetAttributeValue("path"), Is.EqualTo("docs.xml"));
+    }
+
+    [Test]
+    public void GetAttributeValueForPredefinedCrefReturnsSystemTypeName()
+    {
+        var cref = SyntaxFactory.TypeCref(SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword)));
+        var attr = SyntaxFactory.XmlCrefAttribute(cref);
+        var node = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("exception"), SyntaxFactory.List<XmlAttributeSyntax>([attr]));
+        Assert.That(node.GetAttributeValue("cref"), Is.EqualTo("System.String"));
+    }
+
+    [TestCase("nint", "System.IntPtr")]
+    [TestCase("nuint", "System.UIntPtr")]
+    public void GetAttributeValueForNativeIntegerCrefReturnsFrameworkTypeName(string crefText, string expectedTypeName)
+    {
+        var tree = CSharpSyntaxTree.ParseText($"/// <exception cref=\"{crefText}\" />\npublic class C {{}}");
+        var node = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlEmptyElementSyntax>().First();
+        Assert.That(node.GetAttributeValue("cref"), Is.EqualTo(expectedTypeName));
+    }
+
+    [Test]
+    public void GetAttributeValueForUnsupportedNodeReturnsNull()
+    {
+        var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("text")));
+        Assert.That(node.GetAttributeValue("name"), Is.Null);
+    }
+
+    [Test]
+    public void GetInnerTextForXmlTextReturnsTokenValue()
+    {
+        var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("abc")));
+        Assert.That(node.GetInnerText(), Is.EqualTo("abc"));
+    }
+
+    [Test]
+    public void GetInnerTextForXmlTextWithNoTokensReturnsEmpty()
+    {
+        var node = SyntaxFactory.XmlText(default(SyntaxTokenList));
+        Assert.That(node.GetInnerText(), Is.EqualTo(string.Empty));
+    }
+
+    [Test]
+    public void GetInnerTextForXmlTextWithMultipleTokensConcatenatesValueText()
+    {
+        var node = SyntaxFactory.XmlText(SyntaxFactory.TokenList(
+            SyntaxFactory.XmlTextLiteral("ab"),
+            SyntaxFactory.XmlTextLiteral("cd")));
+
+        Assert.That(node.GetInnerText(), Is.EqualTo("abcd"));
+    }
+
+    [Test]
+    public void GetInnerTextForCDataReturnsTokenValue()
+    {
+        var node = SyntaxFactory.XmlCDataSection(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("abc")));
+        Assert.That(node.GetInnerText(), Is.EqualTo("abc"));
+    }
+
+    [Test]
+    public void GetInnerTextForCDataWithNoTokensReturnsEmpty()
+    {
+        var node = SyntaxFactory.XmlCDataSection();
+        Assert.That(node.GetInnerText(), Is.EqualTo(string.Empty));
+    }
+
+    [Test]
+    public void GetInnerTextForCDataWithMultipleTokensConcatenatesValueText()
+    {
+        var node = SyntaxFactory.XmlCDataSection(SyntaxFactory.TokenList(
+            SyntaxFactory.XmlTextLiteral("ab"),
+            SyntaxFactory.XmlTextLiteral("cd")));
+
+        Assert.That(node.GetInnerText(), Is.EqualTo("abcd"));
+    }
+
+    [Test]
+    public void GetInnerTextForUnsupportedNodeReturnsEmpty()
+    {
+        var node = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("see"));
+        Assert.That(node.GetInnerText(), Is.Empty);
+    }
+
+    [Test]
+    public void GetInnerTextForElementIgnoresEmptyChildElements()
+    {
+        var node = SyntaxFactory.XmlElement(
+            SyntaxFactory.XmlElementStartTag(SyntaxFactory.XmlName("summary")),
+            SyntaxFactory.XmlElementEndTag(SyntaxFactory.XmlName("summary")))
+            .WithContent(SyntaxFactory.List<XmlNodeSyntax>(
+            [
+                SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("prefix "))),
+                SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("see")),
+                SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("suffix")))
+            ]));
+
+        Assert.That(node.GetInnerText(), Is.EqualTo("prefix suffix"));
+    }
+
+    [Test]
+    public void HasChildElementsReturnsFalseForEmptyElement()
+    {
+        var node = SyntaxFactory.XmlEmptyElement(SyntaxFactory.XmlName("see"));
+        Assert.That(node.HasChildElements(), Is.False);
+    }
+
+    [Test]
     public void GetMemberDeclarationNullNodeReturnsNull()
     {
         Assert.That(((SyntaxNode?)null).GetMemberDeclaration(), Is.Null);

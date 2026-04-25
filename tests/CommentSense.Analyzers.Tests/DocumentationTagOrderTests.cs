@@ -1,5 +1,3 @@
-using System.Xml.Linq;
-using CommentSense.Analyzers.Logic;
 using CommentSense.Core;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
@@ -152,16 +150,5 @@ public class DocumentationTagOrderTests : CommentSenseAnalyzerTestBase<CommentSe
             public class MyClass { }
             """;
         await VerifyCSenseAsync(testCode, diagnosticOptions: SuppressAll);
-    }
-
-    [Test]
-    public void GetOccurrenceTargetNotInListReturnsCorrectCount()
-    {
-        var elements = new List<XElement> { new("summary"), new("remarks") };
-        var target = new XElement("summary");
-
-        var result = TagOrderAnalyzer.GetOccurrence(elements, target);
-
-        Assert.That(result, Is.EqualTo(1));
     }
 }
