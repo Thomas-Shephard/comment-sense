@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
+using System.Text.RegularExpressions;
 using CommentSense.Analyzers.Logic;
 using CommentSense.Core;
 using CommentSense.TestHelpers;
@@ -617,6 +619,24 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             """;
 
         await VerifyCSenseAsync(testCode);
+    }
+
+    [Test]
+    [SuppressMessage("Performance", "SYSLIB1045:Convert to \'GeneratedRegexAttribute\'.")]
+    public void AddRegexToCacheHandlesExistingEntry()
+    {
+        var names = ImmutableArray.Create("UniqueParameterName_" + Guid.NewGuid().ToString("N"));
+        var regex1 = new Regex("pattern1");
+        var regex2 = new Regex("pattern2");
+
+        var result1 = GhostReferenceAnalyzer.AddRegexToCache(names, regex1);
+        var result2 = GhostReferenceAnalyzer.AddRegexToCache(names, regex2);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result1, Is.SameAs(regex1));
+            Assert.That(result2, Is.SameAs(regex1));
+        }
     }
 
     [Test]

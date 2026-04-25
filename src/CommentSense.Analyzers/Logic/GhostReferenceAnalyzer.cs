@@ -224,7 +224,7 @@ internal static class GhostReferenceAnalyzer
         }
     }
 
-    private static Regex AddRegexToCache(ImmutableArray<string> key, Regex regex)
+    internal static Regex AddRegexToCache(ImmutableArray<string> key, Regex regex)
     {
         lock (RegexCacheLock)
         {
