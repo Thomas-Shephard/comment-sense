@@ -79,29 +79,27 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         if (!IsEligibleForAnalysis(symbol, options))
             return;
 
-        var xml = symbol.GetDocumentationCommentXml();
-        if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var element))
+        var documentation = DocumentationComment.FromSymbol(symbol, context.CancellationToken);
+        if (documentation is null || documentation.IsMalformedFor(symbol, context.CancellationToken))
         {
-            // Parsing failure (e.g., malformed XML) is treated as missing documentation
             ReportMissingDocumentation(context, symbol, options);
             return;
         }
 
-        TagOrderAnalyzer.Analyze(context, symbol, element, options);
+        TagOrderAnalyzer.Analyze(context, documentation, options);
 
-        if (!DocumentationXmlExtensions.HasValidDocumentation(element))
+        if (!documentation.HasValidDocumentation())
         {
-            // Documentation is present but does not contain valid tags (e.g., empty or only unsupported tags)
             ReportMissingDocumentation(context, symbol, options);
             return;
         }
 
-        if (InheritDocAnalyzer.Analyze(context, symbol, element))
+        if (InheritDocAnalyzer.Analyze(context, symbol, documentation))
             return;
 
-        SummaryAnalyzer.Analyze(context, symbol, element, options);
-        SupplementalAnalyzer.Analyze(context, symbol, element, options);
-        AnalyzeSpecificSymbol(context, symbol, element, options);
+        SummaryAnalyzer.Analyze(context, symbol, documentation, options);
+        SupplementalAnalyzer.Analyze(context, symbol, documentation, options);
+        AnalyzeSpecificSymbol(context, symbol, documentation, options);
     }
 
     private static bool IsEligibleForAnalysis(ISymbol symbol, CommentSenseOptions options)
@@ -131,37 +129,37 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
         ReportMissingDocs(context, symbol);
     }
 
-    private static void AnalyzeSpecificSymbol(SymbolAnalysisContext context, ISymbol symbol, System.Xml.Linq.XElement element, CommentSenseOptions options)
+    private static void AnalyzeSpecificSymbol(SymbolAnalysisContext context, ISymbol symbol, DocumentationComment documentation, CommentSenseOptions options)
     {
         switch (symbol)
         {
             case IMethodSymbol methodSymbol:
-                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, methodSymbol, element, options);
-                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, methodSymbol, element, options);
-                ReturnValueAnalyzer.Analyze(context, methodSymbol, element, options);
-                ExceptionAnalyzer.Analyze(context, methodSymbol, element, options, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
+                ParameterAnalyzer.Analyze(context, methodSymbol.Parameters, documentation, options);
+                TypeParameterAnalyzer.Analyze(context, methodSymbol.TypeParameters, documentation, options);
+                ReturnValueAnalyzer.Analyze(context, methodSymbol, documentation, options);
+                ExceptionAnalyzer.Analyze(context, methodSymbol, documentation, options, isPrimaryCtor: methodSymbol.IsPrimaryConstructor());
                 break;
             case IPropertySymbol propertySymbol:
                 if (propertySymbol.IsIndexer)
                 {
-                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, propertySymbol, element, options);
+                    ParameterAnalyzer.Analyze(context, propertySymbol.Parameters, documentation, options);
                 }
-                ReturnValueAnalyzer.Analyze(context, propertySymbol, element, options);
-                ExceptionAnalyzer.Analyze(context, propertySymbol, element, options);
+                ReturnValueAnalyzer.Analyze(context, propertySymbol, documentation, options);
+                ExceptionAnalyzer.Analyze(context, propertySymbol, documentation, options);
                 break;
             case INamedTypeSymbol namedTypeSymbol:
-                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, namedTypeSymbol, element, options);
+                TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, documentation, options);
                 if (namedTypeSymbol is { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null })
                 {
-                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, namedTypeSymbol, element, options);
-                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, element, options);
+                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, documentation, options);
+                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, documentation, options);
                 }
 
                 if (namedTypeSymbol.GetPrimaryConstructor() is { } primaryCtor)
                 {
-                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, namedTypeSymbol, element, options);
-                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, element, options);
-                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, element, options, isPrimaryCtor: true);
+                    ParameterAnalyzer.Analyze(context, primaryCtor.Parameters, documentation, options);
+                    ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, documentation, options);
+                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, documentation, options, isPrimaryCtor: true);
                 }
                 break;
         }

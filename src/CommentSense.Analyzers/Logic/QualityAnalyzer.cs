@@ -2,6 +2,7 @@ using System.Xml.Linq;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace CommentSense.Analyzers.Logic;
@@ -12,43 +13,34 @@ internal static class QualityAnalyzer
 
     public static bool IsLowQuality(XElement element, ISymbol symbol, ISymbol targetSymbol, CommentSenseOptions options)
     {
-        if (element.HasElements && string.IsNullOrWhiteSpace(element.Value))
+        if (!TryGetContent(element, out var content))
             return false;
 
-        var content = element.Value;
-        var type = (symbol as IMethodSymbol)?.ReturnType ?? (symbol as IPropertySymbol)?.Type;
+        return IsLowQualityCore(content, symbol, targetSymbol, options);
+    }
 
-        // Properties use <value>, while methods and delegates use <returns>.
-        // For delegates, symbol is the DelegateInvokeMethod (IMethodSymbol).
-        var tagName = symbol is IPropertySymbol ? DocumentationTags.Value : DocumentationTags.Returns;
-
-        if (IsLowQualityForAnyFormat(content, symbol, options, tagName))
-            return true;
-
-        if (!ReferenceEquals(symbol, targetSymbol) && IsLowQualityForAnyFormat(content, targetSymbol, options, tagName))
-            return true;
-
-        if (type is null)
+    public static bool IsLowQuality(XmlNodeSyntax element, ISymbol symbol, ISymbol targetSymbol, CommentSenseOptions options)
+    {
+        if (!TryGetContent(element, out var content))
             return false;
 
-        var typeName = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-        if (IsLowQuality(content, typeName, options, tagName: tagName))
-            return true;
-
-        // Also check the simple name (e.g., "List" for "List<int>")
-        var simpleTypeName = type.Name;
-        if (simpleTypeName != typeName && IsLowQuality(content, simpleTypeName, options, tagName: tagName))
-            return true;
-
-        return false;
+        return IsLowQualityCore(content, symbol, targetSymbol, options);
     }
 
     public static bool IsLowQuality(XElement element, string symbolName, CommentSenseOptions options, string? tagName = null)
     {
-        if (element.HasElements && string.IsNullOrWhiteSpace(element.Value))
+        if (!TryGetContent(element, out var content))
             return false;
 
-        return IsLowQuality(element.Value, symbolName, options, tagName);
+        return IsLowQuality(content, symbolName, options, tagName);
+    }
+
+    public static bool IsLowQuality(XmlNodeSyntax element, string symbolName, CommentSenseOptions options, string? tagName = null)
+    {
+        if (!TryGetContent(element, out var content))
+            return false;
+
+        return IsLowQuality(content, symbolName, options, tagName);
     }
 
     public static bool IsLowQuality(string? content, string symbolName, CommentSenseOptions options, string? tagName = null)
@@ -66,10 +58,18 @@ internal static class QualityAnalyzer
 
     public static bool IsLowQualityForAnyFormat(XElement element, string displayName, string minimallyQualifiedName, CommentSenseOptions options, string? tagName = null)
     {
-        if (element.HasElements && string.IsNullOrWhiteSpace(element.Value))
+        if (!TryGetContent(element, out var content))
             return false;
 
-        return IsLowQualityForAnyFormat(element.Value, displayName, minimallyQualifiedName, options, tagName);
+        return IsLowQualityForAnyFormat(content, displayName, minimallyQualifiedName, options, tagName);
+    }
+
+    public static bool IsLowQualityForAnyFormat(XmlNodeSyntax element, string displayName, string minimallyQualifiedName, CommentSenseOptions options, string? tagName = null)
+    {
+        if (!TryGetContent(element, out var content))
+            return false;
+
+        return IsLowQualityForAnyFormat(content, displayName, minimallyQualifiedName, options, tagName);
     }
 
     public static bool IsLowQualityForAnyFormat(string content, string displayName, string minimallyQualifiedName, CommentSenseOptions options, string? tagName = null)
@@ -96,6 +96,43 @@ internal static class QualityAnalyzer
         var displayName = symbol.GetDisplayName();
         var minimallyQualifiedName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
         return IsLowQualityForAnyFormat(content, displayName, minimallyQualifiedName, options, tagName);
+    }
+
+    private static bool IsLowQualityCore(string content, ISymbol symbol, ISymbol targetSymbol, CommentSenseOptions options)
+    {
+        var type = (symbol as IMethodSymbol)?.ReturnType ?? (symbol as IPropertySymbol)?.Type;
+
+        // Properties use <value>, while methods and delegates use <returns>.
+        // For delegates, symbol is the DelegateInvokeMethod (IMethodSymbol).
+        var tagName = symbol is IPropertySymbol ? DocumentationTags.Value : DocumentationTags.Returns;
+
+        if (IsLowQualityForAnyFormat(content, symbol, options, tagName))
+            return true;
+
+        if (!ReferenceEquals(symbol, targetSymbol) && IsLowQualityForAnyFormat(content, targetSymbol, options, tagName))
+            return true;
+
+        if (type is null)
+            return false;
+
+        var typeName = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+        if (IsLowQuality(content, typeName, options, tagName: tagName))
+            return true;
+
+        var simpleTypeName = type.Name;
+        return simpleTypeName != typeName && IsLowQuality(content, simpleTypeName, options, tagName: tagName);
+    }
+
+    private static bool TryGetContent(XElement element, out string content)
+    {
+        content = element.Value;
+        return !(element.HasElements && string.IsNullOrWhiteSpace(content));
+    }
+
+    private static bool TryGetContent(XmlNodeSyntax element, out string content)
+    {
+        content = element.GetInnerText();
+        return !(element.HasChildElements() && string.IsNullOrWhiteSpace(content));
     }
 
     private static bool IsPoorlyFormatted(ReadOnlySpan<char> content, CommentSenseOptions options)

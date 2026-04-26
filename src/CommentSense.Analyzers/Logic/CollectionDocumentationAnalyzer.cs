@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Xml.Linq;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -19,12 +18,11 @@ internal static class CollectionDocumentationAnalyzer
     public static void Analyze<TSymbol>(
         SymbolAnalysisContext context,
         ImmutableArray<TSymbol> symbols,
-        ISymbol parentSymbol,
-        XElement xml,
+        DocumentationComment documentation,
         CommentSenseOptions options,
         CollectionRuleSet rules) where TSymbol : ISymbol
     {
-        if (symbols.IsEmpty && !DocumentationXmlExtensions.GetTargetElements(xml, rules.TagName, recursive: true).Any())
+        if (symbols.IsEmpty && !documentation.GetElements(rules.TagName, recursive: true).Any())
             return;
 
         var actualIndexMap = new Dictionary<string, int>(symbols.Length, StringComparer.Ordinal);
@@ -33,9 +31,9 @@ internal static class CollectionDocumentationAnalyzer
             actualIndexMap[symbols[i].Name] = i;
         }
 
-        var documentedSet = ValidateDocumented(context, parentSymbol, xml, actualIndexMap, options, rules);
+        var documentedSet = ValidateDocumented(context, documentation, actualIndexMap, options, rules);
 
-        if (!DocumentationXmlExtensions.HasInheritDoc(xml) && !DocumentationXmlExtensions.HasAutoValidTag(xml))
+        if (!documentation.HasInheritDoc() && !documentation.HasAutoValidTag())
             ReportMissing(context, symbols, documentedSet, rules.MissingRule);
     }
 
@@ -58,8 +56,7 @@ internal static class CollectionDocumentationAnalyzer
 
     private static HashSet<string> ValidateDocumented(
         SymbolAnalysisContext context,
-        ISymbol symbol,
-        XElement xml,
+        DocumentationComment documentation,
         Dictionary<string, int> actualIndexMap,
         CommentSenseOptions options,
         CollectionRuleSet rules)
@@ -67,63 +64,71 @@ internal static class CollectionDocumentationAnalyzer
         var seen = new Dictionary<string, int>(StringComparer.Ordinal);
         var documentedSet = new HashSet<string>(StringComparer.Ordinal);
         var lastActualIndex = -1;
-        var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
 
-        // Scan all tags recursively.
-        foreach (var (element, location) in symbol.GetTargetElementsWithLocations(xml, rules.TagName, topLevelOnly: false))
+        foreach (var element in documentation.GetElements(rules.TagName, recursive: true))
         {
-            var name = element.Attribute(DocumentationAttributes.Name)?.Value;
-            bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, element, effectiveTarget);
-
-            if (!isTopLevel)
+            var location = element.GetLocation();
+            var name = element.GetAttributeValue(DocumentationAttributes.Name);
+            if (!documentation.IsTopLevel(element))
             {
-                // Nested tags are always stray and do not count towards fulfilling documentation or tracking duplicates.
-                var cleanName = string.IsNullOrWhiteSpace(name) ? string.Empty : name;
-                var displayName = string.IsNullOrWhiteSpace(name) ? "<unknown>" : name;
-                var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, cleanName);
-                context.ReportDiagnostic(Diagnostic.Create(rules.StrayRule, location, properties, displayName));
+                ReportStray(context, rules.StrayRule, location, name);
                 continue;
             }
 
-            if (name == null || string.IsNullOrWhiteSpace(name))
+            if (name is null || string.IsNullOrWhiteSpace(name))
                 continue;
 
             documentedSet.Add(name);
-
-            // Process top-level tags for Duplicates, Order, and Quality.
-            if (!seen.TryGetValue(name, out var occurrence))
-                occurrence = 0;
-
-            seen[name] = occurrence + 1;
-
-            if (occurrence > 0)
+            if (IsDuplicate(name, seen))
             {
-                var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, name);
-                context.ReportDiagnostic(Diagnostic.Create(rules.DuplicateRule, location, properties, name));
+                ReportNamed(context, rules.DuplicateRule, location, name);
                 continue;
             }
 
             if (!actualIndexMap.TryGetValue(name, out var currentIndex))
             {
-                var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, name);
-                context.ReportDiagnostic(Diagnostic.Create(rules.StrayRule, location, properties, name));
+                ReportNamed(context, rules.StrayRule, location, name);
                 continue;
             }
 
             if (QualityAnalyzer.IsLowQuality(element, name, options, tagName: rules.TagName))
-            {
                 QualityAnalyzer.Report(context, location, rules.TagName, name);
-            }
 
             if (currentIndex < lastActualIndex)
-            {
-                var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, name);
-                context.ReportDiagnostic(Diagnostic.Create(rules.OrderMismatchRule, location, properties, name));
-            }
+                ReportNamed(context, rules.OrderMismatchRule, location, name);
 
             lastActualIndex = currentIndex;
         }
 
         return documentedSet;
+    }
+
+    private static bool IsDuplicate(string name, Dictionary<string, int> seen)
+    {
+        seen.TryGetValue(name, out var occurrence);
+        seen[name] = occurrence + 1;
+        return occurrence > 0;
+    }
+
+    private static void ReportStray(
+        SymbolAnalysisContext context,
+        DiagnosticDescriptor rule,
+        Location location,
+        string? name)
+    {
+        var cleanName = string.IsNullOrWhiteSpace(name) ? string.Empty : name;
+        var displayName = string.IsNullOrWhiteSpace(name) ? "<unknown>" : name;
+        var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, cleanName);
+        context.ReportDiagnostic(Diagnostic.Create(rule, location, properties, displayName));
+    }
+
+    private static void ReportNamed(
+        SymbolAnalysisContext context,
+        DiagnosticDescriptor rule,
+        Location location,
+        string name)
+    {
+        var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, name);
+        context.ReportDiagnostic(Diagnostic.Create(rule, location, properties, name));
     }
 }

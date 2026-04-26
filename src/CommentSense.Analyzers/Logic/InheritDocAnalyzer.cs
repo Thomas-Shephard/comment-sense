@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.Xml.Linq;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -13,9 +12,9 @@ internal static class InheritDocAnalyzer
 {
     internal static ImmutableArray<ISymbol> GetImplicitTargetsForInheritDoc(ISymbol symbol) => GetImplicitTargets(symbol);
 
-    public static bool Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml)
+    public static bool Analyze(SymbolAnalysisContext context, ISymbol symbol, DocumentationComment documentation)
     {
-        if (!HasTopLevelInheritDoc(xml))
+        if (!HasTopLevelInheritDoc(documentation))
             return false;
 
         if (!HasInvalidInheritDoc(context, symbol))
@@ -26,16 +25,16 @@ internal static class InheritDocAnalyzer
         return true;
     }
 
-    private static bool HasTopLevelInheritDoc(XElement xml)
+    private static bool HasTopLevelInheritDoc(DocumentationComment documentation)
     {
-        return DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.InheritDoc, recursive: false).Any();
+        return documentation.GetElements(DocumentationTags.InheritDoc, recursive: false).Any();
     }
 
     private static bool HasInvalidInheritDoc(SymbolAnalysisContext context, ISymbol symbol)
     {
         ImmutableArray<ISymbol>? implicitTargets = null;
 
-        foreach (var declaringReference in symbol.DeclaringSyntaxReferences)
+        foreach (var declaringReference in DocumentationComment.GetDeclaringSyntaxReferences(symbol))
         {
             if (!TryGetDocumentationContext(context, declaringReference, out var docTrivia, out var semanticModel))
                 continue;

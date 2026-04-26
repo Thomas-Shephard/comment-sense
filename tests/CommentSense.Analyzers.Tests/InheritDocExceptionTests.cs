@@ -262,6 +262,55 @@ public class InheritDocExceptionTests : CommentSenseAnalyzerTestBase<CommentSens
     }
 
     [Test]
+    public async Task InheritDocFromReferencedInterfaceUsesExternalExceptionDocumentation()
+    {
+        const string testCode = """
+            using System;
+            using RefLib;
+
+            /// <summary>Implementation.</summary>
+            public class Worker : IBase
+            {
+                /// <inheritdoc/>
+                public void Execute()
+                {
+                    throw new InvalidOperationException();
+                }
+            }
+            """;
+
+        const string referencedCode = """
+            using System;
+
+            namespace RefLib;
+
+            /// <summary>Base contract.</summary>
+            public interface IBase
+            {
+                /// <summary>Performs work.</summary>
+                /// <exception cref="InvalidOperationException">Thrown on failure.</exception>
+                void Execute();
+            }
+            """;
+
+        await VerifyCSenseAsync(
+            testCode,
+            expectDiagnostic: false,
+            solutionTransform: (solution, projectId) =>
+            {
+                var project = solution.GetProject(projectId) ?? throw new InvalidOperationException();
+                var referencedProjectId = ProjectId.CreateNewId();
+                solution = solution.AddProject(referencedProjectId, "RefLib", "RefLib", LanguageNames.CSharp);
+                solution = solution.AddMetadataReferences(referencedProjectId, project.MetadataReferences);
+                solution = solution.WithProjectParseOptions(referencedProjectId, project.ParseOptions ?? throw new InvalidOperationException());
+                solution = solution.WithProjectCompilationOptions(referencedProjectId, project.CompilationOptions ?? throw new InvalidOperationException());
+                solution = solution.AddDocument(DocumentId.CreateNewId(referencedProjectId), "RefLib.cs", referencedCode);
+                solution = solution.AddProjectReferences(projectId, [new ProjectReference(referencedProjectId)]);
+                return solution;
+            });
+    }
+
+    [Test]
     public async Task PartialTypeWithUndocumentedDeclarationStillResolvesInheritedExceptions()
     {
         const string testCode = """

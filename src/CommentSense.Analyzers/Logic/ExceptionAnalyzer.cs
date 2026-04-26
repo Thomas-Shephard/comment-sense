@@ -33,19 +33,18 @@ internal static class ExceptionAnalyzer
     private readonly record struct InheritedExceptionResolution(ImmutableHashSet<ITypeSymbol> Types, bool HasUnknownInclude);
     private readonly record struct ExceptionTypeResolution(ITypeSymbol? Type);
 
-    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, bool isPrimaryCtor = false)
+    public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, DocumentationComment documentation, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
-        var effectiveDocumentation = GetEffectiveDocumentedExceptionTypes(context, symbol, xml);
+        var effectiveDocumentation = GetEffectiveDocumentedExceptionTypes(context, symbol, documentation);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor, options);
 
-        ReportMissingExceptions(context, symbol, xml, options, thrownTypes, effectiveDocumentation);
-        ReportLowQualityExceptions(context, symbol, xml, options);
+        ReportMissingExceptions(context, symbol, documentation, options, thrownTypes, effectiveDocumentation);
+        ReportLowQualityExceptions(context, documentation, options);
     }
 
-    private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, EffectiveDocumentedExceptions effectiveDocumentation)
+    private static void ReportMissingExceptions(SymbolAnalysisContext context, ISymbol symbol, DocumentationComment documentation, CommentSenseOptions options, IEnumerable<ITypeSymbol> thrownTypes, EffectiveDocumentedExceptions effectiveDocumentation)
     {
-        // CSENSE012: Missing Exception Documentation
-        if (HasTopLevelIncludeTag(xml) || effectiveDocumentation.HasUnknownInheritedDocumentation)
+        if (HasTopLevelIncludeTag(documentation) || effectiveDocumentation.HasUnknownInheritedDocumentation)
             return;
 
         var documentedTypes = effectiveDocumentation.Types;
@@ -89,50 +88,54 @@ internal static class ExceptionAnalyzer
         return false;
     }
 
-    private static void ReportLowQualityExceptions(SymbolAnalysisContext context, ISymbol symbol, XElement xml, CommentSenseOptions options)
+    private static void ReportLowQualityExceptions(SymbolAnalysisContext context, DocumentationComment documentation, CommentSenseOptions options)
     {
-        // CSENSE016: Low Quality Exception Documentation
-        // CSENSE023: Stray Exception Documentation
         var seenExceptions = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
         var seenUnresolvedCrefs = new HashSet<string>(StringComparer.Ordinal);
-        var effectiveTarget = DocumentationXmlExtensions.GetEffectiveTarget(xml);
 
-        foreach (var (exceptionElement, location) in symbol.GetTargetElementsWithLocations(xml, DocumentationTags.Exception, topLevelOnly: false))
+        foreach (var exceptionElement in documentation.GetElements(DocumentationTags.Exception, recursive: true))
         {
-            var cref = exceptionElement.Attribute(DocumentationAttributes.Cref)?.Value;
+            ReportExceptionElement(context, documentation, exceptionElement, options, seenExceptions, seenUnresolvedCrefs);
+        }
+    }
 
-            bool isTopLevel = DocumentationXmlExtensions.IsTopLevel(xml, exceptionElement, effectiveTarget);
-            if (!isTopLevel)
-            {
-                var strayDisplayName = string.IsNullOrWhiteSpace(cref)
-                    ? "<unknown>"
-                    : cref;
+    private static void ReportExceptionElement(
+        SymbolAnalysisContext context,
+        DocumentationComment documentation,
+        XmlNodeSyntax exceptionElement,
+        CommentSenseOptions options,
+        HashSet<ITypeSymbol> seenExceptions,
+        HashSet<string> seenUnresolvedCrefs)
+    {
+        var location = exceptionElement.GetLocation();
+        var cref = exceptionElement.GetAttributeValue(DocumentationAttributes.Cref);
 
-                context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayExceptionDocumentationRule, location, strayDisplayName));
-                continue;
-            }
+        if (!documentation.IsTopLevel(exceptionElement))
+        {
+            var strayDisplayName = string.IsNullOrWhiteSpace(cref) ? "<unknown>" : cref;
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayExceptionDocumentationRule, location, strayDisplayName));
+            return;
+        }
 
-            var resolved = ResolveExceptionType(cref, context.Compilation, context.CancellationToken);
-            var displayName = resolved?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) ?? cref ?? "<unknown>";
+        var resolved = ResolveExceptionType(exceptionElement, context.Compilation, context.CancellationToken);
+        var displayName = resolved?.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) ?? cref ?? "<unknown>";
 
-            if (resolved == null)
-            {
-                if (cref != null && !seenUnresolvedCrefs.Add(cref))
-                    context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayExceptionDocumentationRule, location, displayName));
-
-                continue;
-            }
-
-            if (seenExceptions.Add(resolved))
-            {
-                var isLowQuality = QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: DocumentationTags.Exception);
-                if (isLowQuality)
-                    QualityAnalyzer.Report(context, location, DocumentationTags.Exception, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
-            }
-            else
-            {
+        if (resolved == null)
+        {
+            if (cref != null && !seenUnresolvedCrefs.Add(cref))
                 context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayExceptionDocumentationRule, location, displayName));
-            }
+
+            return;
+        }
+
+        if (seenExceptions.Add(resolved))
+        {
+            if (QualityAnalyzer.IsLowQuality(exceptionElement, resolved.Name, options, tagName: DocumentationTags.Exception))
+                QualityAnalyzer.Report(context, location, DocumentationTags.Exception, resolved.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+        }
+        else
+        {
+            context.ReportDiagnostic(Diagnostic.Create(CommentSenseRules.StrayExceptionDocumentationRule, location, displayName));
         }
     }
 
@@ -180,19 +183,24 @@ internal static class ExceptionAnalyzer
         return ns.StartsWith(targetNamespace, StringComparison.OrdinalIgnoreCase) && ns[targetNamespace.Length] == '.';
     }
 
-    private static bool HasTopLevelIncludeTag(XElement xml)
+    private static bool HasTopLevelIncludeTag(DocumentationComment documentation)
     {
-        return DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Include, recursive: false).Any();
+        return documentation.GetElements(DocumentationTags.Include, recursive: false).Any();
     }
 
-    private static EffectiveDocumentedExceptions GetEffectiveDocumentedExceptionTypes(SymbolAnalysisContext context, ISymbol symbol, XElement xml)
+    private static bool HasTopLevelIncludeTag(XElement documentation)
+    {
+        return DocumentationXmlExtensions.GetTargetElements(documentation, DocumentationTags.Include, recursive: false).Any();
+    }
+
+    private static EffectiveDocumentedExceptions GetEffectiveDocumentedExceptionTypes(SymbolAnalysisContext context, ISymbol symbol, DocumentationComment documentation)
     {
         var documentedTypes = GetDocumentedExceptionTypes(
             context.Compilation,
-            DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false),
+            documentation,
             context.CancellationToken);
 
-        if (!HasTopLevelInheritDoc(xml))
+        if (!HasTopLevelInheritDoc(documentation))
             return new EffectiveDocumentedExceptions(documentedTypes, HasUnknownInheritedDocumentation: false);
 
         var recursionStack = new HashSet<ISymbol>(SymbolEqualityComparer.Default)
@@ -229,35 +237,31 @@ internal static class ExceptionAnalyzer
 
         try
         {
-            if (!DocumentationXmlExtensions.TryParseDocumentation(symbol.GetDocumentationCommentXml(cancellationToken: cancellationToken), out var xml))
+            var documentation = DocumentationComment.FromSymbol(symbol, cancellationToken);
+            if (documentation is not null && !documentation.IsMalformedFor(symbol, cancellationToken))
+            {
+                var syntaxResolution = GetEffectiveExceptionTypesFromDocumentation(
+                    symbol,
+                    compilation,
+                    recursionStack,
+                    documentation,
+                    cancellationToken);
+                cache.TryAdd(symbol, syntaxResolution);
+                return syntaxResolution;
+            }
+
+            if (!DocumentationXmlExtensions.TryParseDocumentation(symbol.GetDocumentationCommentXml(cancellationToken: cancellationToken), out var xmlDocumentation))
             {
                 cache.TryAdd(symbol, EmptyInheritedExceptionResolution);
                 return EmptyInheritedExceptionResolution;
             }
 
-            var documentedTypes = GetDocumentedExceptionTypes(
+            var result = GetEffectiveExceptionTypesFromDocumentation(
+                symbol,
                 compilation,
-                DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.Exception, recursive: false),
+                recursionStack,
+                xmlDocumentation,
                 cancellationToken);
-            var hasUnknownInclude = HasTopLevelIncludeTag(xml);
-
-            if (HasTopLevelInheritDoc(xml))
-            {
-                var inheritDocTargets = GetInheritDocTargets(compilation, symbol, cancellationToken);
-                if (inheritDocTargets.IsEmpty && !HasResolvableDeclaringSyntaxReference(compilation, symbol))
-                    hasUnknownInclude = true;
-
-                foreach (var target in inheritDocTargets)
-                {
-                    var inheritedResolution = GetEffectiveExceptionTypesFromSymbol(target, compilation, recursionStack, cancellationToken);
-                    documentedTypes.UnionWith(inheritedResolution.Types);
-                    hasUnknownInclude |= inheritedResolution.HasUnknownInclude;
-                }
-            }
-
-            var result = new InheritedExceptionResolution(
-                documentedTypes.ToImmutableHashSet<ITypeSymbol>(SymbolEqualityComparer.Default),
-                hasUnknownInclude);
             cache.TryAdd(symbol, result);
             return result;
         }
@@ -267,9 +271,64 @@ internal static class ExceptionAnalyzer
         }
     }
 
-    private static bool HasTopLevelInheritDoc(XElement xml)
+    private static bool HasTopLevelInheritDoc(DocumentationComment documentation)
     {
-        return DocumentationXmlExtensions.GetTargetElements(xml, DocumentationTags.InheritDoc, recursive: false).Any();
+        return documentation.GetElements(DocumentationTags.InheritDoc, recursive: false).Any();
+    }
+
+    private static bool HasTopLevelInheritDoc(XElement documentation)
+    {
+        return DocumentationXmlExtensions.GetTargetElements(documentation, DocumentationTags.InheritDoc, recursive: false).Any();
+    }
+
+    private static InheritedExceptionResolution GetEffectiveExceptionTypesFromDocumentation(
+        ISymbol symbol,
+        Compilation compilation,
+        HashSet<ISymbol> recursionStack,
+        DocumentationComment documentation,
+        CancellationToken cancellationToken)
+    {
+        var documentedTypes = GetDocumentedExceptionTypes(compilation, documentation, cancellationToken);
+        return CompleteInheritedExceptionResolution(symbol, compilation, recursionStack, documentedTypes, HasTopLevelIncludeTag(documentation), HasTopLevelInheritDoc(documentation), cancellationToken);
+    }
+
+    private static InheritedExceptionResolution GetEffectiveExceptionTypesFromDocumentation(
+        ISymbol symbol,
+        Compilation compilation,
+        HashSet<ISymbol> recursionStack,
+        XElement documentation,
+        CancellationToken cancellationToken)
+    {
+        var documentedTypes = GetDocumentedExceptionTypes(compilation, documentation, cancellationToken);
+        return CompleteInheritedExceptionResolution(symbol, compilation, recursionStack, documentedTypes, HasTopLevelIncludeTag(documentation), HasTopLevelInheritDoc(documentation), cancellationToken);
+    }
+
+    private static InheritedExceptionResolution CompleteInheritedExceptionResolution(
+        ISymbol symbol,
+        Compilation compilation,
+        HashSet<ISymbol> recursionStack,
+        HashSet<ITypeSymbol> documentedTypes,
+        bool hasUnknownInclude,
+        bool hasTopLevelInheritDoc,
+        CancellationToken cancellationToken)
+    {
+        if (hasTopLevelInheritDoc)
+        {
+            var inheritDocTargets = GetInheritDocTargets(compilation, symbol, cancellationToken);
+            if (inheritDocTargets.IsEmpty && !HasResolvableDeclaringSyntaxReference(compilation, symbol))
+                hasUnknownInclude = true;
+
+            foreach (var target in inheritDocTargets)
+            {
+                var inheritedResolution = GetEffectiveExceptionTypesFromSymbol(target, compilation, recursionStack, cancellationToken);
+                documentedTypes.UnionWith(inheritedResolution.Types);
+                hasUnknownInclude |= inheritedResolution.HasUnknownInclude;
+            }
+        }
+
+        return new InheritedExceptionResolution(
+            documentedTypes.ToImmutableHashSet<ITypeSymbol>(SymbolEqualityComparer.Default),
+            hasUnknownInclude);
     }
 
     private static ImmutableArray<ISymbol> GetInheritDocTargets(Compilation compilation, ISymbol symbol, CancellationToken cancellationToken)
@@ -278,7 +337,7 @@ internal static class ExceptionAnalyzer
         var seenTargets = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
         ImmutableArray<ISymbol>? implicitTargets = null;
 
-        foreach (var declaringReference in symbol.DeclaringSyntaxReferences)
+        foreach (var declaringReference in DocumentationComment.GetDeclaringSyntaxReferences(symbol))
         {
             AddInheritDocTargetsFromDeclaration(
                 compilation,
@@ -295,7 +354,7 @@ internal static class ExceptionAnalyzer
 
     private static bool HasResolvableDeclaringSyntaxReference(Compilation compilation, ISymbol symbol)
     {
-        foreach (var declaringReference in symbol.DeclaringSyntaxReferences)
+        foreach (var declaringReference in DocumentationComment.GetDeclaringSyntaxReferences(symbol))
         {
             if (compilation.ContainsSyntaxTree(declaringReference.SyntaxTree))
                 return true;
@@ -359,18 +418,38 @@ internal static class ExceptionAnalyzer
             builder.Add(target);
     }
 
-    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(Compilation compilation, IEnumerable<XElement> exceptionElements, CancellationToken cancellationToken = default)
+    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(Compilation compilation, IEnumerable<string> crefs, CancellationToken cancellationToken = default)
     {
         var documentedTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
-        foreach (var exceptionElement in exceptionElements)
+        foreach (var cref in crefs)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var cref = exceptionElement.Attribute(DocumentationAttributes.Cref)?.Value;
             if (ResolveExceptionType(cref, compilation, cancellationToken) is { } resolved)
                 documentedTypes.Add(resolved);
         }
 
         return documentedTypes;
+    }
+
+    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(Compilation compilation, DocumentationComment documentation, CancellationToken cancellationToken = default)
+    {
+        var documentedTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+        foreach (var exceptionElement in documentation.GetElements(DocumentationTags.Exception, recursive: false))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var resolved in ResolveExceptionTypes(exceptionElement, compilation, cancellationToken))
+                documentedTypes.Add(resolved);
+        }
+
+        return documentedTypes;
+    }
+
+    private static HashSet<ITypeSymbol> GetDocumentedExceptionTypes(Compilation compilation, XElement documentation, CancellationToken cancellationToken = default)
+    {
+        return GetDocumentedExceptionTypes(
+            compilation,
+            DocumentationXmlExtensions.GetExceptionCrefs(documentation),
+            cancellationToken);
     }
 
     private sealed record CrefInfo(char? Prefix, string TypeName, string OriginalCref)
@@ -423,6 +502,63 @@ internal static class ExceptionAnalyzer
             _ => new ExceptionTypeResolution(ResolveExceptionTypeFallback(info, compilation, cancellationToken)));
 
         return cachedResult.Type;
+    }
+
+    private static ITypeSymbol? ResolveExceptionType(XmlNodeSyntax exceptionElement, Compilation compilation, CancellationToken cancellationToken)
+    {
+        var syntaxResolved = TryResolveExceptionTypeFromSyntax(exceptionElement, compilation, cancellationToken);
+        if (syntaxResolved is not null)
+            return syntaxResolved;
+
+        return ResolveExceptionType(exceptionElement.GetAttributeValue(DocumentationAttributes.Cref), compilation, cancellationToken);
+    }
+
+    private static IEnumerable<ITypeSymbol> ResolveExceptionTypes(XmlNodeSyntax exceptionElement, Compilation compilation, CancellationToken cancellationToken)
+    {
+        var seen = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+
+        if (TryResolveExceptionTypeFromSyntax(exceptionElement, compilation, cancellationToken) is { } syntaxResolved &&
+            seen.Add(syntaxResolved))
+        {
+            yield return syntaxResolved;
+        }
+
+        if (ResolveExceptionType(exceptionElement.GetAttributeValue(DocumentationAttributes.Cref), compilation, cancellationToken) is { } fallbackResolved &&
+            seen.Add(fallbackResolved))
+        {
+            yield return fallbackResolved;
+        }
+    }
+
+    private static ITypeSymbol? TryResolveExceptionTypeFromSyntax(XmlNodeSyntax exceptionElement, Compilation compilation, CancellationToken cancellationToken)
+    {
+        var crefSyntax = GetCrefSyntax(exceptionElement);
+        if (crefSyntax == null || !compilation.ContainsSyntaxTree(exceptionElement.SyntaxTree))
+            return null;
+
+        var semanticModel = compilation.GetSemanticModel(exceptionElement.SyntaxTree);
+        var symbolInfo = semanticModel.GetSymbolInfo(crefSyntax, cancellationToken);
+        var resolvedSymbol = symbolInfo.Symbol ?? symbolInfo.CandidateSymbols.FirstOrDefault();
+
+        return resolvedSymbol as ITypeSymbol;
+    }
+
+    private static CrefSyntax? GetCrefSyntax(XmlNodeSyntax exceptionElement)
+    {
+        var attributes = exceptionElement switch
+        {
+            XmlElementSyntax element => element.StartTag.Attributes,
+            XmlEmptyElementSyntax emptyElement => emptyElement.Attributes,
+            _ => default
+        };
+
+        foreach (var attribute in attributes)
+        {
+            if (attribute is XmlCrefAttributeSyntax { Name.LocalName.ValueText: DocumentationAttributes.Cref } crefAttribute)
+                return crefAttribute.Cref;
+        }
+
+        return null;
     }
 
     private static ITypeSymbol? ResolveExceptionTypeFallback(CrefInfo info, Compilation compilation, CancellationToken cancellationToken)
@@ -992,6 +1128,22 @@ internal static class ExceptionAnalyzer
         if (symbol is IMethodSymbol { MethodKind: MethodKind.DelegateInvoke } delegateMethod)
         {
             symbol = delegateMethod.ContainingType;
+        }
+
+        if (DocumentationComment.FromSymbol(symbol, token) is { } documentation && !documentation.IsMalformedFor(symbol, token))
+        {
+            var seen = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+            foreach (var exceptionElement in documentation.GetElements(DocumentationTags.Exception, recursive: false))
+            {
+                token.ThrowIfCancellationRequested();
+                foreach (var resolved in ResolveExceptionTypes(exceptionElement, compilation, token))
+                {
+                    if (seen.Add(resolved))
+                        yield return resolved;
+                }
+            }
+
+            yield break;
         }
 
         foreach (var cref in DocumentationXmlExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml(cancellationToken: token)))
