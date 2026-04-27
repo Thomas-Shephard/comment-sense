@@ -37,7 +37,7 @@ jobs:
       - name: Pack
         run: dotnet pack CommentSense.slnx --configuration Release --no-build --output artifacts/package
       - name: Authenticate with NuGet
-        uses: nuget/login@d22cc5f58ff5b88bf9bd452535b4335137e24544 # v1
+        uses: nuget/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
         id: nuget-auth
         with:
           user: ${{ secrets.NUGET_USERNAME }}
