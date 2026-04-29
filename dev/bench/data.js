@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1777308800707,
+  "lastUpdate": 1777452342983,
   "repoUrl": "https://github.com/Thomas-Shephard/comment-sense",
   "entries": {
     "CommentSense Memory Allocations": [
@@ -918,6 +918,60 @@ window.BENCHMARK_DATA = {
             "value": 30490954,
             "unit": "ns",
             "range": "± 8971217.158552565"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4bc058c0a2564237d20f6cce944c644df37c8dd0",
+          "message": "chore: Bump Microsoft.NET.Test.Sdk from 18.4.0 to 18.5.1 (#131)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-04-29T09:44:01+01:00",
+          "tree_id": "634d812610850e461f686c37d01c0d572b41b27b",
+          "url": "https://github.com/Thomas-Shephard/comment-sense/commit/4bc058c0a2564237d20f6cce944c644df37c8dd0"
+        },
+        "date": 1777452342391,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "CommentSense.PerformanceTests.AnalyzerBenchmarks.FullAnalysis(MethodCount: 100, ScanCalledMethods: True, GhostReferenceMode: \"strict\", SimilarityThreshold: 0.8)",
+            "value": 3576128,
+            "unit": "ns",
+            "range": "± 4899499.838056579"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.DogfoodBenchmarks.AnalyzeProject",
+            "value": 20785476,
+            "unit": "ns",
+            "range": "± 29383529.707481164"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.LeakBenchmarks.SimulateLongSession",
+            "value": 4575472,
+            "unit": "ns",
+            "range": "± 92628.23679901361"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.ParallelBenchmarks.ConcurrentAnalysis(FileCount: 100)",
+            "value": 5805551,
+            "unit": "ns",
+            "range": "± 4929748.273918292"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.PathologicalBenchmarks.AnalyzePathologicalDocs(DocSizeMultiplier: 10)",
+            "value": 30401749,
+            "unit": "ns",
+            "range": "± 2201526.4450501706"
           }
         ]
       }
