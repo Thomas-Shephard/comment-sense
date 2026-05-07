@@ -91,7 +91,7 @@ jobs:
 
       - name: Store Benchmark Result
         if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
-        uses: benchmark-action/github-action-benchmark@a60cea5bc7b49e15c1f58f411161f99e0df48372 # v1.22.0
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
         with:
           name: CommentSense Memory Allocations
           tool: 'benchmarkdotnet'
