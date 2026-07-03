@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783081008688,
+  "lastUpdate": 1783081180044,
   "repoUrl": "https://github.com/Thomas-Shephard/comment-sense",
   "entries": {
     "CommentSense Memory Allocations": [
@@ -1350,6 +1350,60 @@ window.BENCHMARK_DATA = {
             "value": 30451740,
             "unit": "ns",
             "range": "± 3672491.2884113505"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2a390a151f14e75e129e3d92e0cf75a46d7ce5a1",
+          "message": "chore: Bump actions/checkout from 6 to 7 (#140)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-07-03T12:18:03Z",
+          "tree_id": "f2cc69a49ebf6eec70ce85661376850b4ccc6e3e",
+          "url": "https://github.com/Thomas-Shephard/comment-sense/commit/2a390a151f14e75e129e3d92e0cf75a46d7ce5a1"
+        },
+        "date": 1783081179469,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "CommentSense.PerformanceTests.AnalyzerBenchmarks.FullAnalysis(MethodCount: 100, ScanCalledMethods: True, GhostReferenceMode: \"strict\", SimilarityThreshold: 0.8)",
+            "value": 3540008,
+            "unit": "ns",
+            "range": "± 5993732.367101324"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.DogfoodBenchmarks.AnalyzeProject",
+            "value": 20813316,
+            "unit": "ns",
+            "range": "± 38755186.356266744"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.LeakBenchmarks.SimulateLongSession",
+            "value": 4591728,
+            "unit": "ns",
+            "range": "± 295196.090526786"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.ParallelBenchmarks.ConcurrentAnalysis(FileCount: 100)",
+            "value": 5585733,
+            "unit": "ns",
+            "range": "± 6637295.445565929"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.PathologicalBenchmarks.AnalyzePathologicalDocs(DocSizeMultiplier: 10)",
+            "value": 30323469,
+            "unit": "ns",
+            "range": "± 2571754.387521638"
           }
         ]
       }
