@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784295156217,
+  "lastUpdate": 1784297239192,
   "repoUrl": "https://github.com/Thomas-Shephard/comment-sense",
   "entries": {
     "CommentSense Memory Allocations": [
@@ -1512,6 +1512,60 @@ window.BENCHMARK_DATA = {
             "value": 30491051,
             "unit": "ns",
             "range": "± 2345215.7921818844"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "60526bb67f36afe267ca9e8eedb6b693fe72f1ed",
+          "message": "chore: Bump marocchino/sticky-pull-request-comment from 3.0.4 to 3.0.5 (#142)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+          "timestamp": "2026-07-17T15:05:40+01:00",
+          "tree_id": "c84613cfb8708512dd67d2b5f5cb3b96e1405f0b",
+          "url": "https://github.com/Thomas-Shephard/comment-sense/commit/60526bb67f36afe267ca9e8eedb6b693fe72f1ed"
+        },
+        "date": 1784297238935,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "CommentSense.PerformanceTests.AnalyzerBenchmarks.FullAnalysis(MethodCount: 100, ScanCalledMethods: True, GhostReferenceMode: \"strict\", SimilarityThreshold: 0.8)",
+            "value": 3436077,
+            "unit": "ns",
+            "range": "± 2079598.9542660448"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.DogfoodBenchmarks.AnalyzeProject",
+            "value": 21593128,
+            "unit": "ns",
+            "range": "± 69166263.47901553"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.LeakBenchmarks.SimulateLongSession",
+            "value": 4723986,
+            "unit": "ns",
+            "range": "± 3538803.5700041656"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.ParallelBenchmarks.ConcurrentAnalysis(FileCount: 100)",
+            "value": 5626934,
+            "unit": "ns",
+            "range": "± 12926698.665136237"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.PathologicalBenchmarks.AnalyzePathologicalDocs(DocSizeMultiplier: 10)",
+            "value": 30235125,
+            "unit": "ns",
+            "range": "± 5867307.966633938"
           }
         ]
       }
