@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784457153143,
+  "lastUpdate": 1784457722057,
   "repoUrl": "https://github.com/Thomas-Shephard/comment-sense",
   "entries": {
     "CommentSense Memory Allocations": [
@@ -1782,6 +1782,60 @@ window.BENCHMARK_DATA = {
             "value": 30287668,
             "unit": "ns",
             "range": "± 8602127.067219654"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "thomas@thomas-shephard.com",
+            "name": "Thomas Shephard",
+            "username": "Thomas-Shephard"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2522b246b4aed33355c5090fb7175cba5b219f20",
+          "message": "refactor: avoid LINQ allocation during symbol analysis (#149)",
+          "timestamp": "2026-07-19T11:40:09+01:00",
+          "tree_id": "ab7612082f9a366dcf2869f623cf3399c77d378f",
+          "url": "https://github.com/Thomas-Shephard/comment-sense/commit/2522b246b4aed33355c5090fb7175cba5b219f20"
+        },
+        "date": 1784457721476,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "CommentSense.PerformanceTests.AnalyzerBenchmarks.FullAnalysis(MethodCount: 100, ScanCalledMethods: True, GhostReferenceMode: \"strict\", SimilarityThreshold: 0.8)",
+            "value": 3473508,
+            "unit": "ns",
+            "range": "± 3657500.3993764725"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.DogfoodBenchmarks.AnalyzeProject",
+            "value": 21203176,
+            "unit": "ns",
+            "range": "± 49894449.7389081"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.LeakBenchmarks.SimulateLongSession",
+            "value": 4582864,
+            "unit": "ns",
+            "range": "± 68071.18124430618"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.ParallelBenchmarks.ConcurrentAnalysis(FileCount: 100)",
+            "value": 5636028,
+            "unit": "ns",
+            "range": "± 2737140.931615329"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.PathologicalBenchmarks.AnalyzePathologicalDocs(DocSizeMultiplier: 10)",
+            "value": 30470090,
+            "unit": "ns",
+            "range": "± 4077718.34104487"
           }
         ]
       }
