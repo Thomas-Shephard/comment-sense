@@ -1168,6 +1168,41 @@ public class DocumentationExtensionsTests
         Assert.That(location, Is.Not.EqualTo(Location.None));
     }
 
+    [TestCase(true, 2)]
+    [TestCase(false, 1)]
+    public void GetTargetElementsWithoutTagNameHonorsRecursion(bool recursive, int expectedCount)
+    {
+        var root = XElement.Parse("<root><summary><see/></summary></root>");
+
+        Assert.That(DocumentationXmlExtensions.GetTargetElements(root, tagName: null, recursive).Count(), Is.EqualTo(expectedCount));
+    }
+
+    [Test]
+    public void GetTargetElementsUnwrapsMemberChild()
+    {
+        var root = XElement.Parse("<root><member><summary/></member></root>");
+
+        Assert.That(DocumentationXmlExtensions.GetTargetElements(root).Single().Name.LocalName, Is.EqualTo("summary"));
+    }
+
+    [TestCase("<root><summary/></root>", true)]
+    [TestCase("<root><remarks><summary/></remarks></root>", false)]
+    public void IsTopLevelReturnsWhetherElementIsDirectChild(string xml, bool expected)
+    {
+        var root = XElement.Parse(xml);
+        var element = root.Descendants("summary").Single();
+
+        Assert.That(DocumentationXmlExtensions.IsTopLevel(root, element), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void IsTopLevelDetachedElementReturnsFalse()
+    {
+        var root = XElement.Parse("<root><summary/></root>");
+
+        Assert.That(DocumentationXmlExtensions.IsTopLevel(root, new XElement("summary")), Is.False);
+    }
+
     private static ISymbol GetSymbolFromSource(string source, string symbolName)
     {
         return RoslynTestUtils.GetSymbolFromSource(source, symbolName, parseDocumentation: true);
