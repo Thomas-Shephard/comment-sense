@@ -65,7 +65,15 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeSymbol(SymbolAnalysisContext context)
     {
         var symbol = context.Symbol;
-        SyntaxTree? tree = (from location in symbol.Locations where !location.SourceTree.IsDocumentationModeNone() select location.SourceTree).FirstOrDefault();
+        SyntaxTree? tree = null;
+        foreach (var location in symbol.Locations)
+        {
+            if (!location.SourceTree.IsDocumentationModeNone())
+            {
+                tree = location.SourceTree;
+                break;
+            }
+        }
 
         if (tree is null)
             return;
