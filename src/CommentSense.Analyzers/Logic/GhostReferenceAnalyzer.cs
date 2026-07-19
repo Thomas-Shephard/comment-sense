@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
@@ -16,6 +17,7 @@ internal static class GhostReferenceAnalyzer
     private static readonly object RegexCacheLock = new();
     private static readonly Dictionary<ImmutableArray<string>, LinkedListNode<RegexCacheEntry>> RegexCache = new(new NameListComparer());
     private static readonly LinkedList<RegexCacheEntry> RegexCacheLru = [];
+    private static readonly ConditionalWeakTable<ISymbol, SymbolNames> SymbolNamesCache = new();
 
     public static void Analyze(SyntaxNodeAnalysisContext context, XmlTextSyntax xmlText, ISymbol symbol, CommentSenseOptions options)
     {
@@ -27,20 +29,33 @@ internal static class GhostReferenceAnalyzer
         if (IsIgnoredTag(containingTag))
             return;
 
-        var parameters = symbol.GetParameters();
-        var typeParameters = symbol.GetTypeParameters();
+        var symbolNames = SymbolNamesCache.GetValue(symbol, static s => new SymbolNames(
+            NameSet.Create(s.GetParameters().Select(p => p.Name)),
+            NameSet.Create(s.GetTypeParameters().Select(p => p.Name))));
 
-        if (parameters.IsEmpty && typeParameters.IsEmpty)
+        if (symbolNames.Parameters.Names.IsEmpty && symbolNames.TypeParameters.Names.IsEmpty)
             return;
-
-        var parameterNames = parameters.Select(p => p.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
-        var typeParameterNames = typeParameters.Select(p => p.Name).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
 
         var reportedSpans = new HashSet<TextSpan>();
         var analysisContext = new GhostReferenceContext(context, xmlText, options, containingTag, nameValue, reportedSpans);
 
-        AnalyzeReferences(analysisContext, parameterNames, CommentSenseRules.GhostParameterReferenceRule);
-        AnalyzeReferences(analysisContext, typeParameterNames, CommentSenseRules.GhostTypeParameterReferenceRule);
+        AnalyzeReferences(analysisContext, symbolNames.Parameters, CommentSenseRules.GhostParameterReferenceRule);
+        AnalyzeReferences(analysisContext, symbolNames.TypeParameters, CommentSenseRules.GhostTypeParameterReferenceRule);
+    }
+
+    private sealed record SymbolNames(NameSet Parameters, NameSet TypeParameters);
+
+    private sealed record NameSet(ImmutableArray<string> Names, Lazy<Regex> Regex)
+    {
+        private static readonly NameSet Empty = new([], new Lazy<Regex>(() => GetRegex([])));
+
+        public static NameSet Create(IEnumerable<string> names)
+        {
+            var sortedNames = names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToImmutableArray();
+            return sortedNames.IsEmpty
+                ? Empty
+                : new NameSet(sortedNames, new Lazy<Regex>(() => GetRegex(sortedNames)));
+        }
     }
 
     private readonly record struct GhostReferenceContext(
@@ -53,9 +68,10 @@ internal static class GhostReferenceAnalyzer
 
     private static void AnalyzeReferences(
         GhostReferenceContext context,
-        ImmutableArray<string> names,
+        NameSet nameSet,
         DiagnosticDescriptor rule)
     {
+        var names = nameSet.Names;
         if (names.IsEmpty)
             return;
 
@@ -66,7 +82,7 @@ internal static class GhostReferenceAnalyzer
             return;
         }
 
-        var regex = GetRegex(names);
+        var regex = nameSet.Regex.Value;
         foreach (var token in context.XmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
         {
             foreach (Match match in regex.Matches(token.Text))
