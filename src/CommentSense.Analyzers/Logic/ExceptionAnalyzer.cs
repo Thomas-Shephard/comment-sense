@@ -859,7 +859,7 @@ internal static class ExceptionAnalyzer
             var syntax = syntaxReference.GetSyntax(cancellationToken);
             var semanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
 
-            var nodes = GetDescendantNodesOfInterest(syntax, isPrimaryCtor, cancellationToken);
+            var nodes = GetDescendantNodesOfInterest(syntax, isPrimaryCtor, options.ScanCalledMethodsForExceptions, cancellationToken);
             var exceptions = IdentifyThrownExceptions(nodes, semanticModel, options, exceptionCache, cancellationToken);
 
             thrownTypes.UnionWith(exceptions);
@@ -873,14 +873,14 @@ internal static class ExceptionAnalyzer
         return GetThrownTypes(context.Compilation, symbol, isPrimaryCtor, options, context.CancellationToken);
     }
 
-    private static IEnumerable<SyntaxNode> GetDescendantNodesOfInterest(SyntaxNode root, bool isPrimaryCtor, CancellationToken cancellationToken)
+    private static IEnumerable<SyntaxNode> GetDescendantNodesOfInterest(SyntaxNode root, bool isPrimaryCtor, bool scanCalledMethods, CancellationToken cancellationToken)
     {
         foreach (var analysisRoot in GetAnalysisRoots(root, isPrimaryCtor))
         {
             foreach (var node in analysisRoot.DescendantNodesAndSelf(n => ShouldDescendIntoNode(analysisRoot, n, isPrimaryCtor)))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (IsNodeOfInterest(node))
+                if (IsNodeOfInterest(node, scanCalledMethods))
                     yield return node;
             }
         }
@@ -953,19 +953,19 @@ internal static class ExceptionAnalyzer
         return true;
     }
 
-    private static bool IsNodeOfInterest(SyntaxNode node)
+    private static bool IsNodeOfInterest(SyntaxNode node, bool scanCalledMethods)
     {
         return node is ThrowStatementSyntax
                     or ThrowExpressionSyntax
                     or InvocationExpressionSyntax
-                    or ObjectCreationExpressionSyntax
+                    or ConstructorInitializerSyntax ||
+               (scanCalledMethods && node is ObjectCreationExpressionSyntax
                     or ImplicitObjectCreationExpressionSyntax
-                    or ConstructorInitializerSyntax
                     or MemberAccessExpressionSyntax
                     or MemberBindingExpressionSyntax
                     or IdentifierNameSyntax
                     or ElementAccessExpressionSyntax
-                    or ElementBindingExpressionSyntax;
+                    or ElementBindingExpressionSyntax);
     }
 
     private static bool IsExcludedPrimaryConstructorMember(SyntaxNode n)
@@ -1009,17 +1009,14 @@ internal static class ExceptionAnalyzer
             ThrowStatementSyntax ts => GetExceptionsFromThrowStatement(ts, semanticModel, exceptionType, token),
             ThrowExpressionSyntax te => GetExceptionsFromThrowExpression(te, semanticModel, token),
             InvocationExpressionSyntax invocation => GetExceptionsFromInvocationInternal(invocation, semanticModel, options, exceptionType, exceptionCache, token),
-            ObjectCreationExpressionSyntax objectCreation => GetExceptionsFromObjectCreation(objectCreation, semanticModel, options, exceptionCache, token),
-            ImplicitObjectCreationExpressionSyntax implicitObjectCreation => GetExceptionsFromImplicitObjectCreation(implicitObjectCreation, semanticModel, options, exceptionCache, token),
-            ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions =>
-                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache, token),
-            MemberAccessExpressionSyntax ma when options.ScanCalledMethodsForExceptions => GetExceptionsFromMemberAccess(ma, semanticModel, exceptionCache, token),
-            MemberBindingExpressionSyntax mb when options.ScanCalledMethodsForExceptions => GetExceptionsFromMemberBinding(mb, semanticModel, exceptionCache, token),
-            IdentifierNameSyntax id when options.ScanCalledMethodsForExceptions => GetExceptionsFromIdentifier(id, semanticModel, exceptionCache, token),
-            ElementAccessExpressionSyntax elementAccess when options.ScanCalledMethodsForExceptions =>
-                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(elementAccess, token).Symbol, semanticModel.Compilation, exceptionCache, token),
-            ElementBindingExpressionSyntax eb when options.ScanCalledMethodsForExceptions =>
-                GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(eb, token).Symbol, semanticModel.Compilation, exceptionCache, token),
+            ObjectCreationExpressionSyntax objectCreation => GetExceptionsFromObjectCreation(objectCreation, semanticModel, exceptionCache, token),
+            ImplicitObjectCreationExpressionSyntax implicitObjectCreation => GetExceptionsFromImplicitObjectCreation(implicitObjectCreation, semanticModel, exceptionCache, token),
+            ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache, token),
+            MemberAccessExpressionSyntax ma => GetExceptionsFromMemberAccess(ma, semanticModel, exceptionCache, token),
+            MemberBindingExpressionSyntax mb => GetExceptionsFromMemberBinding(mb, semanticModel, exceptionCache, token),
+            IdentifierNameSyntax id => GetExceptionsFromIdentifier(id, semanticModel, exceptionCache, token),
+            ElementAccessExpressionSyntax elementAccess => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(elementAccess, token).Symbol, semanticModel.Compilation, exceptionCache, token),
+            ElementBindingExpressionSyntax eb => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(eb, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             _ => []
         };
     }
@@ -1050,18 +1047,14 @@ internal static class ExceptionAnalyzer
         return [GetExceptionTypeFromGuardClause(invocation, symbol, exceptionType)];
     }
 
-    private static IEnumerable<ITypeSymbol?> GetExceptionsFromObjectCreation(ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromObjectCreation(ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
-        return options.ScanCalledMethodsForExceptions
-            ? GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(objectCreation, token).Symbol, semanticModel.Compilation, exceptionCache, token)
-            : [];
+        return GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(objectCreation, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }
 
-    private static IEnumerable<ITypeSymbol?> GetExceptionsFromImplicitObjectCreation(ImplicitObjectCreationExpressionSyntax implicitObjectCreation, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromImplicitObjectCreation(ImplicitObjectCreationExpressionSyntax implicitObjectCreation, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
-        return options.ScanCalledMethodsForExceptions
-            ? GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(implicitObjectCreation, token).Symbol, semanticModel.Compilation, exceptionCache, token)
-            : [];
+        return GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(implicitObjectCreation, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }
 
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberAccess(MemberAccessExpressionSyntax ma, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
