@@ -45,7 +45,7 @@ internal static class GhostReferenceAnalyzer
 
     private sealed record SymbolNames(NameSet Parameters, NameSet TypeParameters);
 
-    private sealed record NameSet(ImmutableArray<string> Names, Lazy<Regex> Regex)
+    private sealed record NameSet(ImmutableArray<string> Names, Lazy<Regex> Matcher)
     {
         private static readonly NameSet Empty = new([], new Lazy<Regex>(() => GetRegex([])));
 
@@ -55,6 +55,29 @@ internal static class GhostReferenceAnalyzer
             return sortedNames.IsEmpty
                 ? Empty
                 : new NameSet(sortedNames, new Lazy<Regex>(() => GetRegex(sortedNames)));
+        }
+
+        private static Regex GetRegex(ImmutableArray<string> names)
+        {
+            if (TryGetCachedRegex(names) is { } cachedRegex)
+                return cachedRegex;
+
+            var pattern = $@"\b({string.Join("|", names.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
+            var createdRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+            return AddRegexToCache(names, createdRegex);
+        }
+
+        private static Regex? TryGetCachedRegex(ImmutableArray<string> key)
+        {
+            lock (RegexCacheLock)
+            {
+                if (!RegexCache.TryGetValue(key, out var existingNode))
+                    return null;
+
+                RegexCacheLru.Remove(existingNode);
+                RegexCacheLru.AddFirst(existingNode);
+                return existingNode.Value.Regex;
+            }
         }
     }
 
@@ -82,7 +105,7 @@ internal static class GhostReferenceAnalyzer
             return;
         }
 
-        var regex = nameSet.Regex.Value;
+        var regex = nameSet.Matcher.Value;
         foreach (var token in context.XmlText.TextTokens.Where(t => t.IsKind(SyntaxKind.XmlTextLiteralToken)))
         {
             foreach (Match match in regex.Matches(token.Text))
@@ -216,29 +239,6 @@ internal static class GhostReferenceAnalyzer
     }
 
     private sealed record RegexCacheEntry(ImmutableArray<string> Key, Regex Regex);
-
-    private static Regex GetRegex(ImmutableArray<string> names)
-    {
-        if (TryGetCachedRegex(names) is { } cachedRegex)
-            return cachedRegex;
-
-        var pattern = $@"\b({string.Join("|", names.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
-        var createdRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
-        return AddRegexToCache(names, createdRegex);
-    }
-
-    private static Regex? TryGetCachedRegex(ImmutableArray<string> key)
-    {
-        lock (RegexCacheLock)
-        {
-            if (!RegexCache.TryGetValue(key, out var existingNode))
-                return null;
-
-            RegexCacheLru.Remove(existingNode);
-            RegexCacheLru.AddFirst(existingNode);
-            return existingNode.Value.Regex;
-        }
-    }
 
     internal static Regex AddRegexToCache(ImmutableArray<string> key, Regex regex)
     {
