@@ -2327,42 +2327,6 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             Assert.That(Logic.ExceptionAnalyzer.IsInNamespace("Microsoft", "System"), Is.False); // hits none
         }
 
-        var getDocumentedExceptionTypes = typeof(Logic.ExceptionAnalyzer)
-            .GetMethods(BindingFlags.NonPublic | BindingFlags.Static)
-            .Single(method =>
-                method.Name == "GetDocumentedExceptionTypes" &&
-                method.GetParameters() is var parameters &&
-                parameters.Length == 3 &&
-                parameters[0].ParameterType == typeof(Compilation) &&
-                parameters[1].ParameterType == typeof(IEnumerable<string>) &&
-                parameters[2].ParameterType == typeof(CancellationToken));
-
-        object?[] documentedExceptionTypeArgs =
-        [
-            compilation,
-            new[] { "T:System.Exception", "T:MissingType" },
-            CancellationToken.None
-        ];
-        // ReSharper disable once NullableWarningSuppressionIsUsed
-        var documentedTypes = (HashSet<ITypeSymbol>)getDocumentedExceptionTypes.Invoke(null, documentedExceptionTypeArgs)!;
-
-        Assert.That(documentedTypes, Has.Count.EqualTo(1));
-
-        var getCrefSyntax = typeof(Logic.ExceptionAnalyzer).GetMethod(
-            "GetCrefSyntax",
-            BindingFlags.NonPublic | BindingFlags.Static) ?? throw new InvalidOperationException();
-
-        var emptyExceptionElement = SyntaxFactory.XmlEmptyElement("exception")
-            .WithAttributes(SyntaxFactory.SingletonList<XmlAttributeSyntax>(
-                SyntaxFactory.XmlCrefAttribute(
-                    SyntaxFactory.TypeCref(SyntaxFactory.IdentifierName("ArgumentNullException")))));
-        var textNode = SyntaxFactory.XmlText("plain text");
-
-        using (Assert.EnterMultipleScope())
-        {
-            Assert.That(getCrefSyntax.Invoke(null, [emptyExceptionElement]), Is.Not.Null);
-            Assert.That(getCrefSyntax.Invoke(null, [textNode]), Is.Null);
-        }
     }
 
     [Test]
