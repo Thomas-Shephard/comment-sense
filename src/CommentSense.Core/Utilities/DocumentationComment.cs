@@ -20,11 +20,9 @@ internal sealed class DocumentationComment
     private DocumentationComment(IReadOnlyList<DocumentationCommentTriviaSyntax> trivias)
     {
         Trivias = trivias;
-        TriviaSet = [.. trivias];
     }
 
     private IReadOnlyList<DocumentationCommentTriviaSyntax> Trivias { get; }
-    private HashSet<DocumentationCommentTriviaSyntax> TriviaSet { get; }
 
     public bool IsMalformedFor(ISymbol symbol, CancellationToken cancellationToken = default)
     {
@@ -58,7 +56,7 @@ internal sealed class DocumentationComment
 
     public bool IsTopLevel(XmlNodeSyntax node)
     {
-        return node.Parent is DocumentationCommentTriviaSyntax trivia && TriviaSet.Contains(trivia);
+        return node.Parent is DocumentationCommentTriviaSyntax trivia && Trivias.Contains(trivia);
     }
 
     public bool HasValidDocumentation()
