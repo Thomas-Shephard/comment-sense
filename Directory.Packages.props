@@ -12,7 +12,7 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.0.0"/>
 
     <!-- Test -->
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1"/>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0"/>
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.4"/>
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" Version="1.1.4"/>
     <PackageVersion Include="NUnit" Version="4.6.1"/>
