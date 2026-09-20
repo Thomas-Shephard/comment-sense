@@ -40,18 +40,18 @@ jobs:
         if: env.SONAR_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: dotnet sonarscanner begin /k:"${{ vars.SONAR_PROJECT_KEY }}" /o:"${{ vars.SONAR_ORGANIZATION }}" /d:sonar.host.url="${{ vars.SONAR_HOST_URL }}" /d:sonar.cs.opencover.reportsPaths="coverage/**/coverage.opencover.xml"
+        run: dotnet sonarscanner begin /k:"${{ vars.SONAR_PROJECT_KEY }}" /o:"${{ vars.SONAR_ORGANIZATION }}" /d:sonar.host.url="${{ vars.SONAR_HOST_URL }}" /d:sonar.cs.opencover.reportsPaths="coverage/**/coverage.opencover.*.xml"
       - name: Build
         run: dotnet build CommentSense.slnx --configuration Release
       - name: Test
-        run: dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings --results-directory ./coverage
+        run: dotnet test --solution CommentSense.slnx --configuration Release --no-build --coverlet --results-directory ./coverage
       - name: Run SonarScanner End
         if: env.SONAR_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: dotnet sonarscanner end
       - name: Check Coverage
-        run: dotnet coveragechecker --format Cobertura --glob-patterns 'coverage/**/coverage.cobertura.xml' --line-threshold 100 --branch-threshold 100
+        run: dotnet coveragechecker --format Cobertura --glob-patterns 'coverage/**/coverage.cobertura.*.xml' --line-threshold 100 --branch-threshold 100
       - name: Pack
         run: dotnet pack CommentSense.slnx --configuration Release --no-build --output artifacts/package
       - name: Package Consumption Check

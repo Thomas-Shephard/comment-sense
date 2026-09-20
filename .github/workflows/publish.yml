@@ -33,9 +33,9 @@ jobs:
       - name: Build
         run: dotnet build CommentSense.slnx --configuration Release
       - name: Test
-        run: dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings --results-directory ./coverage
+        run: dotnet test --solution CommentSense.slnx --configuration Release --no-build --coverlet --results-directory ./coverage
       - name: Check Coverage
-        run: dotnet coveragechecker --format Cobertura --glob-patterns 'coverage/**/coverage.cobertura.xml' --line-threshold 100 --branch-threshold 100
+        run: dotnet coveragechecker --format Cobertura --glob-patterns 'coverage/**/coverage.cobertura.*.xml' --line-threshold 100 --branch-threshold 100
       - name: Pack
         run: dotnet pack CommentSense.slnx --configuration Release --no-build --output artifacts/package
       - name: Package Consumption Check
