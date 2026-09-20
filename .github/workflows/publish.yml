@@ -3,7 +3,6 @@ name: Publish NuGet Package
 on:
   release:
     types: [ published ]
-  workflow_dispatch:
 
 jobs:
   publish:
@@ -17,6 +16,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          ref: refs/tags/${{ github.event.release.tag_name }}
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
