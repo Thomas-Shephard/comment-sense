@@ -1,5 +1,8 @@
+using CommentSense.Analyzers.Logic;
+using CommentSense.Core;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
 using NUnit.Framework;
@@ -155,6 +158,26 @@ public class InitializerExceptionTests : CommentSenseAnalyzerTestBase<CommentSen
             """;
 
         await VerifyCSenseAsync(source, expectDiagnostic: missing, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [TestCase(true, null)]
+    [TestCase(false, "System.ArgumentException")]
+    public void ConstructorSuggestionsOnlyIncludeInstanceInitializersForInstanceConstructors(bool isStatic, string? expected)
+    {
+        var source = $$"""
+            class C
+            {
+                int value = System.DateTime.Now.Ticks > 0 ? 1 : throw new System.ArgumentException();
+                {{(isStatic ? "static" : "public")}} C() {}
+            }
+            """;
+        var compilation = CSharpCompilation.Create("Test", [CSharpSyntaxTree.ParseText(source)],
+            [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        var type = compilation.GetTypeByMetadataName("C") ?? throw new InvalidOperationException();
+        var constructor = (isStatic ? type.StaticConstructors : type.InstanceConstructors).Single();
+
+        Assert.That(ExceptionAnalyzer.FindBestMatchingThrownException(constructor, "ArgumentException",
+            CommentSenseOptions.Default, compilation, CancellationToken.None), Is.EqualTo(expected));
     }
 
     [TestCase(true)]

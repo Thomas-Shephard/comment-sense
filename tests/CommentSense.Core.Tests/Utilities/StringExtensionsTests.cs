@@ -19,6 +19,13 @@ public class StringExtensionsTests
         Assert.That(result, Is.LessThan(1.0).And.GreaterThan(0.0));
     }
 
+    [TestCase("", "text")]
+    [TestCase("text", "")]
+    public void CalculateSimilarityOneEmptyStringReturnsZero(string source, string target)
+    {
+        Assert.That(source.CalculateSimilarity(target), Is.Zero);
+    }
+
     [Test]
     public void ComputeLevenshteinDistanceSwapBranch()
     {

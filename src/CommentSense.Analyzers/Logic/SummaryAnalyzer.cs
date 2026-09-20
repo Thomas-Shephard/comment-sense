@@ -137,7 +137,7 @@ internal static class SummaryAnalyzer
         {
             if (expected[expectedIndex] == ' ')
             {
-                if (!TryConsumeWhitespace(text, expected, ref textIndex, ref expectedIndex))
+                if (!TryConsumeWhitespace(text, ref textIndex, ref expectedIndex))
                     return false;
 
                 continue;
@@ -150,12 +150,12 @@ internal static class SummaryAnalyzer
         return HasValidPatternRemainder(text, textIndex, disallowOrContinuation);
     }
 
-    private static bool TryConsumeWhitespace(ReadOnlySpan<char> text, ReadOnlySpan<char> expected, ref int textIndex, ref int expectedIndex)
+    private static bool TryConsumeWhitespace(ReadOnlySpan<char> text, ref int textIndex, ref int expectedIndex)
     {
         if (!IsWhitespaceAt(text, textIndex))
             return false;
 
-        expectedIndex = SkipExpectedSpaces(expected, expectedIndex);
+        expectedIndex++;
         textIndex = SkipTextWhitespace(text, textIndex);
         return true;
     }
@@ -163,16 +163,6 @@ internal static class SummaryAnalyzer
     private static bool IsWhitespaceAt(ReadOnlySpan<char> text, int index)
     {
         return (uint)index < (uint)text.Length && char.IsWhiteSpace(text[index]);
-    }
-
-    private static int SkipExpectedSpaces(ReadOnlySpan<char> expected, int expectedIndex)
-    {
-        while ((uint)expectedIndex < (uint)expected.Length && expected[expectedIndex] == ' ')
-        {
-            expectedIndex++;
-        }
-
-        return expectedIndex;
     }
 
     private static int SkipTextWhitespace(ReadOnlySpan<char> text, int textIndex)

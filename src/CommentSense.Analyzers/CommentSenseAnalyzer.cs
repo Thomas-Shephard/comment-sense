@@ -157,10 +157,10 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 break;
             case INamedTypeSymbol namedTypeSymbol:
                 TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, documentation, options);
-                if (namedTypeSymbol is { TypeKind: TypeKind.Delegate, DelegateInvokeMethod: not null })
+                if (namedTypeSymbol.DelegateInvokeMethod is { } delegateInvoke)
                 {
-                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod.Parameters, documentation, options);
-                    ReturnValueAnalyzer.Analyze(context, namedTypeSymbol.DelegateInvokeMethod, namedTypeSymbol, documentation, options);
+                    ParameterAnalyzer.Analyze(context, delegateInvoke.Parameters, documentation, options);
+                    ReturnValueAnalyzer.Analyze(context, delegateInvoke, namedTypeSymbol, documentation, options);
                 }
 
                 if (namedTypeSymbol.GetPrimaryConstructor() is { } primaryCtor)

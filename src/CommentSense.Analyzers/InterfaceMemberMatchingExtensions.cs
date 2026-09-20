@@ -12,12 +12,12 @@ internal static class InterfaceMemberMatchingExtensions
 
         return symbol switch
         {
-            IEventSymbol eventSymbol when interfaceMember is IEventSymbol baseEvent =>
-                SymbolEqualityComparer.Default.Equals(baseEvent.Type, eventSymbol.Type),
-            IMethodSymbol methodSymbol when interfaceMember is IMethodSymbol baseMethod =>
-                MatchesMethodSignature(methodSymbol, baseMethod),
-            IPropertySymbol propertySymbol when interfaceMember is IPropertySymbol baseProperty =>
-                MatchesPropertySignature(propertySymbol, baseProperty),
+            IEventSymbol eventSymbol =>
+                SymbolEqualityComparer.Default.Equals(((IEventSymbol)interfaceMember).Type, eventSymbol.Type),
+            IMethodSymbol methodSymbol =>
+                MatchesMethodSignature(methodSymbol, (IMethodSymbol)interfaceMember),
+            IPropertySymbol propertySymbol =>
+                MatchesPropertySignature(propertySymbol, (IPropertySymbol)interfaceMember),
             _ => false
         };
     }

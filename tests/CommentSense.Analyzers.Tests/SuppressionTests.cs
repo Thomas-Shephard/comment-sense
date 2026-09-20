@@ -277,7 +277,35 @@ public class SuppressionTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyze
         await VerifySuppressionAsync(testCode, expected, config, additionalAnalyzers: [new ReportDiagnosticOnUsingAnalyzer()]);
     }
 
+    [Test]
+    public async Task DerivedSuppressorCanDeclareAdditionalDiagnostics()
+    {
+        var compilation = CSharpCompilation.Create("Test",
+            [CSharpSyntaxTree.ParseText("public class B { public void M() {} } public class C : B { public void M() {} }")],
+            [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        Exception? analyzerException = null;
+        var options = new CompilationWithAnalyzersOptions(new AnalyzerOptions([]),
+            (exception, _, _) => analyzerException = exception, concurrentAnalysis: false,
+            logAnalyzerExecutionTime: false, reportSuppressedDiagnostics: true);
+        var diagnostics = await compilation.WithAnalyzers([new ExtendedSuppressor()], options).GetAllDiagnosticsAsync();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(analyzerException, Is.Null);
+            Assert.That(diagnostics, Has.Length.EqualTo(1).And.All.Matches<Diagnostic>(diagnostic => diagnostic is { Id: "CS0108", IsSuppressed: false }));
+        }
+    }
+
 #pragma warning disable RS1038, RS1041, RS1036
+    [DiagnosticAnalyzer(LanguageNames.CSharp)]
+    private sealed class ExtendedSuppressor : CommentSenseSuppressor
+    {
+        public override ImmutableArray<SuppressionDescriptor> SupportedSuppressions =>
+            base.SupportedSuppressions.Add(new SuppressionDescriptor("TEST0001", "CS0108", "Additional diagnostic."));
+    }
+
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     private sealed class ReportDiagnosticOnUsingAnalyzer : DiagnosticAnalyzer
     {

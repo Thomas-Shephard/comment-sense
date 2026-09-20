@@ -26,6 +26,23 @@ public class InvalidExceptionTypeTests : CommentSenseAnalyzerTestBase<CommentSen
     }
 
     [Test]
+    public async Task SimilarNonExceptionTypeStillReportsInvalidType()
+    {
+        const string source = """
+            /// <summary>A type with a misleading name.</summary>
+            public class ArgumentNullExceptio {}
+            /// <summary>Container.</summary>
+            public class C
+            {
+                /// <summary>Performs work.</summary>
+                /// <exception cref="{|CSENSE017:ArgumentNullExceptio|}">Failure details.</exception>
+                public void {|CSENSE012:M|}() { throw new System.ArgumentNullException(); }
+            }
+            """;
+        await VerifyCSenseAsync(source, referenceAssemblies: Microsoft.CodeAnalysis.Testing.ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
     public async Task ValidExceptionTypeDoesNotReportDiagnostic()
     {
         const string testCode = """

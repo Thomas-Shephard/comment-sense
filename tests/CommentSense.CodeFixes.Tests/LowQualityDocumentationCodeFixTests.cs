@@ -43,6 +43,20 @@ public class LowQualityDocumentationCodeFixTests : CommentSenseCodeFixTestBase<C
         await VerifyCodeFixAsync(source, fixedSource, QualityOptions);
     }
 
+    [TestCase("!", true)]
+    [TestCase("?", true)]
+    [TestCase("", false)]
+    public async Task CapitalizationPreservesPunctuation(string punctuation, bool requirePunctuation)
+    {
+        var source = $"/// {{|CSENSE016:<summary>saves the item{punctuation}</summary>|}}\npublic class C {{ }}";
+        var fixedSource = $"/// <summary>Saves the item{punctuation}</summary>\npublic class C {{ }}";
+        var options = new Dictionary<string, string>(QualityOptions)
+        {
+            ["comment_sense.require_ending_punctuation"] = requirePunctuation.ToString()
+        };
+        await VerifyCodeFixAsync(source, fixedSource, options);
+    }
+
     [Test]
     public async Task FixesMultiLineSummary()
     {

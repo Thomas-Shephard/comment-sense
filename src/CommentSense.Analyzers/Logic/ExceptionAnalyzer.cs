@@ -618,8 +618,9 @@ internal static class ExceptionAnalyzer
 
             thrownTypes.UnionWith(exceptions);
 
-            if (symbol is IMethodSymbol { MethodKind: MethodKind.Constructor } constructor &&
+            if (symbol is IMethodSymbol constructor &&
                 syntax is ConstructorDeclarationSyntax declaration &&
+                !constructor.IsStatic &&
                 RunsInstanceInitializers(constructor, declaration, semanticModel, cancellationToken))
             {
                 thrownTypes.UnionWith(GetInitializerExceptions(compilation, constructor.ContainingType, options, cancellationToken));
@@ -691,8 +692,8 @@ internal static class ExceptionAnalyzer
         if (methodDeclaration is ConstructorDeclarationSyntax { Initializer: { } initializer })
             yield return initializer;
 
-        if (methodDeclaration.ExpressionBody is { Expression: { } methodExpression })
-            yield return methodExpression;
+        if (methodDeclaration.ExpressionBody is { } methodExpression)
+            yield return methodExpression.Expression;
 
         if (methodDeclaration.Body is { } methodBody)
             yield return methodBody;
@@ -700,8 +701,8 @@ internal static class ExceptionAnalyzer
 
     private static IEnumerable<SyntaxNode> GetPropertyAnalysisRoots(PropertyDeclarationSyntax propertyDeclaration)
     {
-        if (propertyDeclaration.ExpressionBody is { Expression: { } propertyExpression })
-            yield return propertyExpression;
+        if (propertyDeclaration.ExpressionBody is { } propertyExpression)
+            yield return propertyExpression.Expression;
 
         if (propertyDeclaration.AccessorList is { } propertyAccessorList)
             yield return propertyAccessorList;
@@ -709,8 +710,8 @@ internal static class ExceptionAnalyzer
 
     private static IEnumerable<SyntaxNode> GetIndexerAnalysisRoots(IndexerDeclarationSyntax indexerDeclaration)
     {
-        if (indexerDeclaration.ExpressionBody is { Expression: { } indexerExpression })
-            yield return indexerExpression;
+        if (indexerDeclaration.ExpressionBody is { } indexerExpression)
+            yield return indexerExpression.Expression;
 
         if (indexerDeclaration.AccessorList is { } indexerAccessorList)
             yield return indexerAccessorList;
@@ -754,7 +755,6 @@ internal static class ExceptionAnalyzer
                     or IndexerDeclarationSyntax
                     or ArrowExpressionClauseSyntax
                     or AccessorListSyntax
-                    or AccessorDeclarationSyntax
                     or EventDeclarationSyntax;
     }
 
@@ -838,7 +838,7 @@ internal static class ExceptionAnalyzer
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberAccess(MemberAccessExpressionSyntax ma, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
         // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
-        return ma.Parent is InvocationExpressionSyntax parentInvocation && parentInvocation.Expression == ma
+        return ma.Parent is InvocationExpressionSyntax
             ? []
             : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ma, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }
@@ -846,7 +846,7 @@ internal static class ExceptionAnalyzer
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberBinding(MemberBindingExpressionSyntax mb, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
         // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
-        return mb.Parent is InvocationExpressionSyntax parentInvocationMb && parentInvocationMb.Expression == mb
+        return mb.Parent is InvocationExpressionSyntax
             ? []
             : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(mb, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }

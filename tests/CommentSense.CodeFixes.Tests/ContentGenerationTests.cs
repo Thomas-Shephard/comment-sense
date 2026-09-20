@@ -345,6 +345,23 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
     }
 
     [Test]
+    public async Task FixAllAddsNamedTagWhenDocumentationHasBeenRemoved()
+    {
+        using var workspace = new AdhocWorkspace();
+        var project = workspace.AddProject("Test", LanguageNames.CSharp);
+        var document = workspace.AddDocument(project.Id, "Test.cs", Microsoft.CodeAnalysis.Text.SourceText.From("public class C { public void M(int value) {} }"));
+        var root = await document.GetSyntaxRootAsync() ?? throw new InvalidOperationException();
+        var parameter = root.DescendantNodes().OfType<ParameterSyntax>().Single();
+        var diagnostic = Diagnostic.Create(CommentSenseRules.MissingParameterDocumentationRule, parameter.GetLocation(),
+            System.Collections.Immutable.ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, "value"), "value");
+        var provider = (CodeFixProviderBase.FixAllProviderBase)new ContentGenerationCodeFixProvider().GetFixAllProvider();
+
+        var updated = await provider.FixDocumentInternalAsync(document, [diagnostic], CancellationToken.None);
+
+        Assert.That((await updated.GetTextAsync()).ToString(), Does.Contain("<param name=\"value\">TODO</param>"));
+    }
+
+    [Test]
     public async Task FixAllAddsOneSummaryPerSharedDeclaration(
         [Values("public int", "public const int", "public event System.Action")] string declaration,
         [Values] bool hasComment)

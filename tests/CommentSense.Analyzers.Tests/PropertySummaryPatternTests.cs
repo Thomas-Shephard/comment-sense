@@ -207,6 +207,20 @@ public class PropertySummaryPatternTests : CommentSenseAnalyzerTestBase<CommentS
     }
 
     [Test]
+    public async Task EmptySummaryOnlyReportsQualityDiagnostic()
+    {
+        const string source = """
+            /// <summary>Container.</summary>
+            public class C
+            {
+                /// {|CSENSE016:<summary> </summary>|}
+                public int Count { get; }
+            }
+            """;
+        await VerifyPropertySummaryAsync(source, configOptions: PropertyPatternConfig);
+    }
+
+    [Test]
     public async Task CaseAndWhitespaceVariationsAreAccepted()
     {
         const string testCode = """

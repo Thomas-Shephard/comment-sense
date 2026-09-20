@@ -18,8 +18,8 @@ internal static class AccessibilityExtensions
         {
             if (symbol is IArrayTypeSymbol array)
                 symbol = array.ElementType;
-            else if (symbol is IPointerTypeSymbol pointer)
-                symbol = pointer.PointedAtType;
+            else
+                symbol = ((IPointerTypeSymbol)symbol).PointedAtType;
         }
 
         if (symbol is null || symbol.Kind is SymbolKind.Local or SymbolKind.Label or SymbolKind.RangeVariable)
