@@ -345,6 +345,42 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
     }
 
     [Test]
+    public async Task FixAllAddsOneSummaryPerSharedDeclaration(
+        [Values("public int", "public const int", "public event System.Action")] string declaration,
+        [Values] bool hasComment)
+    {
+        var comment = hasComment ? "// Shared declaration.\n    " : "";
+        var source = $$"""
+            /// <summary>Test class.</summary>
+            public class Test
+            {
+                {{comment}}{{declaration}} {|CSENSE001:A|} = default, {|CSENSE001:B|} = default;
+
+                {{declaration}} {|CSENSE001:C|} = default, {|CSENSE001:D|} = default;
+            }
+            """;
+        var fixedSource = $$"""
+            /// <summary>Test class.</summary>
+            public class Test
+            {
+                {{comment}}/// <summary>TODO</summary>
+                {{declaration}} A = default, B = default;
+
+                /// <summary>TODO</summary>
+                {{declaration}} C = default, D = default;
+            }
+            """;
+        var options = new Dictionary<string, string>(DisableUnrelatedRules)
+        {
+            ["dotnet_diagnostic.CSENSE001.severity"] = "warning",
+            ["dotnet_diagnostic.CSENSE022.severity"] = "warning",
+            ["commentsense.exclude_constants"] = "false"
+        };
+
+        await VerifyFixAllAsync(source, fixedSource, options);
+    }
+
+    [Test]
     public async Task AddMissingSummaryBeforeAttribute()
     {
         const string source = """
