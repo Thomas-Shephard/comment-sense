@@ -584,6 +584,28 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
     }
 
     [Test]
+    public async Task AddImplicitConstructorExceptionToType()
+    {
+        const string source = """
+            /// <summary>Stores a value.</summary>
+            public class {|CSENSE012:Container|}
+            {
+                private int Stored { get; } = System.DateTime.Now.Ticks > 0 ? 1 : throw new System.ArgumentException();
+            }
+            """;
+        const string fixedSource = """
+            /// <summary>Stores a value.</summary>
+            /// <exception cref="System.ArgumentException">TODO</exception>
+            public class Container
+            {
+                private int Stored { get; } = System.DateTime.Now.Ticks > 0 ? 1 : throw new System.ArgumentException();
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource);
+    }
+
+    [Test]
     public async Task AddMissingException()
     {
         const string source = """

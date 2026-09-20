@@ -1740,17 +1740,17 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     }
 
     [Test]
-    public async Task PrimaryConstructorExceptionInPropertyInitializerReportsOnProperty()
+    public async Task PrimaryConstructorExceptionInPropertyInitializerReportsOnClass()
     {
         const string testCode = """
             using System;
             /// <summary>This is a summary for the class.</summary>
             /// <param name="x">The x value.</param>
-            public class MyClass(int x)
+            public class {|CSENSE012:MyClass|}(int x)
             {
                 /// <summary>This is a summary for the property.</summary>
                 /// <value>The Y property value.</value>
-                public int {|CSENSE012:Y|} { get; } = x > 0 ? x : throw new ArgumentException();
+                public int Y { get; } = x > 0 ? x : throw new ArgumentException();
             }
             """;
 
@@ -2300,13 +2300,13 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     }
 
     [Test]
-    public async Task NestedExceptionTagsAreIgnored()
+    public async Task NestedTypeExceptionDoesNotDocumentMethod()
     {
         const string testCode = """
             using System;
             /// <summary>
             /// This is a summary for the class.
-            /// <exception cref="T:System.ArgumentNullException">This is nested and should be ignored</exception>
+            /// {|CSENSE023:<exception cref="T:System.ArgumentNullException">This is nested and should be ignored</exception>|}
             /// </summary>
             public class MyClass
             {
