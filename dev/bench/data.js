@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789917200935,
+  "lastUpdate": 1789917449869,
   "repoUrl": "https://github.com/Thomas-Shephard/comment-sense",
   "entries": {
     "CommentSense Memory Allocations": [
@@ -2160,6 +2160,57 @@ window.BENCHMARK_DATA = {
             "value": 28618763,
             "unit": "ns",
             "range": "± 1325243.5639668116"
+          }
+        ]
+      }
+    ],
+    "CommentSense Allocations (bytes)": [
+      {
+        "commit": {
+          "author": {
+            "email": "thomas@thomas-shephard.com",
+            "name": "Thomas Shephard",
+            "username": "Thomas-Shephard"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "26da5a8587b2f3aec3bda3125017f0254ce373ae",
+          "message": "chore: make benchmark alerts advisory and retain reports (#162)",
+          "timestamp": "2026-09-20T16:15:54+01:00",
+          "tree_id": "3a7790e4086a73ce8ed65a24c748a06ab3f2d3c6",
+          "url": "https://github.com/Thomas-Shephard/comment-sense/commit/26da5a8587b2f3aec3bda3125017f0254ce373ae"
+        },
+        "date": 1789917449518,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CommentSense.PerformanceTests.AnalyzerBenchmarks.FullAnalysis(MethodCount: 100, ScanCalledMethods: True, GhostReferenceMode: \"strict\", SimilarityThreshold: 0.8)",
+            "value": 3324875,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.DogfoodBenchmarks.AnalyzeProject",
+            "value": 21508160,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.LeakBenchmarks.SimulateLongSession",
+            "value": 4698069,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.ParallelBenchmarks.ConcurrentAnalysis(FileCount: 100)",
+            "value": 6078732,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.PathologicalBenchmarks.AnalyzePathologicalDocs(DocSizeMultiplier: 10)",
+            "value": 28533370,
+            "unit": "bytes"
           }
         ]
       }
