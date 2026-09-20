@@ -20,7 +20,9 @@ internal static class AnalyzerExtensions
             return method.ToDisplayString(FriendlyConstructorFormat);
         }
 
-        return symbol.Name;
+        return symbol is INamedTypeSymbol { IsExtension: true }
+            ? symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+            : symbol.Name;
     }
 
     public static bool IsEligibleForAnalysis(this ISymbol symbol, VisibilityLevel visibilityLevel = VisibilityLevel.Protected)

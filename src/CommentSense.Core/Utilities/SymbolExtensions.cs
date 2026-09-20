@@ -14,6 +14,7 @@ internal static class SymbolExtensions
             IMethodSymbol m => m.Parameters,
             IPropertySymbol p => p.Parameters,
             INamedTypeSymbol { DelegateInvokeMethod: { } m } => m.Parameters,
+            INamedTypeSymbol { ExtensionParameter: { Name.Length: > 0 } parameter } => [parameter],
             INamedTypeSymbol t when t.GetPrimaryConstructor() is { } c => c.Parameters,
             _ => []
         };

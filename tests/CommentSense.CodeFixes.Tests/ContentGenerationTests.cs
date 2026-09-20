@@ -47,6 +47,42 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
     }
 
     [Test]
+    public async Task AddMissingExtensionBlockSummary()
+    {
+        const string source = """
+            /// <summary>Provides text extensions.</summary>
+            public static class Extensions
+            {
+                {|CSENSE001:extension|}(string)
+                {
+                    /// <summary>Gets the empty text.</summary>
+                    /// <value>The empty text.</value>
+                    public static string Empty => string.Empty;
+                }
+            }
+            """;
+        const string fixedSource = """
+            /// <summary>Provides text extensions.</summary>
+            public static class Extensions
+            {
+                /// <summary>TODO</summary>
+                extension(string)
+                {
+                    /// <summary>Gets the empty text.</summary>
+                    /// <value>The empty text.</value>
+                    public static string Empty => string.Empty;
+                }
+            }
+            """;
+        var options = new Dictionary<string, string>(DisableUnrelatedRules)
+        {
+            ["dotnet_diagnostic.CSENSE001.severity"] = "warning"
+        };
+
+        await VerifyFixAllAsync(source, fixedSource, options);
+    }
+
+    [Test]
     public async Task AddMissingParamWhenDocumentationExists()
     {
         const string source = """
@@ -200,6 +236,41 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
             """;
 
         await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
+    public async Task AddMissingExtensionReceiverAndTypeParameterDocumentation()
+    {
+        const string source = """
+            /// <summary>Provides sequence extensions.</summary>
+            public static class Extensions
+            {
+                /// <summary>Extends sequences.</summary>
+                extension<{|CSENSE004:T|}>(T[] {|CSENSE002:values|})
+                {
+                    /// <summary>Gets the first element.</summary>
+                    /// <value>The first element.</value>
+                    public T First => values[0];
+                }
+            }
+            """;
+        const string fixedSource = """
+            /// <summary>Provides sequence extensions.</summary>
+            public static class Extensions
+            {
+                /// <summary>Extends sequences.</summary>
+                /// <typeparam name="T">TODO</typeparam>
+                /// <param name="values">TODO</param>
+                extension<T>(T[] values)
+                {
+                    /// <summary>Gets the first element.</summary>
+                    /// <value>The first element.</value>
+                    public T First => values[0];
+                }
+            }
+            """;
+
+        await VerifyFixAllAsync(source, fixedSource, DisableUnrelatedRules);
     }
 
     [Test]
