@@ -52,4 +52,4 @@ CommentSense suppresses overlapping compiler diagnostics by default:
 - CS1574: XML comment has cref attribute that could not be resolved.
 - CS1658: Error in XML comment (e.g. syntax error in cref).
 
-Use `comment_sense.enable_conditional_suppression = true` to suppress those only for members actively analyzed by CommentSense.
+Use `comment_sense.enable_conditional_suppression = true` to respect visibility and constant exclusions; enum exclusions do not affect suppression.
