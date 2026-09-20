@@ -62,9 +62,7 @@ public abstract class BenchmarkBase
 
     protected static IEnumerable<MetadataReference> GetMetadataReferences()
     {
-        var assemblies = (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")
-            ?? throw new InvalidOperationException("Runtime assembly paths are unavailable.");
-        return assemblies.Split(Path.PathSeparator).Select(path => MetadataReference.CreateFromFile(path));
+        return [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)];
     }
 
     protected static string GetSourceRoot()
