@@ -33,24 +33,24 @@ internal static class CollectionDocumentationAnalyzer
 
         var documentedSet = ValidateDocumented(context, documentation, actualIndexMap, options, rules);
 
-        if (!documentation.HasInheritDoc() && !documentation.HasAutoValidTag())
-            ReportMissing(context, symbols, documentedSet, rules.MissingRule);
+        ReportMissing(context, symbols, documentedSet, documentation, rules);
     }
 
     private static void ReportMissing<TSymbol>(
         SymbolAnalysisContext context,
         ImmutableArray<TSymbol> symbols,
         HashSet<string> documentedSet,
-        DiagnosticDescriptor rule) where TSymbol : ISymbol
+        DocumentationComment documentation,
+        CollectionRuleSet rules) where TSymbol : ISymbol
     {
         foreach (var symbol in symbols)
         {
-            if (documentedSet.Contains(symbol.Name))
+            if (documentedSet.Contains(symbol.Name) || InheritedDocumentation.HasTag(context.Compilation, context.Symbol, documentation, rules.TagName, symbol.Name, context.CancellationToken))
                 continue;
 
             var location = symbol.Locations.GetPrimaryLocation();
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, symbol.Name);
-            context.ReportDiagnostic(Diagnostic.Create(rule, location, properties, symbol.Name));
+            context.ReportDiagnostic(Diagnostic.Create(rules.MissingRule, location, properties, symbol.Name));
         }
     }
 
