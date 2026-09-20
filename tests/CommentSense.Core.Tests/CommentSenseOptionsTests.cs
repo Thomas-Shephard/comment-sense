@@ -78,6 +78,55 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
+    public void SharedLocalOptionsRespectEachGlobalConfiguration([Values] bool reverseOrder)
+    {
+        var local = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.min_summary_length"] = "20"
+        });
+        var publicGlobal = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.visibility_level"] = "Public",
+            ["comment_sense.min_summary_length"] = "10"
+        });
+        var internalGlobal = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.visibility_level"] = "Internal",
+            ["comment_sense.min_summary_length"] = "30"
+        });
+        var publicProvider = new CustomProvider(local, publicGlobal);
+        var internalProvider = new CustomProvider(local, internalGlobal);
+        var tree = CSharpSyntaxTree.ParseText("");
+        var first = CommentSenseOptions.GetOptions(reverseOrder ? internalProvider : publicProvider, tree);
+        var second = CommentSenseOptions.GetOptions(reverseOrder ? publicProvider : internalProvider, tree);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(first.VisibilityLevel, Is.EqualTo(reverseOrder ? VisibilityLevel.Internal : VisibilityLevel.Public));
+            Assert.That(second.VisibilityLevel, Is.EqualTo(reverseOrder ? VisibilityLevel.Public : VisibilityLevel.Internal));
+            Assert.That(first.MinSummaryLength, Is.EqualTo(20));
+            Assert.That(second.MinSummaryLength, Is.EqualTo(20));
+            Assert.That(CommentSenseOptions.GetOptions(reverseOrder ? internalProvider : publicProvider, tree), Is.SameAs(first));
+            Assert.That(CommentSenseOptions.GetOptions(new CustomProvider(local, reverseOrder ? publicGlobal : internalGlobal), tree), Is.SameAs(second));
+        }
+    }
+
+    [Test]
+    public void SharedGlobalOptionsRespectEachLocalConfiguration()
+    {
+        var global = new MapOptions(new Dictionary<string, string> { ["comment_sense.visibility_level"] = "Internal" });
+        var emptyLocal = new MapOptions(new Dictionary<string, string>());
+        var publicLocal = new MapOptions(new Dictionary<string, string> { ["comment_sense.visibility_level"] = "Public" });
+        var tree = CSharpSyntaxTree.ParseText("");
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(CommentSenseOptions.GetOptions(new CustomProvider(emptyLocal, global), tree).VisibilityLevel, Is.EqualTo(VisibilityLevel.Internal));
+            Assert.That(CommentSenseOptions.GetOptions(new CustomProvider(publicLocal, global), tree).VisibilityLevel, Is.EqualTo(VisibilityLevel.Public));
+        }
+    }
+
+    [Test]
     public void GetOptionsLocalOverGlobalReturnsLocalValues()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>
