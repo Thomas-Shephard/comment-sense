@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789920883866,
+  "lastUpdate": 1789921138651,
   "repoUrl": "https://github.com/Thomas-Shephard/comment-sense",
   "entries": {
     "CommentSense Memory Allocations": [
@@ -2455,6 +2455,55 @@ window.BENCHMARK_DATA = {
           {
             "name": "CommentSense.PerformanceTests.PathologicalBenchmarks.AnalyzePathologicalDocs(DocSizeMultiplier: 10)",
             "value": 28378510,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "49699333+dependabot[bot]@users.noreply.github.com",
+            "name": "dependabot[bot]",
+            "username": "dependabot[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "682540633acc35a19d8f5b2fafb5d5d7df0cd126",
+          "message": "chore: Bump MinVer from 7.0.0 to 8.0.0 (#156)\n\nSigned-off-by: dependabot[bot] <support@github.com>\nCo-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>\nCo-authored-by: Thomas Shephard <thomas@thomas-shephard.com>",
+          "timestamp": "2026-09-20T16:17:08Z",
+          "tree_id": "03c248cc494e4878b62bc27146b8340a38a031a2",
+          "url": "https://github.com/Thomas-Shephard/comment-sense/commit/682540633acc35a19d8f5b2fafb5d5d7df0cd126"
+        },
+        "date": 1789921138082,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CommentSense.PerformanceTests.AnalyzerBenchmarks.FullAnalysis(MethodCount: 100, ScanCalledMethods: True, GhostReferenceMode: \"strict\", SimilarityThreshold: 0.8)",
+            "value": 3265173,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.DogfoodBenchmarks.AnalyzeProject",
+            "value": 21311624,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.LeakBenchmarks.SimulateLongSession",
+            "value": 4555216,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.ParallelBenchmarks.ConcurrentAnalysis(FileCount: 100)",
+            "value": 5527142,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.PathologicalBenchmarks.AnalyzePathologicalDocs(DocSizeMultiplier: 10)",
+            "value": 28485634,
             "unit": "bytes"
           }
         ]
