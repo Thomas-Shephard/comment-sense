@@ -56,6 +56,29 @@ internal static class GhostReferenceAnalyzer
                 ? Empty
                 : new NameSet(sortedNames, new Lazy<Regex>(() => GetRegex(sortedNames)));
         }
+
+        private static Regex GetRegex(ImmutableArray<string> names)
+        {
+            if (TryGetCachedRegex(names) is { } cachedRegex)
+                return cachedRegex;
+
+            var pattern = $@"\b({string.Join("|", names.OrderByDescending(w => w.Length).Select(System.Text.RegularExpressions.Regex.Escape))})\b";
+            var createdRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+            return AddRegexToCache(names, createdRegex);
+        }
+
+        private static Regex? TryGetCachedRegex(ImmutableArray<string> key)
+        {
+            lock (RegexCacheLock)
+            {
+                if (!RegexCache.TryGetValue(key, out var existingNode))
+                    return null;
+
+                RegexCacheLru.Remove(existingNode);
+                RegexCacheLru.AddFirst(existingNode);
+                return existingNode.Value.Regex;
+            }
+        }
     }
 
     private readonly record struct GhostReferenceContext(
@@ -216,29 +239,6 @@ internal static class GhostReferenceAnalyzer
     }
 
     private sealed record RegexCacheEntry(ImmutableArray<string> Key, Regex Regex);
-
-    private static Regex GetRegex(ImmutableArray<string> names)
-    {
-        if (TryGetCachedRegex(names) is { } cachedRegex)
-            return cachedRegex;
-
-        var pattern = $@"\b({string.Join("|", names.OrderByDescending(w => w.Length).Select(Regex.Escape))})\b";
-        var createdRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
-        return AddRegexToCache(names, createdRegex);
-    }
-
-    private static Regex? TryGetCachedRegex(ImmutableArray<string> key)
-    {
-        lock (RegexCacheLock)
-        {
-            if (!RegexCache.TryGetValue(key, out var existingNode))
-                return null;
-
-            RegexCacheLru.Remove(existingNode);
-            RegexCacheLru.AddFirst(existingNode);
-            return existingNode.Value.Regex;
-        }
-    }
 
     internal static Regex AddRegexToCache(ImmutableArray<string> key, Regex regex)
     {
