@@ -71,6 +71,19 @@ public class LangwordTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
     }
 
     [Test]
+    [SetCulture("tr-TR")]
+    public async Task LangwordsMatchIndependentlyOfCulture()
+    {
+        const string source = """
+            /// <summary>Uses {|CSENSE019:INITIALCACHETOKEN|} here.</summary>
+            public class Container { }
+            """;
+        var config = new Dictionary<string, string> { ["comment_sense.langwords"] = "initialCacheToken" };
+
+        await VerifyCSenseAsync(source, configOptions: config);
+    }
+
+    [Test]
     public async Task WordInsideOtherWordDoesNotReportDiagnostic()
     {
         const string testCode = """
@@ -155,6 +168,22 @@ public class LangwordTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
         };
 
         await VerifyCSenseAsync(testCode, configOptions: config);
+    }
+
+    [Test]
+    public async Task DifferentLangwordSetsDoNotShareAnAmbiguousCacheKey()
+    {
+        const string combined = """
+            /// <summary>Uses {|CSENSE019:cacheleft|cacheright|} here.</summary>
+            public class Container { }
+            """;
+        const string separate = """
+            /// <summary>Uses {|CSENSE019:cacheleft|}|{|CSENSE019:cacheright|} here.</summary>
+            public class Container { }
+            """;
+
+        await VerifyCSenseAsync(combined, configOptions: new Dictionary<string, string> { ["comment_sense.langwords"] = "cacheleft|cacheright" });
+        await VerifyCSenseAsync(separate, configOptions: new Dictionary<string, string> { ["comment_sense.langwords"] = "cacheleft,cacheright" });
     }
 
     [Test]
