@@ -49,6 +49,15 @@ Maintaining high performance is critical for a Roslyn analyzer.
 - **Dogfooding:** Use the `DogfoodBenchmarks` to verify impact on the real codebase.
 
 ## Release Process
+CI and publishing test the NuGet package in a .NET 10 consumer. To run locally, use an empty output directory:
+
+```powershell
+dotnet pack CommentSense.slnx --configuration Release --output artifacts/package-check
+./eng/package-consumption-check.ps1 -PackageOutputPath artifacts/package-check
+```
+
+This checks package contents and analyzer diagnostics, not editor code fixes or older SDKs. Publishing also requires 100% line and branch coverage.
+
 This project uses [MinVer](https://github.com/adamralph/minver) for versioning.
 
 Versions are automatically determined by Git tags in the format `vMAJOR.MINOR.PATCH`.
