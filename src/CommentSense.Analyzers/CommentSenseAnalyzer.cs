@@ -169,6 +169,11 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                     ReturnValueAnalyzer.Analyze(context, primaryCtor, namedTypeSymbol, documentation, options);
                     ExceptionAnalyzer.Analyze(context, namedTypeSymbol, documentation, options, isPrimaryCtor: true);
                 }
+                else if (namedTypeSymbol.TypeKind == TypeKind.Class &&
+                         namedTypeSymbol.InstanceConstructors.Any(c => c.IsImplicitlyDeclared && c.Parameters.IsEmpty))
+                {
+                    ExceptionAnalyzer.Analyze(context, namedTypeSymbol, documentation, options, isPrimaryCtor: true);
+                }
                 break;
         }
     }
