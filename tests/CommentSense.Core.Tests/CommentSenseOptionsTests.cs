@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 using NUnit.Framework;
 
@@ -129,6 +130,65 @@ public class CommentSenseOptionsTests
             Assert.That(options.VisibilityLevel, Is.EqualTo(VisibilityLevel.Internal));
             Assert.That(options.RequireEndingPunctuation, Is.True);
             Assert.That(options.RequirePropertyPatterns, Is.True);
+        }
+    }
+
+    [TestCase("3", VisibilityLevel.Private)]
+    [TestCase("pRiVaTe", VisibilityLevel.Private)]
+    [TestCase("0", VisibilityLevel.Public)]
+    public void DefinedEnumValuesRemainValid(string value, VisibilityLevel expected)
+    {
+        var local = new MapOptions(new Dictionary<string, string> { ["comment_sense.visibility_level"] = value });
+        var global = new MapOptions(new Dictionary<string, string> { ["comment_sense.visibility_level"] = "Internal" });
+
+        Assert.That(CommentSenseOptionsLoader.GetEnumOption(local, global, "visibility_level", VisibilityLevel.Protected), Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void UndefinedEnumValuesFollowFallback(
+        [Values("999", "-1")] string invalid, [Values] bool validGlobal)
+    {
+        var local = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.visibility_level"] = invalid,
+            ["comment_sense.ghost_references.mode"] = invalid
+        });
+        var global = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.visibility_level"] = validGlobal ? "Internal" : invalid,
+            ["comment_sense.ghost_references.mode"] = validGlobal ? "Strict" : invalid
+        });
+        var options = CommentSenseOptions.GetOptions(new CustomProvider(local, global),
+            CSharpSyntaxTree.ParseText(""));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(options.VisibilityLevel, Is.EqualTo(validGlobal ? VisibilityLevel.Internal : CommentSenseOptions.Default.VisibilityLevel));
+            Assert.That(options.GhostReferenceMode, Is.EqualTo(validGlobal ? GhostReferenceMode.Strict : CommentSenseOptions.Default.GhostReferenceMode));
+        }
+    }
+
+    [Test]
+    public void NonFiniteThresholdsFollowFallback(
+        [Values("NaN", "Infinity", "-Infinity", "1e999")] string invalid, [Values] bool validGlobal)
+    {
+        var local = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.similarity_threshold"] = invalid,
+            ["comment_sense.rename_similarity_threshold"] = invalid
+        });
+        var global = new MapOptions(new Dictionary<string, string>
+        {
+            ["comment_sense.similarity_threshold"] = validGlobal ? "0.75" : invalid,
+            ["comment_sense.rename_similarity_threshold"] = validGlobal ? "0.75" : invalid
+        });
+        var options = CommentSenseOptions.GetOptions(new CustomProvider(local, global),
+            CSharpSyntaxTree.ParseText(""));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(options.SimilarityThreshold, Is.EqualTo(validGlobal ? 0.75 : CommentSenseOptions.Default.SimilarityThreshold));
+            Assert.That(options.RenameSimilarityThreshold, Is.EqualTo(validGlobal ? 0.75 : CommentSenseOptions.Default.RenameSimilarityThreshold));
         }
     }
 
