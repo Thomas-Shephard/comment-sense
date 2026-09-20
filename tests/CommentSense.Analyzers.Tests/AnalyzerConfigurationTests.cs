@@ -27,6 +27,22 @@ public class AnalyzerConfigurationTests : CommentSenseAnalyzerTestBase<CommentSe
         await VerifyCSenseAsync(testCode, expectDiagnostic: false, configOptions: config);
     }
 
+    [TestCase("999", true)]
+    [TestCase("0", false)]
+    public async Task InvalidVisibilityDoesNotDisableAnalysis(string visibility, bool expectedDiagnostic)
+    {
+        var source = $$"""
+            /// <summary>Provides an operation.</summary>
+            public class Container
+            {
+                protected void {{(expectedDiagnostic ? "{|CSENSE001:Operation|}" : "Operation")}}() { }
+            }
+            """;
+        var config = new Dictionary<string, string> { ["comment_sense.visibility_level"] = visibility };
+
+        await VerifyCSenseAsync(source, expectDiagnostic: expectedDiagnostic, configOptions: config);
+    }
+
     [Test]
     public async Task ParseSetEdgeCases()
     {
