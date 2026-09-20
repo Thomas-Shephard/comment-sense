@@ -157,6 +157,12 @@ public class CommentSenseAnalyzer : DiagnosticAnalyzer
                 break;
             case INamedTypeSymbol namedTypeSymbol:
                 TypeParameterAnalyzer.Analyze(context, namedTypeSymbol.TypeParameters, documentation, options);
+                if (namedTypeSymbol.IsExtension)
+                {
+                    ParameterAnalyzer.Analyze(context, namedTypeSymbol.GetParameters(), documentation, options);
+                    break;
+                }
+
                 if (namedTypeSymbol.DelegateInvokeMethod is { } delegateInvoke)
                 {
                     ParameterAnalyzer.Analyze(context, delegateInvoke.Parameters, documentation, options);
