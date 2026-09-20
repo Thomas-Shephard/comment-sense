@@ -437,7 +437,7 @@ internal static class ExceptionAnalyzer
         foreach (var exceptionElement in documentation.GetElements(DocumentationTags.Exception, recursive: false))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            foreach (var resolved in ResolveExceptionTypes(exceptionElement, compilation, cancellationToken))
+            if (ResolveExceptionType(exceptionElement, compilation, cancellationToken) is { } resolved)
                 documentedTypes.Add(resolved);
         }
 
@@ -513,23 +513,6 @@ internal static class ExceptionAnalyzer
         return ResolveExceptionType(exceptionElement.GetAttributeValue(DocumentationAttributes.Cref), compilation, cancellationToken);
     }
 
-    private static IEnumerable<ITypeSymbol> ResolveExceptionTypes(XmlNodeSyntax exceptionElement, Compilation compilation, CancellationToken cancellationToken)
-    {
-        var seen = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
-
-        if (TryResolveExceptionTypeFromSyntax(exceptionElement, compilation, cancellationToken) is { } syntaxResolved &&
-            seen.Add(syntaxResolved))
-        {
-            yield return syntaxResolved;
-        }
-
-        if (ResolveExceptionType(exceptionElement.GetAttributeValue(DocumentationAttributes.Cref), compilation, cancellationToken) is { } fallbackResolved &&
-            seen.Add(fallbackResolved))
-        {
-            yield return fallbackResolved;
-        }
-    }
-
     private static ITypeSymbol? TryResolveExceptionTypeFromSyntax(XmlNodeSyntax exceptionElement, Compilation compilation, CancellationToken cancellationToken)
     {
         var crefSyntax = GetCrefSyntax(exceptionElement);
@@ -539,8 +522,17 @@ internal static class ExceptionAnalyzer
         var semanticModel = compilation.GetSemanticModel(exceptionElement.SyntaxTree);
         var symbolInfo = semanticModel.GetSymbolInfo(crefSyntax, cancellationToken);
         var resolvedSymbol = symbolInfo.Symbol ?? symbolInfo.CandidateSymbols.FirstOrDefault();
+        if (resolvedSymbol is not INamedTypeSymbol resolvedType)
+            return resolvedSymbol as ITypeSymbol;
 
-        return resolvedSymbol as ITypeSymbol;
+        // Generic cref arguments declare placeholders, not constructed type arguments.
+        for (var named = resolvedType; named is not null; named = named.ContainingType)
+        {
+            if (named.TypeArguments.Any(static argument => argument is ITypeParameterSymbol { TypeParameterKind: TypeParameterKind.Cref }))
+                return resolvedType.OriginalDefinition;
+        }
+
+        return resolvedType;
     }
 
     private static CrefSyntax? GetCrefSyntax(XmlNodeSyntax exceptionElement)
@@ -1129,10 +1121,9 @@ internal static class ExceptionAnalyzer
             foreach (var exceptionElement in documentation.GetElements(DocumentationTags.Exception, recursive: false))
             {
                 token.ThrowIfCancellationRequested();
-                foreach (var resolved in ResolveExceptionTypes(exceptionElement, compilation, token))
+                if (ResolveExceptionType(exceptionElement, compilation, token) is { } resolved && seen.Add(resolved))
                 {
-                    if (seen.Add(resolved))
-                        yield return resolved;
+                    yield return resolved;
                 }
             }
 
