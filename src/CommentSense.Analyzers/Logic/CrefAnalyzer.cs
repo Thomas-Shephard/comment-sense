@@ -101,7 +101,7 @@ internal static class CrefAnalyzer
             }
             else
             {
-                var resolved = ExceptionAnalyzer.ResolveExceptionType(crefText, context.Compilation);
+                var resolved = ExceptionAnalyzer.ResolveExceptionType(crefText, context.Compilation, context.CancellationToken);
                 var exceptionType = context.Compilation.GetTypeByMetadataName("System.Exception");
                 if (resolved != null && exceptionType != null && resolved.InheritsFromOrEquals(exceptionType))
                     properties = properties.Add(DocumentationAttributes.CrefProperty, resolved.ToCrefString());
