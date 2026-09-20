@@ -48,6 +48,8 @@ Maintaining high performance is critical for a Roslyn analyzer.
 - **Avoid Regressions:** Ensure your changes do not significantly increase memory allocations or execution time.
 - **Dogfooding:** Use the `DogfoodBenchmarks` to verify impact on the real codebase.
 
+CI warns when allocations increase by more than 5%; benchmark errors fail the build.
+
 ## Release Process
 CI and publishing test the NuGet package in a .NET 10 consumer. To run locally, use an empty output directory:
 
