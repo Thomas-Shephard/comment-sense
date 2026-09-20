@@ -616,9 +616,29 @@ internal static class ExceptionAnalyzer
             var exceptions = IdentifyThrownExceptions(nodes, semanticModel, options, exceptionCache, cancellationToken);
 
             thrownTypes.UnionWith(exceptions);
+
+            if (symbol is IMethodSymbol { MethodKind: MethodKind.Constructor } constructor &&
+                syntax is ConstructorDeclarationSyntax declaration &&
+                RunsInstanceInitializers(constructor, declaration, semanticModel, cancellationToken))
+            {
+                thrownTypes.UnionWith(GetThrownTypes(compilation, constructor.ContainingType, true, options, cancellationToken));
+            }
         }
 
         return thrownTypes;
+    }
+
+    private static bool RunsInstanceInitializers(IMethodSymbol constructor, ConstructorDeclarationSyntax declaration, SemanticModel semanticModel, CancellationToken token)
+    {
+        if (constructor is { ContainingType: { IsRecord: true, TypeKind: TypeKind.Class } type, Parameters.Length: 1 } &&
+            SymbolEqualityComparer.Default.Equals(type, constructor.Parameters[0].Type))
+            return false;
+
+        if (declaration.Initializer is not { } initializer || !initializer.IsKind(SyntaxKind.ThisConstructorInitializer))
+            return true;
+
+        return constructor.ContainingType.IsValueType &&
+               semanticModel.GetSymbolInfo(initializer, token).Symbol is IMethodSymbol { IsImplicitlyDeclared: true };
     }
 
     private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options)
@@ -672,9 +692,6 @@ internal static class ExceptionAnalyzer
 
     private static IEnumerable<SyntaxNode> GetPropertyAnalysisRoots(PropertyDeclarationSyntax propertyDeclaration)
     {
-        if (propertyDeclaration.Initializer is { Value: { } propertyInitializer })
-            yield return propertyInitializer;
-
         if (propertyDeclaration.ExpressionBody is { Expression: { } propertyExpression })
             yield return propertyExpression;
 
@@ -724,12 +741,11 @@ internal static class ExceptionAnalyzer
 
     private static bool IsExcludedPrimaryConstructorMember(SyntaxNode n)
     {
-        // Block members that have their own analysis to avoid duplicates.
-        // We descend into FieldDeclaration because fields don't have their own ExceptionAnalyzer.
-        return n is MethodDeclarationSyntax
+        return n is MemberDeclarationSyntax member && member.Modifiers.Any(SyntaxKind.StaticKeyword) ||
+               n is MethodDeclarationSyntax
                     or ConstructorDeclarationSyntax
-                    or PropertyDeclarationSyntax
                     or IndexerDeclarationSyntax
+                    or ArrowExpressionClauseSyntax
                     or AccessorListSyntax
                     or AccessorDeclarationSyntax
                     or EventDeclarationSyntax;
