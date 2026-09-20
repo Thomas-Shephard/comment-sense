@@ -14,7 +14,7 @@ You are an expert code reviewer and software engineer assisting with the `Commen
 ## 2. Build and Validate
 Always verify changes using these commands.
 *   **Build:** `dotnet build CommentSense.slnx --configuration Release`
-*   **Test:** `dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings --results-directory ./coverage`
+*   **Test:** `dotnet test --solution CommentSense.slnx --configuration Release --no-build --coverlet --results-directory ./coverage`
 *   **Lint/Style:** Use `.editorconfig` rules. Build with `/warnaserror` when possible.
 
 **Build Status:** Trust the user or actual build/test logs provided in the chat context regarding compilation status. Do not claim code will not compile based on internal static analysis if the context or the user indicates otherwise. Avoid providing unsolicited "fix" suggestions for non-existent build errors.

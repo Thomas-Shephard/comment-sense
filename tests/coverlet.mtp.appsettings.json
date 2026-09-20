@@ -1,0 +1,8 @@
+{
+  "Coverlet": {
+    "Format": "cobertura,opencover",
+    "Exclude": "[System.*]*,[Microsoft.*]*,[*.Tests]*",
+    "ExcludeByAttribute": "Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,LoggerMessageAttribute",
+    "ExcludeByFile": "**/System.*.cs,**/*.g.cs,**/*.Designer.cs"
+  }
+}
