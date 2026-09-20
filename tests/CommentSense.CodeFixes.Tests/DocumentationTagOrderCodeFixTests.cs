@@ -76,6 +76,34 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
     }
 
     [Test]
+    public async Task PartialDeclarationTagsAreReorderedWithinTheirComment([Values] bool incorrectPartFirst)
+    {
+        const string correctPart = """
+            /// <example>Usage example.</example>
+            public partial class MyClass { }
+            """;
+        const string incorrectPart = """
+            /// <remarks>Additional details.</remarks>
+            /// {|CSENSE024:<summary>Documentation.</summary>|}
+            public partial class MyClass { }
+            """;
+        const string fixedPart = """
+            /// <summary>Documentation.</summary>
+            /// <remarks>Additional details.</remarks>
+            public partial class MyClass { }
+            """;
+
+        var source = incorrectPartFirst
+            ? incorrectPart + "\n" + correctPart
+            : correctPart + "\n" + incorrectPart;
+        var fixedSource = incorrectPartFirst
+            ? fixedPart + "\n" + correctPart
+            : correctPart + "\n" + fixedPart;
+
+        await VerifyFixAllAsync(source, fixedSource);
+    }
+
+    [Test]
     public async Task InternalOrderOfSameTagsIsPreserved()
     {
         const string testCode = """

@@ -26,7 +26,7 @@ internal static class TagOrderAnalyzer
                 currentPriority = 100;
             }
 
-            if (currentPriority < lastPriority && lastElement != null)
+            if (currentPriority < lastPriority && lastElement != null && element.Parent == lastElement.Parent)
             {
                 var location = element.GetLocation();
                 context.ReportDiagnostic(Diagnostic.Create(

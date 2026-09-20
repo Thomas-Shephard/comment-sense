@@ -1,6 +1,7 @@
 using CommentSense.Core;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Testing;
 using NUnit.Framework;
 
 namespace CommentSense.Analyzers.Tests;
@@ -102,6 +103,27 @@ public class DocumentationTagOrderTests : CommentSenseAnalyzerTestBase<CommentSe
             }
             """;
         await VerifyCSenseAsync(testCode, expectDiagnostic: false, diagnosticOptions: SuppressAll);
+    }
+
+    [Test]
+    public void PartialDeclarationsHaveIndependentTagOrder([Values] bool separateFiles)
+    {
+        const string firstPart = """
+            /// <remarks>Additional details.</remarks>
+            public partial class MyClass { }
+            """;
+        const string secondPart = """
+            /// <summary>Documentation.</summary>
+            public partial class MyClass { }
+            """;
+
+        var test = new CSharpAnalyzerTest<CommentSenseAnalyzer, NUnitVerifier>();
+        test.TestState.Sources.Add(separateFiles ? firstPart : firstPart + "\n" + secondPart);
+        if (separateFiles)
+            test.TestState.Sources.Add(secondPart);
+
+        test.ApplyCommonConfiguration(null, DocumentationMode.Parse, null);
+        Assert.DoesNotThrowAsync(async () => await test.RunAsync());
     }
 
     [Test]
