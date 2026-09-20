@@ -21,6 +21,7 @@ public class LeakBenchmarks : BenchmarkBase
 
         _parseOptions = new CSharpParseOptions().WithDocumentationMode(DocumentationMode.Parse);
         _references = [.. GetMetadataReferences()];
+        ValidateCompilation(CreateCompilation(0));
     }
 
     protected override string GetSourceCode() => "";
@@ -30,18 +31,23 @@ public class LeakBenchmarks : BenchmarkBase
     {
         for (int i = 0; i < 50; i++)
         {
-            var source = string.Create(CultureInfo.InvariantCulture, $$"""
-                                                                        /// <summary> Test {{i}} </summary>
-                                                                        public class C{{i}} { }
-                                                                        """);
-            var tree = CSharpSyntaxTree.ParseText(source, _parseOptions);
-            var compilation = CSharpCompilation.Create($"LeakTest{i}", [tree], _references);
+            var compilation = CreateCompilation(i);
 
             var optionsProvider = new TestAnalyzerConfigOptionsProvider();
             var analyzerOptions = new AnalyzerOptions([], optionsProvider);
 
-            var compilationWithAnalyzers = compilation.WithAnalyzers(Analyzers, analyzerOptions);
-            await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
+            await RunAnalysisAsync(compilation, analyzerOptions);
         }
+    }
+
+    private CSharpCompilation CreateCompilation(int i)
+    {
+        var source = string.Create(CultureInfo.InvariantCulture, $$"""
+            /// <summary> Test {{i}} </summary>
+            public class C{{i}} { }
+            """);
+        var tree = CSharpSyntaxTree.ParseText(source, _parseOptions);
+        return CSharpCompilation.Create($"LeakTest{i}", [tree], _references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
     }
 }

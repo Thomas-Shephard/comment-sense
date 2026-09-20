@@ -25,6 +25,17 @@ public abstract class BenchmarkBase
     [GlobalSetup]
     public virtual void Setup()
     {
+        Compilation = CreateCompilation();
+        ValidateCompilation(Compilation);
+
+        Analyzers = [new CommentSenseAnalyzer()];
+
+        OptionsProvider = new TestAnalyzerConfigOptionsProvider();
+        Options = new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty, OptionsProvider);
+    }
+
+    protected virtual Compilation CreateCompilation()
+    {
         var source = GetSourceCode();
         var syntaxTrees = string.IsNullOrEmpty(source)
             ? GetSyntaxTrees()
@@ -32,15 +43,17 @@ public abstract class BenchmarkBase
 
         var references = GetMetadataReferences();
 
-        Compilation = CSharpCompilation.Create("BenchmarkAssembly",
+        return CSharpCompilation.Create("BenchmarkAssembly",
             syntaxTrees,
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    }
 
-        Analyzers = [new CommentSenseAnalyzer()];
-
-        OptionsProvider = new TestAnalyzerConfigOptionsProvider();
-        Options = new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty, OptionsProvider);
+    protected static void ValidateCompilation(Compilation compilation)
+    {
+        var errors = compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToArray();
+        if (errors.Length != 0)
+            throw new InvalidOperationException(string.Join(Environment.NewLine, errors.Select(d => d.ToString())));
     }
 
     protected abstract string GetSourceCode();
@@ -49,9 +62,7 @@ public abstract class BenchmarkBase
 
     protected static IEnumerable<MetadataReference> GetMetadataReferences()
     {
-        return [.. AppDomain.CurrentDomain.GetAssemblies()
-            .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
-            .Select<System.Reflection.Assembly, MetadataReference>(a => MetadataReference.CreateFromFile(a.Location))];
+        return [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)];
     }
 
     protected static string GetSourceRoot()
@@ -69,10 +80,16 @@ public abstract class BenchmarkBase
         return Path.Combine(current?.FullName ?? throw new InvalidOperationException("Could not find solution root"), "src");
     }
 
-    protected async Task RunAnalysisAsync()
+    protected Task RunAnalysisAsync() => RunAnalysisAsync(Compilation, Options);
+
+    protected async Task RunAnalysisAsync(Compilation compilation, AnalyzerOptions options)
     {
-        var compilationWithAnalyzers = Compilation.WithAnalyzers(Analyzers, Options);
-        await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync();
+        var diagnostics = await compilation.WithAnalyzers(Analyzers, options).GetAnalyzerDiagnosticsAsync();
+        foreach (var diagnostic in diagnostics)
+        {
+            if (diagnostic.Id is "AD0001" or "AD0002")
+                throw new InvalidOperationException(diagnostic.ToString());
+        }
     }
 
     protected sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
