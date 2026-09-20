@@ -252,6 +252,68 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
     }
 
     [Test]
+    public async Task ExplicitInterfaceMemberUsesTargetDocumentation(
+        [Values("property", "indexer", "event")] string kind, [Values] bool documented)
+    {
+        var name = kind == "indexer" ? "this" : "Value";
+        var target = kind switch
+        {
+            "property" => "T Value { get; }",
+            "indexer" => "T this[int index] { get; }",
+            _ => "event System.Action Value;"
+        };
+        var implementationName = documented ? name : $"{{|CSENSE026:{name}|}}";
+        var implementation = kind switch
+        {
+            "property" => $"int IContract<int>.{implementationName} => 1;",
+            "indexer" => $"int IContract<int>.{implementationName}[int index] => index;",
+            _ => $"event System.Action IContract<int>.{implementationName} {{ add {{}} remove {{}} }}"
+        };
+        var documentation = "/// <summary>Contract member.</summary>";
+        if (kind == "indexer")
+            documentation += "\n/// <param name=\"index\">The position.</param>";
+        if (kind != "event")
+            documentation += "\n/// <value>The result.</value>";
+        var source = $$"""
+            interface IContract<T>
+            {
+                {{(documented ? documentation : "")}}
+                {{target}}
+            }
+            class C : IContract<int>
+            {
+                /// <inheritdoc/>
+                {{implementation}}
+            }
+            """;
+
+        await VerifyCSenseAsync(source, expectDiagnostic: !documented,
+            configOptions: new Dictionary<string, string> { ["comment_sense.visibility_level"] = "private" },
+            diagnosticOptions: SuppressMissingDocs);
+    }
+
+    [TestCase("void Member();", "void IContract.Member() {}", SymbolKind.Method)]
+    [TestCase("int Member { get; }", "int IContract.Member => 1;", SymbolKind.Property)]
+    [TestCase("event System.Action Member;", "event System.Action IContract.Member { add {} remove {} }", SymbolKind.Event)]
+    public void ExplicitInterfaceTargetDoesNotIncludeSameNamedMember(string declaration, string implementation, SymbolKind kind)
+    {
+        var source = $$"""
+            interface IContract { {{declaration}} }
+            interface IOther { {{declaration}} }
+            class C : IContract, IOther
+            {
+                {{implementation}}
+                {{implementation.Replace("IContract", "IOther", StringComparison.Ordinal)}}
+            }
+            """;
+        var type = (INamedTypeSymbol)RoslynTestUtils.GetSymbolFromSource(source, "C");
+        var member = type.GetMembers().Single(symbol => symbol.Kind == kind && symbol.Name == "IContract.Member");
+        var expected = type.AllInterfaces.Single(symbol => symbol.Name == "IContract").GetMembers("Member").Single();
+
+        Assert.That(Logic.InheritDocAnalyzer.GetImplicitTargetsForInheritDoc(member), Is.EqualTo([expected]));
+    }
+
+    [Test]
     public async Task InheritDocOnImplicitInterfaceImplementationWithDocumentedTargetDoesNotReportDiagnostic()
     {
         const string testCode = """
