@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace CommentSense.Analyzers.Logic;
 
@@ -713,6 +714,7 @@ internal static class ExceptionAnalyzer
                     or ConstructorInitializerSyntax ||
                (scanCalledMethods && node is ObjectCreationExpressionSyntax
                     or ImplicitObjectCreationExpressionSyntax
+                    or CollectionExpressionSyntax
                     or MemberAccessExpressionSyntax
                     or MemberBindingExpressionSyntax
                     or IdentifierNameSyntax
@@ -763,6 +765,7 @@ internal static class ExceptionAnalyzer
             InvocationExpressionSyntax invocation => GetExceptionsFromInvocationInternal(invocation, semanticModel, options, exceptionType, exceptionCache, token),
             ObjectCreationExpressionSyntax objectCreation => GetExceptionsFromObjectCreation(objectCreation, semanticModel, exceptionCache, token),
             ImplicitObjectCreationExpressionSyntax implicitObjectCreation => GetExceptionsFromImplicitObjectCreation(implicitObjectCreation, semanticModel, exceptionCache, token),
+            CollectionExpressionSyntax when semanticModel.GetOperation(node, token) is ICollectionExpressionOperation collection => GetExceptionsFromSymbol(collection.ConstructMethod, semanticModel.Compilation, exceptionCache, token),
             ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             MemberAccessExpressionSyntax ma => GetExceptionsFromMemberAccess(ma, semanticModel, exceptionCache, token),
             MemberBindingExpressionSyntax mb => GetExceptionsFromMemberBinding(mb, semanticModel, exceptionCache, token),
