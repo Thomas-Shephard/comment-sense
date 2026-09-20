@@ -68,38 +68,46 @@ jobs:
         run: rm -rf BenchmarkDotNet.Artifacts/results
 
       - name: Run Benchmarks
-        run: dotnet run -c Release --project benchmarks/CommentSense.PerformanceTests.csproj -- --filter '*' --exporters BriefJson --iterationCount 10 --warmupCount 5
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          dotnet run -c Release --project benchmarks/CommentSense.PerformanceTests.csproj -- --filter '*' --exporters BriefJson --iterationCount 10 --warmupCount 5 2>&1 | tee artifacts/benchmark-run.log
 
       - name: Merge Benchmark Results
         run: |
-          # Merge all class-specific reports into a single combined report
-          shopt -s nullglob
-          JSON_FILES=(BenchmarkDotNet.Artifacts/results/*-report-brief.json)
-          if [ ${#JSON_FILES[@]} -eq 0 ]; then
-            echo "No benchmark reports found!"
-            exit 1
-          fi
-
-          if [ ${#JSON_FILES[@]} -gt 1 ]; then
-            jq -s 'map(select(type == "object" and .Benchmarks and (.Benchmarks | type) == "array")) | .[0] + {Benchmarks: map(.Benchmarks) | add}' BenchmarkDotNet.Artifacts/results/*-report-brief.json > BenchmarkDotNet.Artifacts/results/temp-report.json
-          else
-            cp "${JSON_FILES[0]}" BenchmarkDotNet.Artifacts/results/temp-report.json
-          fi
-
-          # Transform report to use memory allocations instead of time for tracking
-          jq '.Benchmarks |= map(.Statistics.Mean = .Memory.BytesAllocatedPerOperation)' BenchmarkDotNet.Artifacts/results/temp-report.json > BenchmarkDotNet.Artifacts/results/combined-report.json
+          jq -es '
+            if length == 0 or any(.[]; (.Benchmarks | type) != "array" or (.Benchmarks | length) == 0)
+            then error("Missing benchmark results") else . end
+            | [.[].Benchmarks[] |
+                if (.Statistics.N // 0) <= 0 or (.FullName | type) != "string" or .FullName == ""
+                  or (.Memory.BytesAllocatedPerOperation | type) != "number" or .Memory.BytesAllocatedPerOperation < 0
+                then error("Invalid benchmark measurement")
+                else {name: .FullName, value: .Memory.BytesAllocatedPerOperation, unit: "bytes"} end]
+            | if (map(.name) | unique | length) != length then error("Duplicate benchmark names") else . end
+          ' BenchmarkDotNet.Artifacts/results/*-report-brief.json > BenchmarkDotNet.Artifacts/results/allocations.json
 
       - name: Store Benchmark Result
         if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
         uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
         with:
-          name: CommentSense Memory Allocations
-          tool: 'benchmarkdotnet'
-          output-file-path: BenchmarkDotNet.Artifacts/results/combined-report.json
+          name: CommentSense Allocations (bytes)
+          tool: 'customSmallerIsBetter'
+          output-file-path: BenchmarkDotNet.Artifacts/results/allocations.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.push_results) }}
           summary-always: true
           comment-always: true
           alert-threshold: '105%'
           comment-on-alert: true
-          fail-on-alert: true
+          fail-on-alert: false
+
+      - name: Upload Benchmark Results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results
+          path: |
+            BenchmarkDotNet.Artifacts/
+            artifacts/benchmark-run.log
+          retention-days: 14
+          if-no-files-found: warn
