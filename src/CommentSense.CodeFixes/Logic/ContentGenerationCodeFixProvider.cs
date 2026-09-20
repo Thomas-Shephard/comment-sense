@@ -53,10 +53,12 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
 
                 var (_, diagList, symbol) = groupsByMember[oldNode];
                 var updatedMember = member;
+                var appliedTags = new HashSet<(string DiagnosticId, string? Name)>();
 
                 foreach (var diag in diagList)
                 {
-                    updatedMember = ApplyDiagnosticToMember(updatedMember, diag, symbol, options);
+                    if (appliedTags.Add((diag.Id, GetTargetName(diag))))
+                        updatedMember = ApplyDiagnosticToMember(updatedMember, diag, symbol, options);
                 }
 
                 return updatedMember;
