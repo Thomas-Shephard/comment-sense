@@ -27,10 +27,9 @@ internal static class ReturnValueAnalyzer
 
     private static void AnalyzeProperty(SymbolAnalysisContext context, IPropertySymbol property, ISymbol targetSymbol, DocumentationComment documentation, CommentSenseOptions options)
     {
-        var hasInheritDoc = documentation.HasInheritDoc();
-        var hasAutoValidTag = documentation.HasAutoValidTag();
+        var hasInheritDoc = InheritedDocumentation.HasTag(context.Compilation, targetSymbol, documentation, DocumentationTags.Value, null, context.CancellationToken);
 
-        if (property.GetMethod is not null && !documentation.HasValueTag() && !hasInheritDoc && !hasAutoValidTag)
+        if (property.GetMethod is not null && !documentation.HasValueTag() && !hasInheritDoc)
         {
             var location = targetSymbol.Locations.GetPrimaryLocation();
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, DocumentationTags.Value);
@@ -66,14 +65,13 @@ internal static class ReturnValueAnalyzer
 
     private static void AnalyzeMethod(SymbolAnalysisContext context, IMethodSymbol methodSymbol, ISymbol targetSymbol, DocumentationComment documentation, CommentSenseOptions options)
     {
-        var hasInheritDoc = documentation.HasInheritDoc();
-        var hasAutoValidTag = documentation.HasAutoValidTag();
+        var hasInheritDoc = InheritedDocumentation.HasTag(context.Compilation, targetSymbol, documentation, DocumentationTags.Returns, null, context.CancellationToken);
 
         var isTask = methodSymbol.ReturnType.IsTaskType();
         var isVoid = methodSymbol.ReturnsVoid;
         var returnsRequired = !isVoid && !isTask;
 
-        if (returnsRequired && !documentation.HasReturnsTag() && !hasInheritDoc && !hasAutoValidTag)
+        if (returnsRequired && !documentation.HasReturnsTag() && !hasInheritDoc)
         {
             var location = targetSymbol.Locations.GetPrimaryLocation();
             var properties = ImmutableDictionary<string, string?>.Empty.Add(DocumentationAttributes.NameProperty, DocumentationTags.Returns);

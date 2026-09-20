@@ -68,16 +68,6 @@ internal sealed class DocumentationComment
         });
     }
 
-    public bool HasAutoValidTag()
-    {
-        return GetElements().Any(element => AutoValidTags.Contains(element.GetTagName()));
-    }
-
-    public bool HasInheritDoc()
-    {
-        return GetElements(DocumentationTags.InheritDoc, recursive: true).Any();
-    }
-
     public bool HasReturnsTag()
     {
         return GetElements(DocumentationTags.Returns, recursive: false).Any();
