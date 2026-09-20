@@ -6,6 +6,13 @@ on:
     paths:
       - 'src/**'
       - 'benchmarks/**'
+      - 'tests/CommentSense.TestHelpers/**'
+      - 'global.json'
+      - '**/*.props'
+      - '**/*.targets'
+      - 'CommentSense.slnx'
+      - '.config/dotnet-tools.json'
+      - '.github/workflows/performance.yml'
   push:
     branches: [ main ]
   workflow_dispatch:
