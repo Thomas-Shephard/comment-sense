@@ -9,12 +9,14 @@ internal static class CommentSenseOptionsLoader
 {
     private const string Prefix = "comment_sense.";
 
-    private static readonly ConditionalWeakTable<AnalyzerConfigOptions, CommentSenseOptions> OptionsCache = new();
+    private static readonly ConditionalWeakTable<AnalyzerConfigOptions, ConditionalWeakTable<AnalyzerConfigOptions, CommentSenseOptions>> OptionsCache = new();
 
     public static CommentSenseOptions GetOptions(AnalyzerConfigOptionsProvider provider, SyntaxTree tree)
     {
         var options = provider.GetOptions(tree);
-        return OptionsCache.GetValue(options, o => FromAnalyzerConfigOptions(o, provider.GlobalOptions));
+        var globalOptions = provider.GlobalOptions;
+        var cache = OptionsCache.GetValue(globalOptions, static _ => new());
+        return cache.GetValue(options, o => FromAnalyzerConfigOptions(o, globalOptions));
     }
 
     private static CommentSenseOptions FromAnalyzerConfigOptions(AnalyzerConfigOptions options, AnalyzerConfigOptions globalOptions)
