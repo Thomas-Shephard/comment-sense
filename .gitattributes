@@ -12,7 +12,7 @@
 
 # Documentation and config
 *.md   text
-*.json text
+*.json text eol=lf
 .editorconfig text
 .gitignore text
 .gitattributes text
