@@ -35,6 +35,31 @@ public class InheritDocExceptionTests : CommentSenseAnalyzerTestBase<CommentSens
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 
+    [TestCase("/exception", false)]
+    [TestCase("/summary", true)]
+    public async Task ExplicitInterfacePropertyInheritsOnlySelectedExceptionDocumentation(string path, bool missing)
+    {
+        var source = $$"""
+            /// <summary>Contract.</summary>
+            interface IContract
+            {
+                /// <summary>Reads a value.</summary>
+                /// <value>The result.</value>
+                /// <exception cref="System.InvalidOperationException">The value is unavailable.</exception>
+                int Value { get; }
+            }
+            /// <summary>Implementation.</summary>
+            class C : IContract
+            {
+                /// <inheritdoc path="{{path}}"/>
+                /// <value>The result.</value>
+                int IContract.{{(missing ? "{|CSENSE012:Value|}" : "Value")}} => throw new System.InvalidOperationException();
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: missing,
+            configOptions: new Dictionary<string, string> { ["comment_sense.visibility_level"] = "private" });
+    }
+
     [Test]
     public async Task InheritDocWithCrefUsesReferencedMethodExceptionDocumentation()
     {

@@ -143,6 +143,16 @@ internal static class InheritDocAnalyzer
         if (symbol is INamedTypeSymbol typeSymbol)
             return GetTypeTargets(typeSymbol);
 
+        switch (symbol)
+        {
+            case IMethodSymbol { ExplicitInterfaceImplementations.IsEmpty: false } method:
+                return [.. method.ExplicitInterfaceImplementations];
+            case IPropertySymbol { ExplicitInterfaceImplementations.IsEmpty: false } property:
+                return [.. property.ExplicitInterfaceImplementations];
+            case IEventSymbol { ExplicitInterfaceImplementations.IsEmpty: false } @event:
+                return [.. @event.ExplicitInterfaceImplementations];
+        }
+
         var builder = ImmutableArray.CreateBuilder<ISymbol>();
         AddOverrideTargets(symbol, builder);
 
