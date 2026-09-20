@@ -54,6 +54,9 @@ jobs:
         run: dotnet coveragechecker --format Cobertura --glob-patterns 'coverage/**/coverage.cobertura.xml' --line-threshold 100 --branch-threshold 100
       - name: Pack
         run: dotnet pack CommentSense.slnx --configuration Release --no-build --output artifacts/package
+      - name: Package Consumption Check
+        shell: pwsh
+        run: ./eng/package-consumption-check.ps1
       - name: Upload NuGet Packages
         uses: actions/upload-artifact@v7
         with:

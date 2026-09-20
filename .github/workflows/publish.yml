@@ -33,9 +33,14 @@ jobs:
       - name: Build
         run: dotnet build CommentSense.slnx --configuration Release
       - name: Test
-        run: dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings
+        run: dotnet test CommentSense.slnx --configuration Release --no-build --settings .runsettings --results-directory ./coverage
+      - name: Check Coverage
+        run: dotnet coveragechecker --format Cobertura --glob-patterns 'coverage/**/coverage.cobertura.xml' --line-threshold 100 --branch-threshold 100
       - name: Pack
         run: dotnet pack CommentSense.slnx --configuration Release --no-build --output artifacts/package
+      - name: Package Consumption Check
+        shell: pwsh
+        run: ./eng/package-consumption-check.ps1
       - name: Authenticate with NuGet
         uses: nuget/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
         id: nuget-auth
