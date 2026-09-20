@@ -1,9 +1,21 @@
 version: 2
 updates:
+  - package-ecosystem: "dotnet-sdk"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore"
+    assignees:
+      - "Thomas-Shephard"
   - package-ecosystem: "nuget"
     directory: "/"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore"
     assignees:
@@ -12,6 +24,8 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore"
     assignees:
