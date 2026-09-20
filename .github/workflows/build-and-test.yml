@@ -63,3 +63,4 @@ jobs:
           name: nuget-packages
           path: artifacts/package/*.nupkg
           if-no-files-found: error
+          compression-level: 0
