@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
@@ -11,7 +10,6 @@ namespace CommentSense.Analyzers.Logic;
 
 internal static class LangwordAnalyzer
 {
-    private static readonly ConcurrentDictionary<string, Regex> RegexCache = new();
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<System.Collections.Immutable.IImmutableSet<string>, Regex> RegexCacheBySet = new();
 
     public static void Analyze(SyntaxNodeAnalysisContext context, XmlTextSyntax xmlText, CommentSenseOptions options)
@@ -59,32 +57,10 @@ internal static class LangwordAnalyzer
 
     private static Regex GetRegex(System.Collections.Immutable.IImmutableSet<string> langwords)
     {
-        return RegexCacheBySet.GetValue(langwords, l =>
+        return RegexCacheBySet.GetValue(langwords, static words =>
         {
-            var sortedWords = l.OrderBy(w => w, StringComparer.OrdinalIgnoreCase).ToList();
-
-            var sb = new System.Text.StringBuilder();
-            foreach (var word in sortedWords)
-            {
-                if (sb.Length > 0) sb.Append('|');
-                sb.Append(word);
-            }
-            var key = sb.ToString();
-
-            return RegexCache.GetOrAdd(key, _ =>
-            {
-                var patternSb = new System.Text.StringBuilder(@"\b(");
-                bool first = true;
-                foreach (var word in sortedWords.OrderByDescending(w => w.Length))
-                {
-                    if (!first) patternSb.Append('|');
-                    patternSb.Append(Regex.Escape(word));
-                    first = false;
-                }
-                patternSb.Append(@")\b");
-
-                return new Regex(patternSb.ToString(), RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
-            });
+            var pattern = $@"\b({string.Join("|", words.OrderByDescending(w => w.Length).ThenBy(w => w, StringComparer.OrdinalIgnoreCase).Select(Regex.Escape))})\b";
+            return new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
         });
     }
 

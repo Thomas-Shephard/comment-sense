@@ -63,7 +63,7 @@ internal static class GhostReferenceAnalyzer
                 return cachedRegex;
 
             var pattern = $@"\b({string.Join("|", names.OrderByDescending(w => w.Length).Select(System.Text.RegularExpressions.Regex.Escape))})\b";
-            var createdRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase, TimeSpan.FromSeconds(1));
+            var createdRegex = new Regex(pattern, RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
             return AddRegexToCache(names, createdRegex);
         }
 

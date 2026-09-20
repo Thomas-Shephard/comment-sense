@@ -351,6 +351,23 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     }
 
     [Test]
+    [SetCulture("tr-TR")]
+    public async Task ParameterReferencesMatchIndependentlyOfCulture()
+    {
+        const string source = """
+            /// <summary>Provides an operation.</summary>
+            public class Container
+            {
+                /// <summary>Uses {|CSENSE020:INPUTCULTUREPROBE|} here.</summary>
+                /// <param name="inputCultureProbe">The supplied value.</param>
+                public void Run(string inputCultureProbe) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(source);
+    }
+
+    [Test]
     public async Task CaseInsensitiveConstraint()
     {
         const string testCode = """
