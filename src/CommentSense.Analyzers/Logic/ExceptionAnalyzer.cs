@@ -25,6 +25,7 @@ internal static class ExceptionAnalyzer
 
     private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>>> CompilationExceptionCache = new();
     private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<string, ExceptionTypeResolution>> CompilationExceptionFallbackCache = new();
+    private static readonly ConditionalWeakTable<Compilation, ConcurrentDictionary<bool, ConcurrentDictionary<ISymbol, ImmutableArray<ITypeSymbol>>>> InitializerExceptionCache = new();
 
     private readonly record struct EffectiveDocumentedExceptions(HashSet<ITypeSymbol> Types, bool HasUnknownInheritedDocumentation);
     private readonly record struct ExceptionTypeResolution(ITypeSymbol? Type);
@@ -621,7 +622,7 @@ internal static class ExceptionAnalyzer
                 syntax is ConstructorDeclarationSyntax declaration &&
                 RunsInstanceInitializers(constructor, declaration, semanticModel, cancellationToken))
             {
-                thrownTypes.UnionWith(GetThrownTypes(compilation, constructor.ContainingType, true, options, cancellationToken));
+                thrownTypes.UnionWith(GetInitializerExceptions(compilation, constructor.ContainingType, options, cancellationToken));
             }
         }
 
@@ -631,6 +632,13 @@ internal static class ExceptionAnalyzer
     private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options)
     {
         return GetThrownTypes(context.Compilation, symbol, isPrimaryCtor, options, context.CancellationToken);
+    }
+
+    private static ImmutableArray<ITypeSymbol> GetInitializerExceptions(Compilation compilation, INamedTypeSymbol type, CommentSenseOptions options, CancellationToken token)
+    {
+        var modes = InitializerExceptionCache.GetValue(compilation, _ => new());
+        var types = modes.GetOrAdd(options.ScanCalledMethodsForExceptions, _ => new(SymbolEqualityComparer.Default));
+        return types.GetOrAdd(type, symbol => [.. GetThrownTypes(compilation, symbol, true, options, token)]);
     }
 
     private static bool RunsInstanceInitializers(IMethodSymbol constructor, ConstructorDeclarationSyntax declaration, SemanticModel semanticModel, CancellationToken token)
@@ -742,8 +750,7 @@ internal static class ExceptionAnalyzer
     private static bool IsExcludedPrimaryConstructorMember(SyntaxNode n)
     {
         return n is MemberDeclarationSyntax member && member.Modifiers.Any(SyntaxKind.StaticKeyword) ||
-               n is MethodDeclarationSyntax
-                    or ConstructorDeclarationSyntax
+               n is BaseMethodDeclarationSyntax
                     or IndexerDeclarationSyntax
                     or ArrowExpressionClauseSyntax
                     or AccessorListSyntax
@@ -892,6 +899,10 @@ internal static class ExceptionAnalyzer
         if (symbol is IMethodSymbol { MethodKind: MethodKind.DelegateInvoke } delegateMethod)
         {
             symbol = delegateMethod.ContainingType;
+        }
+        else if (symbol is IMethodSymbol { MethodKind: MethodKind.Constructor, IsImplicitlyDeclared: true, Parameters.IsEmpty: true, ContainingType.TypeKind: TypeKind.Class } constructor)
+        {
+            symbol = constructor.ContainingType;
         }
 
         if (DocumentationComment.FromSymbol(symbol, token) is { } documentation && !documentation.IsMalformedFor(symbol, token))

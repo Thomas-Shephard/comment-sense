@@ -2229,13 +2229,13 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     }
 
     [Test]
-    public async Task NestedExceptionTagsAreIgnored()
+    public async Task NestedTypeExceptionDoesNotDocumentMethod()
     {
         const string testCode = """
             using System;
             /// <summary>
             /// This is a summary for the class.
-            /// <exception cref="T:System.ArgumentNullException">This is nested and should be ignored</exception>
+            /// {|CSENSE023:<exception cref="T:System.ArgumentNullException">This is nested and should be ignored</exception>|}
             /// </summary>
             public class MyClass
             {

@@ -9,6 +9,103 @@ namespace CommentSense.Analyzers.Tests;
 public class InitializerExceptionTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
     [Test]
+    public async Task ImplicitConstructorInitializers(
+        [Values("class", "record")] string kind,
+        [Values("public", "private")] string visibility,
+        [Values] bool isStatic,
+        [Values] bool property,
+        [Values] bool documented)
+    {
+        var missing = !isStatic && !documented;
+        var source = $$"""
+            /// <summary>Stores a value.</summary>
+            {{(documented ? "/// <exception cref=\"System.ArgumentException\">The value is invalid.</exception>" : "")}}
+            public {{kind}} {{(missing ? "{|CSENSE012:Container|}" : "Container")}}
+            {
+                /// <summary>Stores the initialized value.</summary>
+                {{(property ? "/// <value>The stored value.</value>" : "")}}
+                {{visibility}} {{(isStatic ? "static" : "")}} int Stored {{(property ? "{ get; }" : "")}} =
+                    System.DateTime.Now.Ticks > 0 ? 1 : throw new System.ArgumentException();
+            }
+            """;
+
+        await VerifyCSenseAsync(source, expectDiagnostic: missing, referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
+    public async Task ImplicitConstructorCallsUseTypeDocumentation([Values] bool scan)
+    {
+        var source = $$"""
+            /// <summary>Stores a value.</summary>
+            /// <exception cref="System.ArgumentException">The value is invalid.</exception>
+            public class Container
+            {
+                private int Stored { get; } = System.DateTime.Now.Ticks > 0 ? 1 : throw new System.ArgumentException();
+            }
+
+            /// <summary>Creates storage.</summary>
+            public class Factory
+            {
+                /// <summary>Creates a container.</summary>
+                /// <returns>The storage.</returns>
+                public Container {{(scan ? "{|CSENSE012:Create|}" : "Create")}}() => new Container();
+            }
+            """;
+
+        await VerifyCSenseAsync(source, expectDiagnostic: scan, referenceAssemblies: ReferenceAssemblies.Net.Net100,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = scan.ToString() });
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void ConstructorsInDifferentFilesRespectTheirScanningOptions(bool firstScan)
+    {
+        var first = $$"""
+            /// <summary>Stores a value.</summary>
+            public partial class Container
+            {
+                /// <summary>Creates the storage.</summary>
+                public {{(firstScan ? "{|CSENSE012:Container|}" : "Container")}}() { }
+
+                private int Stored { get; } = Create();
+
+                /// <summary>Creates a value.</summary>
+                /// <returns>The value.</returns>
+                /// <exception cref="System.ArgumentException">The value is invalid.</exception>
+                private static int Create() => 1;
+            }
+            """;
+        var second = $$"""
+            public partial class Container
+            {
+                /// <summary>Creates the storage with an option.</summary>
+                /// <param name="option">The construction option.</param>
+                public {{(!firstScan ? "{|CSENSE012:Container|}" : "Container")}}(int option) { }
+            }
+            """;
+        var test = new CSharpAnalyzerTest<CommentSenseAnalyzer, NUnitVerifier>
+        {
+            TestState =
+            {
+                ReferenceAssemblies = ReferenceAssemblies.Net.Net100,
+                Sources = { ("/First.cs", first), ("/Second.cs", second) },
+                AnalyzerConfigFiles =
+                {
+                    ("/.editorconfig", $$"""
+                        root = true
+                        [First.cs]
+                        comment_sense.scan_called_methods_for_exceptions = {{firstScan}}
+                        [Second.cs]
+                        comment_sense.scan_called_methods_for_exceptions = {{!firstScan}}
+                        """)
+                }
+            },
+            MarkupOptions = MarkupOptions.UseFirstDescriptor
+        };
+        Assert.DoesNotThrowAsync(async () => await test.RunAsync());
+    }
+
+    [Test]
     public async Task PrimaryConstructorInitializers(
         [Values("class", "struct")] string kind,
         [Values("public", "private")] string visibility,
