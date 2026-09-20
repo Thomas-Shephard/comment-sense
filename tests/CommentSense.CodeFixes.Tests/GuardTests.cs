@@ -14,10 +14,12 @@ public class GuardTests
         Assert.That(result, Is.EqualTo(value));
     }
 
-    [Test]
-    public void AgainstNullThrowsForNull()
+    [TestCase(null, "Unexpected null value.")]
+    [TestCase("Missing root.", "Missing root.")]
+    public void AgainstNullThrowsForNull(string? message, string expected)
     {
-        Assert.Throws<InvalidOperationException>(() => Guard.AgainstNull<string>(null));
+        var exception = Assert.Throws<InvalidOperationException>(() => Guard.AgainstNull<string>(null, message));
+        Assert.That(exception?.Message, Is.EqualTo(expected));
     }
 
     [Test]

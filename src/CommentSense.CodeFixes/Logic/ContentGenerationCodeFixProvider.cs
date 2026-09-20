@@ -290,7 +290,7 @@ public class ContentGenerationCodeFixProvider : CodeFixProviderBase
 
     private static bool IsImmediatelyAfterInitialPrefix(DocumentationCommentTriviaSyntax docTrivia, SyntaxList<XmlNodeSyntax> content, int insertionIndex, string prefix, string newLine)
     {
-        if (insertionIndex != 1 || content.Count == 0 || content[0] is not XmlTextSyntax initialText)
+        if (insertionIndex != 1 || content[0] is not XmlTextSyntax initialText)
             return false;
 
         var textStr = initialText.ToString();

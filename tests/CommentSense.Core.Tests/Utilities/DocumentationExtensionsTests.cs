@@ -1196,6 +1196,14 @@ public class DocumentationExtensionsTests
     }
 
     [Test]
+    public void IsTopLevelUsesExplicitTarget()
+    {
+        var root = XElement.Parse("<doc><member><summary>Documentation.</summary></member></doc>");
+        var target = root.Element("member") ?? throw new InvalidOperationException();
+        Assert.That(DocumentationXmlExtensions.IsTopLevel(root, target.Elements().Single(), target), Is.True);
+    }
+
+    [Test]
     public void IsTopLevelDetachedElementReturnsFalse()
     {
         var root = XElement.Parse("<root><summary/></root>");

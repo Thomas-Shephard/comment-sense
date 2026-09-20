@@ -173,6 +173,42 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
         await VerifyCSenseAsync(testCode);
     }
 
+    [TestCase("Ordinary")]
+    [TestCase("ArgumentException")]
+    public async Task OutOfScopeCrefReportsUnresolvedReference(string name)
+    {
+        var source = $$"""
+            namespace N { internal class Ordinary {} }
+            /// <summary>Container.</summary>
+            public class C
+            {
+                /// <summary>Performs work.</summary>
+                /// <exception cref="{|CSENSE007:{{name}}|}">Failure details.</exception>
+                public void M() {}
+            }
+            """;
+        await VerifyCSenseAsync(source);
+    }
+
+    [TestCase("C", false)]
+    [TestCase("{|CSENSE007:Failure|}", true)]
+    public async Task ExceptionCrefWithoutSystemExceptionIsHandled(string cref, bool expectDiagnostic)
+    {
+        var source = $$"""
+            namespace N { internal class Failure {} }
+            /// <summary>Container.</summary>
+            public class C
+            {
+                /// <summary>Performs work.</summary>
+                /// <exception cref="{{cref}}">Failure details.</exception>
+                public void M() {}
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: expectDiagnostic,
+            compilerDiagnostics: Microsoft.CodeAnalysis.Testing.CompilerDiagnostics.None,
+            solutionTransform: (solution, projectId) => solution.WithProjectMetadataReferences(projectId, []));
+    }
+
     [Test]
     public async Task InternalMemberWithUnresolvedCrefDoesNotReportDiagnostic()
     {
@@ -215,6 +251,24 @@ public class CrefValidationTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             """;
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task AmbiguousExceptionCrefIsNotClassifiedAsInvalidType()
+    {
+        const string source = """
+            /// <summary>Container.</summary>
+            public class C
+            {
+                /// <summary>Performs work.</summary>
+                /// <exception cref="M">Failure details.</exception>
+                public void M() {}
+                /// <summary>Performs other work.</summary>
+                /// <param name="value">Input data.</param>
+                public void M(int value) {}
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: false);
     }
 
     [Test]

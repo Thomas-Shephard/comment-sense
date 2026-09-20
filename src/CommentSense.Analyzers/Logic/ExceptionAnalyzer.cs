@@ -663,8 +663,8 @@ internal static class ExceptionAnalyzer
         if (methodDeclaration is ConstructorDeclarationSyntax { Initializer: { } initializer })
             yield return initializer;
 
-        if (methodDeclaration.ExpressionBody is { Expression: { } methodExpression })
-            yield return methodExpression;
+        if (methodDeclaration.ExpressionBody is { } methodExpression)
+            yield return methodExpression.Expression;
 
         if (methodDeclaration.Body is { } methodBody)
             yield return methodBody;
@@ -672,11 +672,11 @@ internal static class ExceptionAnalyzer
 
     private static IEnumerable<SyntaxNode> GetPropertyAnalysisRoots(PropertyDeclarationSyntax propertyDeclaration)
     {
-        if (propertyDeclaration.Initializer is { Value: { } propertyInitializer })
-            yield return propertyInitializer;
+        if (propertyDeclaration.Initializer is { } propertyInitializer)
+            yield return propertyInitializer.Value;
 
-        if (propertyDeclaration.ExpressionBody is { Expression: { } propertyExpression })
-            yield return propertyExpression;
+        if (propertyDeclaration.ExpressionBody is { } propertyExpression)
+            yield return propertyExpression.Expression;
 
         if (propertyDeclaration.AccessorList is { } propertyAccessorList)
             yield return propertyAccessorList;
@@ -684,8 +684,8 @@ internal static class ExceptionAnalyzer
 
     private static IEnumerable<SyntaxNode> GetIndexerAnalysisRoots(IndexerDeclarationSyntax indexerDeclaration)
     {
-        if (indexerDeclaration.ExpressionBody is { Expression: { } indexerExpression })
-            yield return indexerExpression;
+        if (indexerDeclaration.ExpressionBody is { } indexerExpression)
+            yield return indexerExpression.Expression;
 
         if (indexerDeclaration.AccessorList is { } indexerAccessorList)
             yield return indexerAccessorList;
@@ -730,8 +730,6 @@ internal static class ExceptionAnalyzer
                     or ConstructorDeclarationSyntax
                     or PropertyDeclarationSyntax
                     or IndexerDeclarationSyntax
-                    or AccessorListSyntax
-                    or AccessorDeclarationSyntax
                     or EventDeclarationSyntax;
     }
 
@@ -815,7 +813,7 @@ internal static class ExceptionAnalyzer
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberAccess(MemberAccessExpressionSyntax ma, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
         // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
-        return ma.Parent is InvocationExpressionSyntax parentInvocation && parentInvocation.Expression == ma
+        return ma.Parent is InvocationExpressionSyntax
             ? []
             : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ma, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }
@@ -823,7 +821,7 @@ internal static class ExceptionAnalyzer
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberBinding(MemberBindingExpressionSyntax mb, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
         // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
-        return mb.Parent is InvocationExpressionSyntax parentInvocationMb && parentInvocationMb.Expression == mb
+        return mb.Parent is InvocationExpressionSyntax
             ? []
             : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(mb, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }

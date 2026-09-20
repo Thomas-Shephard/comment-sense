@@ -423,6 +423,13 @@ public class DocumentationSyntaxExtensionsTests
     }
 
     [Test]
+    public void CreateXmlElementPermissionUsesCref()
+    {
+        var element = DocumentationSyntaxExtensions.CreateXmlElement("permission", "System.Object", "Required.");
+        Assert.That(element.ToString(), Is.EqualTo("<permission cref=\"System.Object\">Required.</permission>"));
+    }
+
+    [Test]
     public void CreateXmlElementWithSeeCrefReturnsElementWithCrefAttribute()
     {
         var node = DocumentationSyntaxExtensions.CreateXmlElement("see", attributeValue: "System.String");
@@ -441,6 +448,14 @@ public class DocumentationSyntaxExtensionsTests
     {
         var node = DocumentationSyntaxExtensions.CreateXmlElement("seealso", attributeValue: "System.String");
         Assert.That(node.ToString(), Is.EqualTo("<seealso cref=\"System.String\" />"));
+    }
+
+    [TestCase("see")]
+    [TestCase("seealso")]
+    public void CreateXmlElementWithoutCrefReturnsEmptyLink(string tag)
+    {
+        var element = DocumentationSyntaxExtensions.CreateXmlElement(tag);
+        Assert.That(element.ToString(), Is.EqualTo($"<{tag} />"));
     }
 
     [Test]

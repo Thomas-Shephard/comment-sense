@@ -19,9 +19,9 @@ internal static class ReturnValueAnalyzer
         {
             AnalyzeProperty(context, property, targetSymbol, documentation, options);
         }
-        else if (symbol is IMethodSymbol methodSymbol)
+        else
         {
-            AnalyzeMethod(context, methodSymbol, targetSymbol, documentation, options);
+            AnalyzeMethod(context, (IMethodSymbol)symbol, targetSymbol, documentation, options);
         }
     }
 

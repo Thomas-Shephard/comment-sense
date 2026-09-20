@@ -464,6 +464,14 @@ public class CommentSenseOptionsTests
     }
 
     [Test]
+    public void TagOrderKeepsFirstOccurrenceOfDuplicate()
+    {
+        var local = new MapOptions(new Dictionary<string, string> { ["comment_sense.tag_order"] = "summary,remarks,SUMMARY" });
+        var order = CommentSenseOptionsLoader.GetTagOrderOption(local, new MapOptions(new Dictionary<string, string>()), "tag_order", new Dictionary<string, int>());
+        Assert.That(order, Is.EquivalentTo(new Dictionary<string, int> { ["summary"] = 0, ["remarks"] = 1 }));
+    }
+
+    [Test]
     public void ParseTagOrderHandlesReturnsWithoutValue()
     {
         var localOptions = new MapOptions(new Dictionary<string, string>

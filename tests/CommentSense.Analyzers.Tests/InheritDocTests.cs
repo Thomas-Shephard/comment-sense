@@ -56,6 +56,27 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
     }
 
     [Test]
+    public async Task RepeatedImplicitInheritDocUsesSameTarget()
+    {
+        const string source = """
+            /// <summary>Base implementation.</summary>
+            public class Base
+            {
+                /// <summary>Performs an operation.</summary>
+                public virtual void M() { }
+            }
+            /// <summary>Derived implementation.</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc/>
+                /// <inheritdoc/>
+                public override void M() { }
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: false);
+    }
+
+    [Test]
     public async Task InheritDocWithCrefDoesNotReportDiagnostic()
     {
         const string testCode = """
@@ -584,6 +605,23 @@ public class InheritDocTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer
         };
 
         await VerifyCSenseAsync(testCode, configOptions: options);
+    }
+
+    [TestCase("public enum E { Value }", "E")]
+    [TestCase("public delegate void D();", "D")]
+    [TestCase("public struct S {}", "S")]
+    public void FrameworkBaseDoesNotProvideImplicitDocumentation(string declaration, string name)
+    {
+        var symbol = RoslynTestUtils.GetSymbolFromSource(declaration, name);
+        Assert.That(Logic.InheritDocAnalyzer.GetImplicitTargetsForInheritDoc(symbol),
+            Is.EquivalentTo(((INamedTypeSymbol)symbol).AllInterfaces));
+    }
+
+    [Test]
+    public void NamespaceHasNoImplicitDocumentationTarget()
+    {
+        var symbol = RoslynTestUtils.GetSymbolFromSource("namespace N { public class C {} }", "C").ContainingNamespace;
+        Assert.That(Logic.InheritDocAnalyzer.GetImplicitTargetsForInheritDoc(symbol), Is.Empty);
     }
 
     [Test]

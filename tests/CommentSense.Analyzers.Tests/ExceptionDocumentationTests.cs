@@ -165,6 +165,24 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
         await VerifyCSenseAsync(testCode);
     }
 
+    [TestCase("public int M() => ;", "<returns>The result.</returns>")]
+    [TestCase("public int P => ;", "<value>The result.</value>")]
+    [TestCase("public int P { get; } = ;", "<value>The result.</value>")]
+    [TestCase("public int this[int index] => ;", "<param name=\"index\">The position.</param><value>The result.</value>")]
+    public async Task IncompleteExpressionDoesNotCrashAnalysis(string member, string documentation)
+    {
+        var source = $$"""
+            /// <summary>Container.</summary>
+            public class C
+            {
+                /// <summary>Computes the result.</summary>
+                /// {{documentation}}
+                {{member}}
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: false, compilerDiagnostics: CompilerDiagnostics.None);
+    }
+
     [Test]
     public async Task CollectionExpressionThrowWithoutDocumentationReportsDiagnostic()
     {
@@ -1803,6 +1821,25 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     }
 
     [Test]
+    public async Task PrimaryConstructorDoesNotAnalyzeNestedTypesOrMemberBodies()
+    {
+        const string source = """
+            /// <summary>Container.</summary>
+            public class C()
+            {
+                private class Nested { private int field = true ? 1 : throw new System.Exception(); }
+                private int this[int index] => throw new System.Exception();
+                private event System.Action Changed
+                {
+                    add { throw new System.Exception(); }
+                    remove { throw new System.Exception(); }
+                }
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: false);
+    }
+
+    [Test]
     public async Task PrimaryConstructorExceptionInFieldInitializerReportsOnClass()
     {
         const string testCode = """
@@ -2081,6 +2118,20 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
     }
 
     [Test]
+    public async Task UnresolvedThrowInvocationIsNotGuardClause()
+    {
+        const string source = """
+            /// <summary>Container.</summary>
+            public class C
+            {
+                /// <summary>Performs work.</summary>
+                public void M() { ThrowMissing(); }
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: false, compilerDiagnostics: CompilerDiagnostics.None);
+    }
+
+    [Test]
     public async Task GuardClauseWithDocumentationDoesNotReportDiagnostic()
     {
         const string testCode = """
@@ -2151,6 +2202,26 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             """;
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [Test]
+    public async Task EventDocumentationPropagatesToCaller()
+    {
+        const string source = """
+            /// <summary>Container.</summary>
+            public class C
+            {
+                /// <summary>Notifies listeners.</summary>
+                /// <exception cref="System.InvalidOperationException">Subscription failed.</exception>
+                public event System.Action Changed { add {} remove {} }
+                /// <summary>Subscribes a listener.</summary>
+                public void {|CSENSE012:M|}() { Changed += () => {}; }
+            }
+            """;
+        await VerifyCSenseAsync(source, configOptions: new Dictionary<string, string>
+        {
+            ["comment_sense.scan_called_methods_for_exceptions"] = "true"
+        });
     }
 
     [Test]
@@ -2622,6 +2693,14 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
 
         await VerifyCSenseAsync(testCode,
             diagnosticOptions: [("CSENSE001", ReportDiagnostic.Suppress)]);
+    }
+
+    [Test]
+    public void TypeWithoutNamespaceIsNotIgnored()
+    {
+        var compilation = CSharpCompilation.Create("Test");
+        var type = compilation.CreateArrayTypeSymbol(compilation.GetSpecialType(SpecialType.System_Int32));
+        Assert.That(Logic.ExceptionAnalyzer.IsIgnored(type, CommentSenseOptions.Default), Is.False);
     }
 
     [Test]

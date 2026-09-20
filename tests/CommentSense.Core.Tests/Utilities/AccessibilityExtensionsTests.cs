@@ -82,10 +82,19 @@ public class AccessibilityExtensionsTests
     }
 
     [Test]
-    public void IsEffectivelyAccessibleInvalidVisibilityLevelReturnsFalse()
+    public void GetEffectiveVisibilityLevelGenericWithPublicArgumentReturnsPublic()
+    {
+        var field = (IFieldSymbol)RoslynTestUtils.GetSymbolFromSource(
+            "public class C { public System.Collections.Generic.List<int> Values; }", "Values");
+        Assert.That(field.Type.GetEffectiveVisibilityLevel(), Is.EqualTo(VisibilityLevel.Public));
+    }
+
+    [TestCase(-1)]
+    [TestCase(999)]
+    public void IsEffectivelyAccessibleInvalidVisibilityLevelReturnsFalse(int level)
     {
         var symbol = RoslynTestUtils.GetSymbolFromSource("public class C {}", "C");
-        Assert.That(symbol.IsEffectivelyAccessible((VisibilityLevel)999), Is.False);
+        Assert.That(symbol.IsEffectivelyAccessible((VisibilityLevel)level), Is.False);
     }
 
     [Test]

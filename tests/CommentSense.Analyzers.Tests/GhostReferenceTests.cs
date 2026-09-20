@@ -52,7 +52,7 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             namespace Test;
             public class C {
                 /// <summary>
-                /// This summary mentions {|CSENSE020:p0|} and {|CSENSE020:p{{parameterCount - 1}}|}.
+                /// This summary mentions 123 {|CSENSE020:p0|} and {|CSENSE020:p{{parameterCount - 1}}|}.
                 /// </summary>
                 public void M({{parameters}}) { }
             }
@@ -601,6 +601,24 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
             """;
 
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
+    }
+
+    [TestCase("paramref", "name=\"itemCount\"")]
+    [TestCase("typeparamref", "name=\"TItem\"")]
+    [TestCase("see", "cref=\"System.Int32\"")]
+    public async Task ExplicitReferenceContentIsNotGhostReference(string tag, string attribute)
+    {
+        var source = $$"""
+            /// <summary>Operations.</summary>
+            public class C
+            {
+                /// <summary>Uses <{{tag}} {{attribute}}>itemCount</{{tag}}> safely.</summary>
+                /// <typeparam name="TItem">The item type.</typeparam>
+                /// <param name="itemCount">The number of items.</param>
+                public void M<TItem>(int itemCount) { }
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: false);
     }
 
     [Test]

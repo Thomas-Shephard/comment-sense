@@ -394,6 +394,27 @@ public class InheritDocExceptionTests : CommentSenseAnalyzerTestBase<CommentSens
     }
 
     [Test]
+    public async Task UnresolvedInheritedExceptionDoesNotDocumentThrownType()
+    {
+        const string source = """
+            /// <summary>Base implementation.</summary>
+            public class Base
+            {
+                /// <summary>Performs work.</summary>
+                /// <exception cref="{|CSENSE007:UnknownException|}">Failure details.</exception>
+                public virtual void M() {}
+            }
+            /// <summary>Derived implementation.</summary>
+            public class Derived : Base
+            {
+                /// <inheritdoc/>
+                public override void {|CSENSE012:M|}() { throw new System.InvalidOperationException(); }
+            }
+            """;
+        await VerifyCSenseAsync(source);
+    }
+
+    [Test]
     public async Task MalformedImplicitTargetDocumentationIsIgnoredWhenAnotherTargetIsValid()
     {
         const string testCode = """
