@@ -13,6 +13,97 @@ namespace CommentSense.Analyzers.Tests;
 
 public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
+    [TestCase("Failure{T}")]
+    [TestCase("B.Failure{T}")]
+    public async Task BoundGenericExceptionCrefDoesNotDocumentSameNamedType(string cref)
+    {
+        var testCode = $$"""
+            using B;
+            namespace A
+            {
+                /// <summary>Represents an operation failure.</summary>
+                /// <typeparam name="T">The failure context.</typeparam>
+                public class Failure<T> : System.Exception { }
+            }
+            namespace B
+            {
+                /// <summary>Represents an operation failure.</summary>
+                /// <typeparam name="T">The failure context.</typeparam>
+                public class Failure<T> : System.Exception { }
+            }
+            /// <summary>Provides operations.</summary>
+            public class Operations
+            {
+                /// <summary>Performs an operation.</summary>
+                /// <exception cref="{{cref}}">The operation failed.</exception>
+                public void {|CSENSE012:Run|}() => throw new A.Failure<int>();
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [TestCase("Failure")]
+    [TestCase("B.Failure")]
+    public async Task BoundExceptionCrefDoesNotDocumentSameNamedType(string cref)
+    {
+        var testCode = $$"""
+            using B;
+            namespace A
+            {
+                /// <summary>Represents an operation failure.</summary>
+                public class Failure : System.Exception { }
+            }
+            namespace B
+            {
+                /// <summary>Represents an operation failure.</summary>
+                public class Failure : System.Exception { }
+            }
+            /// <summary>Provides operations.</summary>
+            public class Operations
+            {
+                /// <summary>Performs an operation.</summary>
+                /// <exception cref="{{cref}}">The operation failed.</exception>
+                public void {|CSENSE012:Run|}() => throw new A.Failure();
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode);
+    }
+
+    [TestCase("Failure")]
+    [TestCase("B.Failure")]
+    public async Task BoundExceptionCrefDoesNotPropagateSameNamedType(string cref)
+    {
+        var testCode = $$"""
+            using B;
+            namespace A
+            {
+                /// <summary>Represents an operation failure.</summary>
+                public class Failure : System.Exception { }
+            }
+            namespace B
+            {
+                /// <summary>Represents an operation failure.</summary>
+                public class Failure : System.Exception { }
+            }
+            /// <summary>Provides operations.</summary>
+            public class Operations
+            {
+                /// <summary>Performs an operation.</summary>
+                /// <exception cref="{{cref}}">The operation failed.</exception>
+                private void Source() { }
+
+                /// <summary>Calls the operation.</summary>
+                /// <exception cref="B.Failure">The operation failed.</exception>
+                public void Run() => Source();
+            }
+            """;
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: false,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = "true" });
+    }
+
     [Test]
     public async Task ThrowStatementWithoutDocumentationReportsDiagnostic()
     {
