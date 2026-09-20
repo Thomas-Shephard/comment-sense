@@ -628,6 +628,11 @@ internal static class ExceptionAnalyzer
         return thrownTypes;
     }
 
+    private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options)
+    {
+        return GetThrownTypes(context.Compilation, symbol, isPrimaryCtor, options, context.CancellationToken);
+    }
+
     private static bool RunsInstanceInitializers(IMethodSymbol constructor, ConstructorDeclarationSyntax declaration, SemanticModel semanticModel, CancellationToken token)
     {
         if (constructor is { ContainingType: { IsRecord: true, TypeKind: TypeKind.Class } type, Parameters.Length: 1 } &&
@@ -639,11 +644,6 @@ internal static class ExceptionAnalyzer
 
         return constructor.ContainingType.IsValueType &&
                semanticModel.GetSymbolInfo(initializer, token).Symbol is IMethodSymbol { IsImplicitlyDeclared: true };
-    }
-
-    private static HashSet<ITypeSymbol> GetThrownTypes(SymbolAnalysisContext context, ISymbol symbol, bool isPrimaryCtor, CommentSenseOptions options)
-    {
-        return GetThrownTypes(context.Compilation, symbol, isPrimaryCtor, options, context.CancellationToken);
     }
 
     private static IEnumerable<SyntaxNode> GetDescendantNodesOfInterest(SyntaxNode root, bool isPrimaryCtor, bool scanCalledMethods, CancellationToken cancellationToken)

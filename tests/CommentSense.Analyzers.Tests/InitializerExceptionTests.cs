@@ -62,7 +62,7 @@ public class InitializerExceptionTests : CommentSenseAnalyzerTestBase<CommentSen
 
     [TestCase(true)]
     [TestCase(false)]
-    public async Task InitializerInAnotherPartialDeclaration(bool primary)
+    public void InitializerInAnotherPartialDeclaration(bool primary)
     {
         var source = $$"""
             /// <summary>Stores a value.</summary>
@@ -88,7 +88,7 @@ public class InitializerExceptionTests : CommentSenseAnalyzerTestBase<CommentSen
             MarkupOptions = MarkupOptions.UseFirstDescriptor
         };
         test.ApplyCommonConfiguration(null, DocumentationMode.Parse, null);
-        await test.RunAsync();
+        Assert.DoesNotThrowAsync(async () => await test.RunAsync());
     }
 
     [Test]
