@@ -1,26 +1,30 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.MSBuild;
 using BenchmarkDotNet.Attributes;
 
 namespace CommentSense.PerformanceTests;
 
 public class DogfoodBenchmarks : BenchmarkBase
 {
-    protected override IEnumerable<SyntaxTree> GetSyntaxTrees()
-    {
-        var rootPath = GetSourceRoot();
-        var files = Directory.GetFiles(rootPath, "*.cs", SearchOption.AllDirectories)
-            .Where(f => !f.Contains(Path.DirectorySeparatorChar + ".git" + Path.DirectorySeparatorChar) &&
-                        !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) &&
-                        !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar));
+    [Params("CommentSense.Core", "CommentSense.Analyzers", "CommentSense.CodeFixes")]
+    public string ProjectName { get; set; } = "CommentSense.Analyzers";
 
-        return [.. files.Select(f =>
-            CSharpSyntaxTree.ParseText(File.ReadAllText(f), new CSharpParseOptions().WithDocumentationMode(DocumentationMode.Parse))
-        )];
+    protected override Compilation CreateCompilation()
+    {
+        using var workspace = MSBuildWorkspace.Create(new Dictionary<string, string> { ["Configuration"] = "Release" });
+        var projectPath = Path.Combine(GetSourceRoot(), ProjectName, ProjectName + ".csproj");
+        var project = workspace.OpenProjectAsync(projectPath).GetAwaiter().GetResult();
+        var compilation = project.GetCompilationAsync().GetAwaiter().GetResult()
+            ?? throw new InvalidOperationException($"No compilation for {projectPath}.");
+        var failures = workspace.Diagnostics.Where(d => d.Kind == WorkspaceDiagnosticKind.Failure).ToArray();
+        if (failures.Length != 0)
+            throw new InvalidOperationException(string.Join(Environment.NewLine, failures.Select(d => d.Message)));
+        return compilation;
     }
 
     public override void Setup()
