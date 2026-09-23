@@ -19,25 +19,25 @@ internal static class DocumentationSynchronizationLogic
         public ISymbol Symbol { get; } = symbol;
     }
 
-    public static Task<MatchResult?> FindMatchAsync(
+    public static MatchResult? FindMatch(
         SyntaxNode root,
         SemanticModel semanticModel,
         Diagnostic diagnostic,
         CommentSenseOptions options,
-        Dictionary<ISymbol, (string? XML, System.Xml.Linq.XElement? Element)>? docCache,
+        Dictionary<ISymbol, System.Xml.Linq.XElement?>? docCache,
         CancellationToken cancellationToken)
     {
         if (options.RenameSimilarityThreshold <= 0)
-            return Task.FromResult<MatchResult?>(null);
+            return null;
 
         var node = root.FindNode(diagnostic.Location.SourceSpan, findInsideTrivia: true);
         var symbol = node.GetAssociatedSymbol(semanticModel);
         if (symbol == null)
-            return Task.FromResult<MatchResult?>(null);
+            return null;
 
         var xElement = GetDocumentationElement(symbol, docCache, cancellationToken);
         if (xElement == null)
-            return Task.FromResult<MatchResult?>(null);
+            return null;
 
         var isTypeParam = diagnostic.Id is CommentSenseDiagnosticIds.MissingTypeParameterDocumentationId or CommentSenseDiagnosticIds.StrayTypeParameterDocumentationId;
         var tagName = isTypeParam ? DocumentationTags.TypeParam : DocumentationTags.Param;
@@ -46,22 +46,22 @@ internal static class DocumentationSynchronizationLogic
             ? FindMatchForMissing(node, symbol, tagName, diagnostic, options.RenameSimilarityThreshold)
             : FindMatchForStray(root, symbol, xElement, tagName, diagnostic, isTypeParam, options.RenameSimilarityThreshold);
 
-        return Task.FromResult(result);
+        return result;
     }
 
     public static System.Xml.Linq.XElement? GetDocumentationElement(
         ISymbol symbol,
-        Dictionary<ISymbol, (string? XML, System.Xml.Linq.XElement? Element)>? docCache,
+        Dictionary<ISymbol, System.Xml.Linq.XElement?>? docCache,
         CancellationToken cancellationToken)
     {
         if (docCache != null && docCache.TryGetValue(symbol, out var cached))
-            return cached.Element;
+            return cached;
 
         var xml = symbol.GetDocumentationCommentXml(cancellationToken: cancellationToken);
         if (!DocumentationXmlExtensions.TryParseDocumentation(xml, out var xElement))
             return null;
 
-        docCache?[symbol] = (xml, xElement);
+        docCache?[symbol] = xElement;
         return xElement;
     }
 

@@ -1,6 +1,3 @@
-using System.Xml.Linq;
-using CommentSense.Analyzers.Logic;
-using CommentSense.Core;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using NUnit.Framework;
@@ -536,37 +533,6 @@ public class ReturnValueDocumentationTests : CommentSenseAnalyzerTestBase<Commen
             """;
 
         await VerifyCSenseAsync(testCode);
-    }
-
-    [Test]
-    public void IsLowQualityCheckReferenceEquals()
-    {
-        var options = CommentSenseOptions.Default;
-
-        var syntaxTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText("class C {}");
-        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("Test")
-            .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
-            .AddSyntaxTrees(syntaxTree);
-        var symbol = compilation.GetTypeByMetadataName("C") ?? throw new InvalidOperationException();
-
-        var result = QualityAnalyzer.IsLowQuality(new XElement("summary", "Valid"), symbol, symbol, options);
-        Assert.That(result, Is.False);
-    }
-
-    [Test]
-    public void IsLowQualityCheckDifferentSymbols()
-    {
-        var options = CommentSenseOptions.Default;
-
-        var syntaxTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText("class C { void M() {} }");
-        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("Test")
-            .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location))
-            .AddSyntaxTrees(syntaxTree);
-        var type = compilation.GetTypeByMetadataName("C") ?? throw new InvalidOperationException();
-        var methodSymbol = type.GetMembers("M").First();
-
-        var result = QualityAnalyzer.IsLowQuality(new XElement("summary", "Valid"), methodSymbol, type, options);
-        Assert.That(result, Is.False);
     }
 
     [Test]

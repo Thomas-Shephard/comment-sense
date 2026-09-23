@@ -66,14 +66,14 @@ public class DocumentationSynchronizationLogicTests
     }
 
     [Test]
-    public async Task FindMatchAsyncReturnsNullWhenThresholdIsZero()
+    public void FindMatchReturnsNullWhenThresholdIsZero()
     {
         var options = CommentSenseOptions.Default with { RenameSimilarityThreshold = 0 };
         var root = SyntaxFactory.CompilationUnit();
         var semanticModel = new Mock<SemanticModel>();
         var diagnostic = Diagnostic.Create("CSENSE001", "Category", "Message", DiagnosticSeverity.Warning, DiagnosticSeverity.Warning, true, 1);
 
-        var result = await DocumentationSynchronizationLogic.FindMatchAsync(
+        var result = DocumentationSynchronizationLogic.FindMatch(
             root,
             semanticModel.Object,
             diagnostic,
@@ -85,7 +85,7 @@ public class DocumentationSynchronizationLogicTests
     }
 
     [Test]
-    public async Task FindMatchAsyncReturnsNullWhenSymbolNotFound()
+    public async Task FindMatchReturnsNullWhenSymbolNotFound()
     {
         var options = CommentSenseOptions.Default with { RenameSimilarityThreshold = 0.5 };
         var tree = CSharpSyntaxTree.ParseText("");
@@ -98,7 +98,7 @@ public class DocumentationSynchronizationLogicTests
             new DiagnosticDescriptor("CSENSE002", "Title", "Message", "Category", DiagnosticSeverity.Warning, true),
             Location.Create(tree, new TextSpan(0, 0)));
 
-        var result = await DocumentationSynchronizationLogic.FindMatchAsync(
+        var result = DocumentationSynchronizationLogic.FindMatch(
             root,
             semanticModel,
             diagnostic,
@@ -110,7 +110,7 @@ public class DocumentationSynchronizationLogicTests
     }
 
     [Test]
-    public async Task FindMatchAsyncReturnsNullWhenDocumentationIsMissing()
+    public async Task FindMatchReturnsNullWhenDocumentationIsMissing()
     {
         var options = CommentSenseOptions.Default with { RenameSimilarityThreshold = 0.5 };
 
@@ -126,7 +126,7 @@ public class DocumentationSynchronizationLogicTests
             new DiagnosticDescriptor("CSENSE002", "Title", "Message", "Category", DiagnosticSeverity.Warning, true),
             Location.Create(tree, span));
 
-        var result = await DocumentationSynchronizationLogic.FindMatchAsync(
+        var result = DocumentationSynchronizationLogic.FindMatch(
             root,
             semanticModel,
             diagnostic,
