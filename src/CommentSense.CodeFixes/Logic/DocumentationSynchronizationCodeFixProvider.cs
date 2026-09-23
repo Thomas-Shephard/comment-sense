@@ -37,12 +37,12 @@ public class DocumentationSynchronizationCodeFixProvider : CodeFixProviderBase
 
             var options = CommentSenseOptionsLoader.GetOptions(document.Project.AnalyzerOptions.AnalyzerConfigOptionsProvider, root.SyntaxTree);
 
-            var docCache = new Dictionary<ISymbol, (string? XML, System.Xml.Linq.XElement? Element)>(SymbolEqualityComparer.Default);
+            var docCache = new Dictionary<ISymbol, System.Xml.Linq.XElement?>(SymbolEqualityComparer.Default);
             var allMatches = new List<DocumentationSynchronizationLogic.MatchResult>();
 
             foreach (var diagnostic in diagnostics)
             {
-                var match = await DocumentationSynchronizationLogic.FindMatchAsync(root, semanticModel, diagnostic, options, docCache, cancellationToken);
+                var match = DocumentationSynchronizationLogic.FindMatch(root, semanticModel, diagnostic, options, docCache, cancellationToken);
                 if (match != null)
                     allMatches.Add(match.Value);
             }
@@ -89,7 +89,7 @@ public class DocumentationSynchronizationCodeFixProvider : CodeFixProviderBase
 
         foreach (var diagnostic in context.Diagnostics)
         {
-            var match = await DocumentationSynchronizationLogic.FindMatchAsync(root, semanticModel, diagnostic, options, null, context.CancellationToken);
+            var match = DocumentationSynchronizationLogic.FindMatch(root, semanticModel, diagnostic, options, null, context.CancellationToken);
             if (match == null)
                 continue;
 

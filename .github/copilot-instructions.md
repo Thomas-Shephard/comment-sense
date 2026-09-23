@@ -52,7 +52,6 @@ Always verify changes using these commands.
 *   **Deduplication:**
     *   Use `SymbolExtensions.GetParameters()` and `SymbolExtensions.GetTypeParameters()` for extracting parameter names from symbols. Do not re-implement this logic in analyzers.
     *   Use `node.GetAssociatedSymbol(semanticModel)` to find the symbol associated with an XML documentation node or member declaration (it correctly handles fields).
-    *   Use `symbol.GetTargetElementsWithLocations(xml, tagName)` to iterate over XML elements and their source locations simultaneously.
     *   Use `CodeFixProviderBase.FindXmlNode()` and `CodeFixProviderBase.FindXmlText()` in code fix providers to locate target nodes.
     *   Pass necessary metadata (like original names or canonical keywords) from Analyzers to CodeFixers via `Diagnostic.Properties` to avoid redundant calculations or option fetching in the code fix layer.
     *   Use `DocumentationTags` constants for all XML tag name strings.

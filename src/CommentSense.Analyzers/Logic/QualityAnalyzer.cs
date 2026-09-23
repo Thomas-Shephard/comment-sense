@@ -1,4 +1,3 @@
-using System.Xml.Linq;
 using CommentSense.Core;
 using CommentSense.Core.Utilities;
 using Microsoft.CodeAnalysis;
@@ -11,28 +10,12 @@ internal static class QualityAnalyzer
 {
     private static readonly char[] TrimChars = ['.', '!', '?', ':', ' '];
 
-    public static bool IsLowQuality(XElement element, ISymbol symbol, ISymbol targetSymbol, CommentSenseOptions options)
-    {
-        if (!TryGetContent(element, out var content))
-            return false;
-
-        return IsLowQualityCore(content, symbol, targetSymbol, options);
-    }
-
     public static bool IsLowQuality(XmlNodeSyntax element, ISymbol symbol, ISymbol targetSymbol, CommentSenseOptions options)
     {
         if (!TryGetContent(element, out var content))
             return false;
 
         return IsLowQualityCore(content, symbol, targetSymbol, options);
-    }
-
-    public static bool IsLowQuality(XElement element, string symbolName, CommentSenseOptions options, string? tagName = null)
-    {
-        if (!TryGetContent(element, out var content))
-            return false;
-
-        return IsLowQuality(content, symbolName, options, tagName);
     }
 
     public static bool IsLowQuality(XmlNodeSyntax element, string symbolName, CommentSenseOptions options, string? tagName = null)
@@ -54,14 +37,6 @@ internal static class QualityAnalyzer
 
         var normalized = contentSpan.Trim().TrimEnd(TrimChars);
         return normalized.IsEmpty || CheckNameQuality(normalized, symbolName, options, tagName);
-    }
-
-    public static bool IsLowQualityForAnyFormat(XElement element, string displayName, string minimallyQualifiedName, CommentSenseOptions options, string? tagName = null)
-    {
-        if (!TryGetContent(element, out var content))
-            return false;
-
-        return IsLowQualityForAnyFormat(content, displayName, minimallyQualifiedName, options, tagName);
     }
 
     public static bool IsLowQualityForAnyFormat(XmlNodeSyntax element, string displayName, string minimallyQualifiedName, CommentSenseOptions options, string? tagName = null)
@@ -121,12 +96,6 @@ internal static class QualityAnalyzer
 
         var simpleTypeName = type.Name;
         return simpleTypeName != typeName && IsLowQuality(content, simpleTypeName, options, tagName: tagName);
-    }
-
-    private static bool TryGetContent(XElement element, out string content)
-    {
-        content = element.Value;
-        return !(element.HasElements && string.IsNullOrWhiteSpace(content));
     }
 
     private static bool TryGetContent(XmlNodeSyntax element, out string content)

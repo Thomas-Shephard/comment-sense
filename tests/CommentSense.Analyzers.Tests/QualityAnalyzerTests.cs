@@ -1,4 +1,3 @@
-using System.Xml.Linq;
 using CommentSense.Analyzers.Logic;
 using CommentSense.Core;
 using Microsoft.CodeAnalysis;
@@ -13,7 +12,7 @@ public class QualityAnalyzerTests
     [Test]
     public void IsLowQualityDifferentTextReturnsFalse()
     {
-        var element = new XElement("summary", "Some text that is not the symbol name");
+        var element = ParseXmlElement("/// <summary>Some text that is not the symbol name</summary>\nclass C {}");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.False);
     }
@@ -21,7 +20,7 @@ public class QualityAnalyzerTests
     [Test]
     public void IsLowQualityEmptyElementReturnsTrue()
     {
-        var element = new XElement("summary");
+        var element = ParseXmlElement("/// <summary></summary>\nclass C {}");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
@@ -29,7 +28,7 @@ public class QualityAnalyzerTests
     [Test]
     public void IsLowQualityWhitespaceElementReturnsTrue()
     {
-        var element = new XElement("summary", "   ");
+        var element = ParseXmlElement("/// <summary>   </summary>\nclass C {}");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
@@ -37,7 +36,7 @@ public class QualityAnalyzerTests
     [Test]
     public void IsLowQualitySymbolNameReturnsTrue()
     {
-        var element = new XElement("summary", "MySymbol");
+        var element = ParseXmlElement("/// <summary>MySymbol</summary>\nclass C {}");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
@@ -45,7 +44,7 @@ public class QualityAnalyzerTests
     [Test]
     public void IsLowQualitySymbolNameCaseInsensitiveReturnsTrue()
     {
-        var element = new XElement("summary", "mysymbol");
+        var element = ParseXmlElement("/// <summary>mysymbol</summary>\nclass C {}");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
@@ -53,7 +52,7 @@ public class QualityAnalyzerTests
     [Test]
     public void IsLowQualityWithNestedElementsReturnsFalse()
     {
-        var element = new XElement("summary", new XElement("see", new XAttribute("cref", "T:System.Object")));
+        var element = ParseXmlElement("/// <summary><see cref=\"T:System.Object\"/></summary>\nclass C {}");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default);
         Assert.That(result, Is.False);
     }
@@ -75,7 +74,7 @@ public class QualityAnalyzerTests
     [Test]
     public void IsLowQualityReturnsBranch()
     {
-        var element = new XElement("returns", "return");
+        var element = ParseXmlElement("/// <returns>return</returns>\nclass C {}");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default, tagName: "returns");
         Assert.That(result, Is.True);
     }
@@ -83,7 +82,7 @@ public class QualityAnalyzerTests
     [Test]
     public void IsLowQualityReturnsKeywordBranch()
     {
-        var element = new XElement("returns", "returns");
+        var element = ParseXmlElement("/// <returns>returns</returns>\nclass C {}");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", CommentSenseOptions.Default, tagName: "returns");
         Assert.That(result, Is.True);
     }
@@ -95,7 +94,7 @@ public class QualityAnalyzerTests
         var longSummary = new string('A', 290) + "BBBBBBBBBB";
 
         var options = CommentSenseOptions.Default with { SimilarityThreshold = 0.9 };
-        var element = new XElement("summary", longSummary);
+        var element = ParseXmlElement("/// <summary>" + longSummary + "</summary>\nclass C {}");
 
         var result = QualityAnalyzer.IsLowQuality(element, longSymbolName, options);
         Assert.That(result, Is.True);
@@ -105,7 +104,7 @@ public class QualityAnalyzerTests
     public void QualityAnalyzerNormalizationToEmptyReturnsTrue()
     {
         var options = CommentSenseOptions.Default with { RequireEndingPunctuation = true };
-        var element = new XElement("summary", "...");
+        var element = ParseXmlElement("/// <summary>...</summary>\nclass C {}");
         var result = QualityAnalyzer.IsLowQuality(element, "MySymbol", options);
         Assert.That(result, Is.True);
     }
@@ -114,7 +113,7 @@ public class QualityAnalyzerTests
     public void CalculateSimilarityBelowThreshold()
     {
         var options = CommentSenseOptions.Default with { SimilarityThreshold = 0.9 };
-        var result = QualityAnalyzer.IsLowQuality(new XElement("summary", "Different"), "Symbol", options);
+        var result = QualityAnalyzer.IsLowQuality(ParseXmlElement("/// <summary>Different</summary>\nclass C {}"), "Symbol", options);
         Assert.That(result, Is.False);
     }
 
@@ -135,57 +134,24 @@ public class QualityAnalyzerTests
     }
 
     [Test]
-    public void IsLowQualityXElementNestedElementsWithSymbolReturnsFalse()
-    {
-        var symbol = GetRequiredNamedType(CreateCompilation("public class C { public int P { get; set; } }"), "C").GetMembers("P").Single();
-        var element = new XElement("value", new XElement("see", new XAttribute("cref", "T:System.String")));
-
-        var result = QualityAnalyzer.IsLowQuality(element, symbol, symbol, CommentSenseOptions.Default);
-        Assert.That(result, Is.False);
-    }
-
-    [Test]
-    public void IsLowQualityXElementUsesTargetSymbolNameWhenDifferent()
-    {
-        var compilation = CreateCompilation("public class C { public int M() => 0; }");
-        var type = GetRequiredNamedType(compilation, "C");
-        var method = type.GetMembers("M").Single();
-        var element = new XElement("returns", "C");
-
-        var result = QualityAnalyzer.IsLowQuality(element, method, type, CommentSenseOptions.Default);
-        Assert.That(result, Is.True);
-    }
-
-    [Test]
-    public void IsLowQualityXElementUsesPrimarySymbolNameBeforeTypeChecks()
+    public void IsLowQualitySyntaxUsesPrimarySymbolNameBeforeTypeChecks()
     {
         var compilation = CreateCompilation("public class C { public int M() => 0; }");
         var method = GetRequiredNamedType(compilation, "C").GetMembers("M").Single();
-        var element = new XElement("returns", "M");
+        var element = ParseXmlElement("/// <returns>M</returns>\nclass C {}");
 
         var result = QualityAnalyzer.IsLowQuality(element, method, method, CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
 
     [Test]
-    public void IsLowQualityXElementUsesReturnTypeName()
+    public void IsLowQualitySyntaxUsesReturnTypeName()
     {
         var compilation = CreateCompilation("public class C { public int M() => 0; }");
         var method = GetRequiredNamedType(compilation, "C").GetMembers("M").Single();
-        var element = new XElement("returns", "int");
+        var element = ParseXmlElement("/// <returns>int</returns>\nclass C {}");
 
         var result = QualityAnalyzer.IsLowQuality(element, method, method, CommentSenseOptions.Default);
-        Assert.That(result, Is.True);
-    }
-
-    [Test]
-    public void IsLowQualityXElementUsesSimpleTypeNameForGenericProperty()
-    {
-        var compilation = CreateCompilation("using System.Collections.Generic; public class C { public List<int> P { get; set; } = new(); }");
-        var property = GetRequiredNamedType(compilation, "C").GetMembers("P").Single();
-        var element = new XElement("value", "List");
-
-        var result = QualityAnalyzer.IsLowQuality(element, property, property, CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }
 
@@ -233,17 +199,9 @@ public class QualityAnalyzerTests
     }
 
     [Test]
-    public void IsLowQualityForAnyFormatXElementNestedElementsReturnsFalse()
+    public void IsLowQualityForAnyFormatSyntaxUsesContentPath()
     {
-        var element = new XElement("summary", new XElement("see", new XAttribute("cref", "T:System.String")));
-        var result = QualityAnalyzer.IsLowQualityForAnyFormat(element, "Display", "Qualified.Display", CommentSenseOptions.Default);
-        Assert.That(result, Is.False);
-    }
-
-    [Test]
-    public void IsLowQualityForAnyFormatXElementUsesContentPath()
-    {
-        var element = new XElement("summary", "Display");
+        var element = ParseXmlElement("/// <summary>Display</summary>\nclass C {}");
         var result = QualityAnalyzer.IsLowQualityForAnyFormat(element, "Display", "Qualified.Display", CommentSenseOptions.Default);
         Assert.That(result, Is.True);
     }

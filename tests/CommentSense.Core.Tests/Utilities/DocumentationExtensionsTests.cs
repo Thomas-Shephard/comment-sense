@@ -1138,36 +1138,6 @@ public class DocumentationExtensionsTests
         Assert.That(result, Has.Count.EqualTo(2));
     }
 
-    [Test]
-    public void GetDocumentationLocationsRecursiveReturnsDeepLocations()
-    {
-        const string source = """
-            public class Test
-            {
-                /// <summary><param name="p1">Inner</param></summary>
-                public void Method(int p1) { }
-            }
-            """;
-        var symbol = GetSymbolFromSource(source, "Method");
-        var locations = symbol.GetDocumentationLocations("param", topLevelOnly: false);
-        Assert.That(locations, Has.Length.EqualTo(1));
-    }
-
-    [Test]
-    public void GetDocumentationLocationCrefWithTPrefixReturnsLocation()
-    {
-        const string source = """
-            public class Test
-            {
-                /// <exception cref="System.Exception">Docs</exception>
-                public void Method() { }
-            }
-            """;
-        var symbol = GetSymbolFromSource(source, "Method");
-        var location = symbol.GetDocumentationLocation("exception", "T:System.Exception", attributeName: "cref");
-        Assert.That(location, Is.Not.EqualTo(Location.None));
-    }
-
     [TestCase(true, 2)]
     [TestCase(false, 1)]
     public void GetTargetElementsWithoutTagNameHonorsRecursion(bool recursive, int expectedCount)
@@ -1238,30 +1208,6 @@ public class DocumentationExtensionsTests
                      ?? throw new InvalidOperationException("Could not find OrderMethodSymbols.");
 
         return (List<IMethodSymbol>)(method.Invoke(null, [methods]) ?? throw new InvalidOperationException("OrderMethodSymbols returned null."));
-    }
-
-    private static Mock<IMethodSymbol> CreateMethodSymbolMock(ITypeSymbol returnType, ImmutableArray<IParameterSymbol>? parameters = null)
-    {
-        var method = new Mock<IMethodSymbol>();
-        method.SetupGet(symbol => symbol.MethodKind).Returns(MethodKind.Ordinary);
-        method.SetupGet(symbol => symbol.Arity).Returns(0);
-        method.SetupGet(symbol => symbol.ReturnType).Returns(returnType);
-        method.SetupGet(symbol => symbol.Parameters).Returns(parameters ?? ImmutableArray<IParameterSymbol>.Empty);
-        return method;
-    }
-
-    private static Mock<IParameterSymbol> CreateParameterSymbolMock(ITypeSymbol type)
-    {
-        var parameter = new Mock<IParameterSymbol>();
-        parameter.SetupGet(symbol => symbol.Type).Returns(type);
-        return parameter;
-    }
-
-    private static CSharpCompilation CreateCompilation()
-    {
-        return CSharpCompilation.Create(
-            "TestAssembly",
-            references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
     }
 
     private static ISymbol GetSymbolFromSources((string FilePath, string Source) first, (string FilePath, string Source) second, string symbolName)
