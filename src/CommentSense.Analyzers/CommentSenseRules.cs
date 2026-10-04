@@ -7,7 +7,9 @@ namespace CommentSense.Analyzers;
 internal static class CommentSenseRules
 {
     private const string Category = "Documentation";
+#pragma warning disable S1075 // Fixed diagnostic help link.
     private const string RulesReferenceUrl = "https://github.com/Thomas-Shephard/comment-sense/blob/main/docs/rules-reference.md";
+#pragma warning restore S1075
 
     private static LocalizableResourceString CreateResourceString(string name)
     {
