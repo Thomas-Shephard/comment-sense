@@ -8,7 +8,7 @@
     <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
 
     <!-- Analysis & Code Style -->
-    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <AnalysisLevel>10.0-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
@@ -26,8 +26,9 @@
     <MinVerTagPrefix>v</MinVerTagPrefix>
 
     <!-- Shared Target Frameworks -->
-    <LatestTargetFramework>net10.0</LatestTargetFramework>
-    <SupportedTargetFrameworks>$(LatestTargetFramework)</SupportedTargetFrameworks>
+    <BaselineTargetFramework>net10.0</BaselineTargetFramework>
+    <CurrentTargetFramework>net11.0</CurrentTargetFramework>
+    <SupportedTargetFrameworks>$(BaselineTargetFramework);$(CurrentTargetFramework)</SupportedTargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>

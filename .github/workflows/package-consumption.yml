@@ -5,15 +5,15 @@ on:
 
 jobs:
   package-consumption:
-    name: Package Consumption (${{ matrix.sdk }})
+    name: Package Consumption (${{ matrix.role }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - sdk: '10.0.x'
+          - role: baseline
             quality: ga
-          - sdk: '11.0.x'
+          - role: current
             quality: preview
     steps:
       - name: Checkout
@@ -23,11 +23,20 @@ jobs:
         with:
           name: nuget-packages
           path: artifacts/package
+      - name: Read Target Framework
+        id: framework
+        shell: pwsh
+        env:
+          SDK_ROLE: ${{ matrix.role }}
+        run: |
+          $frameworks = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup
+          $framework = $frameworks.($env:SDK_ROLE + 'TargetFramework')
+          "sdk-version=$($framework -replace '^net', '').x" >> $env:GITHUB_OUTPUT
       - name: Setup .NET
         id: consumer-sdk
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: ${{ matrix.sdk }}
+          dotnet-version: ${{ steps.framework.outputs.sdk-version }}
           dotnet-quality: ${{ matrix.quality }}
       - name: Package Consumption Check
         shell: pwsh
