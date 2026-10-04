@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791111492748,
+  "lastUpdate": 1791139878282,
   "repoUrl": "https://github.com/Thomas-Shephard/comment-sense",
   "entries": {
     "CommentSense Memory Allocations": [
@@ -3574,6 +3574,65 @@ window.BENCHMARK_DATA = {
           {
             "name": "CommentSense.PerformanceTests.PathologicalBenchmarks.AnalyzePathologicalDocs(DocSizeMultiplier: 10)",
             "value": 28527205,
+            "unit": "bytes"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "thomas@thomas-shephard.com",
+            "name": "Thomas Shephard",
+            "username": "Thomas-Shephard"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "022b78d84d71b14305e818f7acdee15dc49abd85",
+          "message": "chore: update tests and benchmarks to .NET 11 (#193)",
+          "timestamp": "2026-10-04T19:47:13+01:00",
+          "tree_id": "11d18ba475290210fba4f48d0c5efa1e08b652bf",
+          "url": "https://github.com/Thomas-Shephard/comment-sense/commit/022b78d84d71b14305e818f7acdee15dc49abd85"
+        },
+        "date": 1791139878032,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "CommentSense.PerformanceTests.AnalyzerBenchmarks.FullAnalysis(MethodCount: 100, ScanCalledMethods: True, GhostReferenceMode: \"strict\", SimilarityThreshold: 0.8)",
+            "value": 3142692,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.DogfoodBenchmarks.AnalyzeProject(ProjectName: \"CommentSense.Analyzers\")",
+            "value": 14505320,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.DogfoodBenchmarks.AnalyzeProject(ProjectName: \"CommentSense.CodeFixes\")",
+            "value": 11220615,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.DogfoodBenchmarks.AnalyzeProject(ProjectName: \"CommentSense.Core\")",
+            "value": 6425328,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.LeakBenchmarks.SimulateLongSession",
+            "value": 3453447,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.ParallelBenchmarks.ConcurrentAnalysis(FileCount: 100)",
+            "value": 5515036,
+            "unit": "bytes"
+          },
+          {
+            "name": "CommentSense.PerformanceTests.PathologicalBenchmarks.AnalyzePathologicalDocs(DocSizeMultiplier: 10)",
+            "value": 28516675,
             "unit": "bytes"
           }
         ]
