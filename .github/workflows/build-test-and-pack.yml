@@ -84,3 +84,15 @@ jobs:
   package-consumption:
     needs: build-test-and-pack
     uses: ./.github/workflows/package-consumption.yml
+
+  verify:
+    name: Verify
+    needs: [build-test-and-pack, package-consumption]
+    if: always()
+    runs-on: ubuntu-slim
+    steps:
+      - name: Check Results
+        env:
+          BUILD_RESULT: ${{ needs.build-test-and-pack.result }}
+          PACKAGE_RESULT: ${{ needs.package-consumption.result }}
+        run: test "$BUILD_RESULT" = success && test "$PACKAGE_RESULT" = success
