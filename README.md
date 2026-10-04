@@ -22,7 +22,7 @@ CommentSense requires compiler XML documentation parsing:
 </PropertyGroup>
 ```
 
-If this is disabled, CommentSense reports `CSENSE000`.
+If documentation parsing is disabled, CommentSense reports `CSENSE000`.
 
 ## Quick start
 

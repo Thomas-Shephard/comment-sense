@@ -39,11 +39,16 @@ To ensure that changes work as expected, follow these steps:
 - Write tests for all new features or bug fixes
 - Ensure all tests pass before submitting a pull request
 
+```bash
+dotnet build CommentSense.slnx --configuration Release
+dotnet test --solution CommentSense.slnx --configuration Release --no-build --coverlet --results-directory ./coverage
+```
+
 ## Performance Guidelines
 Maintaining high performance is critical for a Roslyn analyzer.
 - **Run Benchmarks:** If you modify logic in `src/CommentSense.Analyzers/Logic`, run the performance suite.
   ```bash
-  dotnet run -c Release --project benchmarks
+  dotnet run -c Release --project benchmarks -- --filter '*'
   ```
 - **Avoid Regressions:** Ensure your changes do not significantly increase memory allocations or execution time.
 - **Dogfooding:** Use the `DogfoodBenchmarks` to verify impact on the real codebase.
@@ -51,7 +56,7 @@ Maintaining high performance is critical for a Roslyn analyzer.
 CI warns when allocations increase by more than 5%; benchmark errors fail the build.
 
 ## Release Process
-CI and publishing test the NuGet package in a .NET 10 consumer. To run locally, use an empty output directory:
+CI and publishing test the NuGet package against the SDKs in the [package-consumption workflow](.github/workflows/package-consumption.yml). To run locally, use an empty output directory:
 
 ```powershell
 dotnet pack CommentSense.slnx --configuration Release --output artifacts/package-check
@@ -63,7 +68,7 @@ This checks package contents and analyzer diagnostics, not editor code fixes or 
 This project uses [MinVer](https://github.com/adamralph/minver) for versioning.
 
 Versions are automatically determined by Git tags in the format `vMAJOR.MINOR.PATCH`.
-To create a new release, use the GitHub UI to create a new "Release", which will automatically create the required Git tag and trigger the deployment workflow.
+Publish a GitHub release with a `vMAJOR.MINOR.PATCH` tag to trigger the publishing workflow.
 
 ## License
 By contributing to CommentSense, you agree that your contributions will be licensed under the MIT License.

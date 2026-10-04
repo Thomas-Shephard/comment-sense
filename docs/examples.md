@@ -1,6 +1,6 @@
 # Examples
 
-This page shows common before/after patterns when adopting CommentSense.
+Examples focus on specific rules; other documentation warnings may remain.
 
 ## Missing member documentation
 
@@ -44,6 +44,8 @@ public int Add(int left, int right) => left + right;
 ```
 
 ## Returns and property value
+
+Set `dotnet_diagnostic.CSENSE014.severity = warning` to require `<value>` documentation.
 
 Before:
 
@@ -107,19 +109,19 @@ public Profile Load(string id)
 Before:
 
 ```csharp
-/// <summary>Returns true when item is null.</summary>
+/// <summary>Returns true when inputValue is null.</summary>
 /// <typeparam name="T">The item type.</typeparam>
-/// <param name="item">The item to inspect.</param>
-public static bool IsMissing<T>(T item) => item is null;
+/// <param name="inputValue">The item to inspect.</param>
+public static bool IsMissing<T>(T inputValue) => inputValue is null;
 ```
 
 After:
 
 ```csharp
-/// <summary>Returns <see langword="true" /> when <paramref name="item" /> is <see langword="null" />.</summary>
+/// <summary>Returns <see langword="true" /> when <paramref name="inputValue" /> is <see langword="null" />.</summary>
 /// <typeparam name="T">The type being inspected.</typeparam>
-/// <param name="item">The item to inspect.</param>
-public static bool IsMissing<T>(T item) => item is null;
+/// <param name="inputValue">The item to inspect.</param>
+public static bool IsMissing<T>(T inputValue) => inputValue is null;
 ```
 
 ## Explicit inheritance docs
