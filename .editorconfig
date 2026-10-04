@@ -16,6 +16,9 @@ indent_size = 2
 indent_size = 2
 end_of_line = lf
 
+[.github/workflows/*.{yml,yaml}]
+end_of_line = lf
+
 [*.{cs,vb}]
 #### Naming styles ####
 

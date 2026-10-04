@@ -1,5 +1,6 @@
 param(
-    [string] $PackageOutputPath = (Join-Path $PSScriptRoot "../artifacts/package")
+    [string] $PackageOutputPath = (Join-Path $PSScriptRoot "../artifacts/package"),
+    [string] $SdkVersion
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,16 +32,31 @@ New-Item -ItemType Directory -Path $checkRoot | Out-Null
 try {
     New-Item -ItemType Directory -Path (Join-Path $checkRoot "feed") | Out-Null
     Copy-Item -LiteralPath $packages[0].FullName -Destination (Join-Path $checkRoot "feed")
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "../global.json") -Destination $checkRoot
+    if ($SdkVersion) {
+        @{ sdk = @{ version = $SdkVersion; rollForward = "disable" } } |
+            ConvertTo-Json | Set-Content (Join-Path $checkRoot "global.json")
+    }
+    else {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot "../global.json") -Destination $checkRoot
+    }
     Set-Content (Join-Path $checkRoot "NuGet.Config") @'
 <configuration>
   <packageSources><clear /><add key="local" value="feed" /></packageSources>
 </configuration>
 '@
-    Set-Content (Join-Path $checkRoot "Consumer.csproj") @"
+    Push-Location $checkRoot
+    try {
+        $selectedSdk = & dotnet --version
+        if ($LASTEXITCODE -ne 0) { throw "Consumer SDK selection failed." }
+        if ($SdkVersion -and $selectedSdk -ne $SdkVersion) {
+            throw "Expected SDK $SdkVersion but selected $selectedSdk."
+        }
+        Write-Host "Checking package with SDK $selectedSdk."
+
+        Set-Content Consumer.csproj @"
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net$($selectedSdk.Split('.')[0]).0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NoWarn>CS1591</NoWarn>
@@ -48,8 +64,7 @@ try {
   <ItemGroup><PackageReference Include="CommentSense" Version="$version" /></ItemGroup>
 </Project>
 "@
-    Push-Location $checkRoot
-    try {
+
         dotnet restore Consumer.csproj --configfile NuGet.Config --packages .packages
         if ($LASTEXITCODE -ne 0) { throw "Consumer restore failed." }
 

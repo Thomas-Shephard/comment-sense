@@ -12,6 +12,8 @@ dotnet add package CommentSense
 
 ## Requirements
 
+Requires .NET SDK 10 or later.
+
 CommentSense requires compiler XML documentation parsing:
 
 ```xml

@@ -1,0 +1,36 @@
+name: Package Consumption
+
+on:
+  workflow_call:
+
+jobs:
+  package-consumption:
+    name: Package Consumption (${{ matrix.sdk }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sdk: '10.0.x'
+            quality: ga
+          - sdk: '11.0.x'
+            quality: preview
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Download NuGet Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: nuget-packages
+          path: artifacts/package
+      - name: Setup .NET
+        id: consumer-sdk
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ matrix.sdk }}
+          dotnet-quality: ${{ matrix.quality }}
+      - name: Package Consumption Check
+        shell: pwsh
+        env:
+          CONSUMER_SDK_VERSION: ${{ steps.consumer-sdk.outputs.dotnet-version }}
+        run: ./eng/package-consumption-check.ps1 -SdkVersion $env:CONSUMER_SDK_VERSION
