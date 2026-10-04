@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using CommentSense.Core;
@@ -24,7 +25,8 @@ internal static class DocumentationTextAnalyzer
         var tree = context.Node.SyntaxTree;
         var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
 
-        if (!symbol.IsEligibleForAnalysis(options.VisibilityLevel))
+        if (!symbol.IsEligibleForAnalysis(options.VisibilityLevel) ||
+            (options.ExcludeConstants && symbol is IFieldSymbol { IsConst: true }))
             return;
 
         LangwordAnalyzer.Analyze(context, xmlText, options);

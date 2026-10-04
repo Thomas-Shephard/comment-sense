@@ -51,12 +51,6 @@ public class CommentSenseSuppressor : DiagnosticSuppressor
         if (symbol == null)
             return true;
 
-        if (!symbol.IsEligibleForAnalysis(options.VisibilityLevel))
-            return false;
-
-        if (options.ExcludeConstants && symbol is IFieldSymbol { IsConst: true })
-            return false;
-
-        return true;
+        return symbol.IsEligibleForAnalysis(options.VisibilityLevel);
     }
 }
