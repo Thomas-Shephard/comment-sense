@@ -27,7 +27,7 @@
 
     <!-- Shared Target Frameworks -->
     <LatestTargetFramework>net10.0</LatestTargetFramework>
-    <SupportedTargetFrameworks>net8.0;net9.0;$(LatestTargetFramework)</SupportedTargetFrameworks>
+    <SupportedTargetFrameworks>$(LatestTargetFramework)</SupportedTargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>

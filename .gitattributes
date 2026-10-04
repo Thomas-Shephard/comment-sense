@@ -13,6 +13,8 @@
 # Documentation and config
 *.md   text
 *.json text eol=lf
+.github/workflows/*.yml text eol=lf
+.github/workflows/*.yaml text eol=lf
 .editorconfig text
 .gitignore text
 .gitattributes text
