@@ -135,7 +135,7 @@ public class SuppressionTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyze
     }
 
     [Test]
-    public async Task ConstantIsUnsuppressedWithConditionalSuppression()
+    public async Task ConstantIsSuppressedWithConditionalSuppression()
     {
         const string testCode = """
             public class MyClass
@@ -144,21 +144,44 @@ public class SuppressionTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyze
             }
             """;
 
-        // CS1591 is expected because:
-        // 1. It is reported by the compiler (public const).
-        // 2. CommentSense ignores it (ExcludeConstants = true).
-        // 3. Suppressor checks eligibility, sees it's ignored, and decides NOT to suppress CS1591.
         var expected = new[]
         {
             DiagnosticResult.CompilerWarning("CS1591").WithSpan(1, 14, 1, 21).WithArguments("MyClass").WithIsSuppressed(true),
             new DiagnosticResult(CommentSenseRules.MissingDocumentationRule).WithSpan(1, 14, 1, 21).WithArguments("MyClass"),
-            DiagnosticResult.CompilerWarning("CS1591").WithSpan(3, 22, 3, 23).WithArguments("MyClass.X"),
+            DiagnosticResult.CompilerWarning("CS1591").WithSpan(3, 22, 3, 23).WithArguments("MyClass.X").WithIsSuppressed(true),
         };
 
         var config = new Dictionary<string, string>
         {
             ["comment_sense.exclude_constants"] = "true",
             ["comment_sense.enable_conditional_suppression"] = "true"
+        };
+
+        await VerifySuppressionAsync(testCode, expected, config);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public async Task ExcludedConstantCrefIsSuppressed(bool conditionalSuppression)
+    {
+        const string testCode = """
+            /// <summary>A documented class.</summary>
+            public class MyClass
+            {
+                /// <summary>See <see cref="NonExistent"/>.</summary>
+                public const int First = 1, Second = 2;
+            }
+            """;
+
+        var expected = new[]
+        {
+            DiagnosticResult.CompilerWarning("CS1574").WithSpan(4, 33, 4, 44).WithArguments("NonExistent").WithIsSuppressed(true),
+            DiagnosticResult.CompilerWarning("CS1574").WithSpan(4, 33, 4, 44).WithArguments("NonExistent").WithIsSuppressed(true)
+        };
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.exclude_constants"] = "true",
+            ["comment_sense.enable_conditional_suppression"] = conditionalSuppression.ToString()
         };
 
         await VerifySuppressionAsync(testCode, expected, config);

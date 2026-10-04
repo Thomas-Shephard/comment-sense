@@ -20,7 +20,8 @@ internal static class CrefAnalyzer
         var tree = context.Node.SyntaxTree;
         var options = CommentSenseOptions.GetOptions(context.Options.AnalyzerConfigOptionsProvider, tree);
 
-        if (!associatedSymbol.IsEligibleForAnalysis(options.VisibilityLevel))
+        if (!associatedSymbol.IsEligibleForAnalysis(options.VisibilityLevel) ||
+            (options.ExcludeConstants && associatedSymbol is IFieldSymbol { IsConst: true }))
             return;
 
         var cref = crefAttribute.Cref;

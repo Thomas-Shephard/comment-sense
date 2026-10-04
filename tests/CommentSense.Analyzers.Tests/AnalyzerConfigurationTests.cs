@@ -330,6 +330,32 @@ public class AnalyzerConfigurationTests : CommentSenseAnalyzerTestBase<CommentSe
         await VerifyCSenseAsync(testCode, expectDiagnostic: false, configOptions: config);
     }
 
+    [TestCase(true, true)]
+    [TestCase(true, false)]
+    [TestCase(false, true)]
+    [TestCase(false, false)]
+    public async Task ConstantExclusionAppliesToDocumentationSyntax(bool isConstant, bool excludeConstants)
+    {
+        var excluded = isConstant && excludeConstants;
+        var keyword = excluded ? "null" : "{|CSENSE019:null|}";
+        var reference = excluded ? "NonExistent" : "{|CSENSE007:NonExistent|}";
+        var testCode = $$"""
+            /// <summary>A documented class.</summary>
+            public class MyClass
+            {
+                /// <summary>Returns {{keyword}}. See <see cref="{{reference}}"/>.</summary>
+                public {{(isConstant ? "const " : "")}}string First = "one", Second = "two";
+            }
+            """;
+
+        var config = new Dictionary<string, string>
+        {
+            ["comment_sense.exclude_constants"] = excludeConstants.ToString()
+        };
+
+        await VerifyCSenseAsync(testCode, expectDiagnostic: !excluded, configOptions: config);
+    }
+
     [Test]
     public async Task NonConstantFieldWithoutDocumentationStillReportsDiagnosticWhenConstantsExcluded()
     {
