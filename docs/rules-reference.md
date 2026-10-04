@@ -4,7 +4,7 @@ CommentSense defines 28 diagnostics (`CSENSE000` to `CSENSE027`).
 
 Default severities are shown below. You can override any rule with `dotnet_diagnostic.<ID>.severity` in `.editorconfig`.
 
-| ID          | Category      | Default  | Code fix | Description                                                                    |
+| ID          | Area          | Default  | Code fix | Description                                                                    |
 |-------------|---------------|----------|----------|--------------------------------------------------------------------------------|
 | `CSENSE000` | Configuration | Warning  | No       | XML documentation parsing is disabled for part or all of the project.          |
 | `CSENSE001` | General       | Warning  | Yes      | Missing documentation for an eligible symbol.                                  |

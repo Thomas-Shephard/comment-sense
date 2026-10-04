@@ -4,6 +4,8 @@ This guide is to help teams start using CommentSense in an existing or new C# co
 
 ## Install the package
 
+Check the [requirements](../README.md#requirements), then install:
+
 ```bash
 dotnet add package CommentSense
 ```
@@ -26,7 +28,7 @@ CommentSense relies on compiler XML documentation parsing.
 </PropertyGroup>
 ```
 
-Without this, you will get a `CSENSE000` warning.
+`CSENSE000` indicates that documentation parsing is disabled.
 
 ## Start with a baseline `.editorconfig`
 
@@ -53,9 +55,9 @@ Common first diagnostics:
 
 For large repositories, start narrow and tighten over time:
 
-1. Start with `visibility_level = public`.
+1. Start with `comment_sense.visibility_level = public`.
 2. Move to `protected` (default) after initial cleanup.
-3. Enable stricter options such as `similarity_threshold` and `require_property_patterns`.
+3. Configure stricter options such as `comment_sense.similarity_threshold` and `comment_sense.require_property_patterns`.
 
 You can also tune per-rule severity:
 
