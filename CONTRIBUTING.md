@@ -34,6 +34,8 @@ Common types include:
 - `chore`: Changes to the build process or auxiliary tools and libraries such as documentation generation
 
 ## Testing Guidelines
+Use the SDK pinned in [global.json](global.json).
+
 To ensure that changes work as expected, follow these steps:
 - Use the provided NUnit test framework to write tests
 - Write tests for all new features or bug fixes

@@ -25,6 +25,9 @@ public class ExtensionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
                 }
             }
             """;
+#if NET11_0_OR_GREATER
+        displayName = "Extensions." + displayName;
+#endif
         var expected = new DiagnosticResult(CommentSenseDiagnosticIds.MissingDocumentationId, DiagnosticSeverity.Warning)
             .WithLocation(0).WithArguments(displayName);
 

@@ -14,9 +14,17 @@ jobs:
         with:
           fetch-depth: 0
           ref: refs/tags/${{ github.event.release.tag_name }}
-      - name: Setup .NET
+      - name: Read Target Frameworks
+        shell: pwsh
+        run: |
+          $frameworks = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup
+          "BASELINE_SDK_VERSION=$($frameworks.BaselineTargetFramework -replace '^net', '').x" >> $env:GITHUB_ENV
+      - name: Setup Current and Baseline .NET SDKs
         uses: actions/setup-dotnet@v6
         with:
+          global-json-file: global.json
+          dotnet-version: ${{ env.BASELINE_SDK_VERSION }}
+          dotnet-quality: ga
           cache: true
           cache-dependency-path: |
             CommentSense.slnx
