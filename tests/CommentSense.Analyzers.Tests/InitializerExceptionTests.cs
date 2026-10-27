@@ -61,7 +61,7 @@ public class InitializerExceptionTests : CommentSenseAnalyzerTestBase<CommentSen
 
     [TestCase(true)]
     [TestCase(false)]
-    public void ConstructorsInDifferentFilesRespectTheirScanningOptions(bool firstScan)
+    public async Task ConstructorsInDifferentFilesRespectTheirScanningOptions(bool firstScan)
     {
         var first = $$"""
             /// <summary>Stores a value.</summary>
@@ -105,7 +105,7 @@ public class InitializerExceptionTests : CommentSenseAnalyzerTestBase<CommentSen
             },
             MarkupOptions = MarkupOptions.UseFirstDescriptor
         };
-        Assert.DoesNotThrowAsync(async () => await test.RunAsync());
+        await Assert.DoesNotThrowAsync(async () => await test.RunAsync());
     }
 
     [Test]
@@ -182,7 +182,7 @@ public class InitializerExceptionTests : CommentSenseAnalyzerTestBase<CommentSen
 
     [TestCase(true)]
     [TestCase(false)]
-    public void InitializerInAnotherPartialDeclaration(bool primary)
+    public async Task InitializerInAnotherPartialDeclaration(bool primary)
     {
         var source = $$"""
             /// <summary>Stores a value.</summary>
@@ -208,7 +208,7 @@ public class InitializerExceptionTests : CommentSenseAnalyzerTestBase<CommentSen
             MarkupOptions = MarkupOptions.UseFirstDescriptor
         };
         test.ApplyCommonConfiguration(null, DocumentationMode.Parse, null);
-        Assert.DoesNotThrowAsync(async () => await test.RunAsync());
+        await Assert.DoesNotThrowAsync(async () => await test.RunAsync());
     }
 
     [Test]
