@@ -106,7 +106,7 @@ public class DocumentationTagOrderTests : CommentSenseAnalyzerTestBase<CommentSe
     }
 
     [Test]
-    public void PartialDeclarationsHaveIndependentTagOrder([Values] bool separateFiles)
+    public async Task PartialDeclarationsHaveIndependentTagOrder([Values] bool separateFiles)
     {
         const string firstPart = """
             /// <remarks>Additional details.</remarks>
@@ -123,7 +123,7 @@ public class DocumentationTagOrderTests : CommentSenseAnalyzerTestBase<CommentSe
             test.TestState.Sources.Add(secondPart);
 
         test.ApplyCommonConfiguration(null, DocumentationMode.Parse, null);
-        Assert.DoesNotThrowAsync(async () => await test.RunAsync());
+        await Assert.DoesNotThrowAsync(async () => await test.RunAsync());
     }
 
     [Test]
