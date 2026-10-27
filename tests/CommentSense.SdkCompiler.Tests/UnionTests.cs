@@ -148,6 +148,61 @@ public class UnionTests
         await test.VerifyAsync(reports ? ["CSENSE012"] : []);
     }
 
+    [TestCase("=> 1;", true, true)]
+    [TestCase("=> (Choice)1;", true, true)]
+    [TestCase("=> Choice.IUnionMembers.Create(1);", true, true)]
+    [TestCase("{ Choice[] choices = [1]; return choices[0]; }", true, true)]
+    [TestCase("=> 1;", false, false)]
+    [TestCase("=> (Choice)1;", false, false)]
+    [TestCase("{ try { return 1; } catch (System.ArgumentException) { return null; } }", true, false)]
+    [TestCase("{ System.Func<Choice> create = () => 1; return null; }", true, false)]
+    [TestCase("{ System.Func<int, Choice> create = Choice.IUnionMembers.Create; return null; }", true, false)]
+    [TestCase("{ var create = (System.Func<int, Choice>)Choice.IUnionMembers.Create; return null; }", true, false)]
+    public async Task UnionFactoryConversionPropagatesExceptions(string body, bool scan, bool reports)
+    {
+        using var test = new CompilerTest($$"""
+            /// <summary>Represents a choice.</summary>
+            [System.Runtime.CompilerServices.Union]
+            public class Choice : Choice.IUnionMembers
+            {
+                /// <summary>Provides union operations.</summary>
+                public interface IUnionMembers
+                {
+                    /// <summary>Creates an integer choice.</summary>
+                    /// <param name="value">The chosen value.</param>
+                    /// <returns>The choice.</returns>
+                    /// <exception cref="System.ArgumentException">Invalid value.</exception>
+                    public static Choice Create(int value) => throw new System.ArgumentException();
+                    /// <summary>Creates a text choice.</summary>
+                    /// <param name="value">The chosen text.</param>
+                    /// <returns>The choice.</returns>
+                    /// <exception cref="System.NotSupportedException">Text is unsupported.</exception>
+                    public static Choice Create(string value) => throw new System.NotSupportedException();
+                    /// <summary>Gets the selection.</summary>
+                    /// <value>The selected value.</value>
+                    public object Value { get; }
+                }
+                /// <inheritdoc />
+                object IUnionMembers.Value => 0;
+            }
+            /// <summary>Creates choices.</summary>
+            public class Factory
+            {
+                /// <summary>Creates a selection.</summary>
+                /// <returns>The selection.</returns>
+                public Choice Create() {{body}}
+            }
+            """, options: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = scan.ToString() });
+        await test.VerifyAsync(reports ? ["CSENSE012"] : []);
+        if (reports)
+        {
+            var diagnostic = (await test.AnalyzeAsync()).Single();
+            Assert.That(diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture), Does.Contain("ArgumentException"));
+            await test.FixAsync(new ContentGenerationCodeFixProvider(), "CSENSE012");
+            await test.VerifyAsync();
+        }
+    }
+
     [TestCase(FixAllScope.Document)]
     [TestCase(FixAllScope.Project)]
     [TestCase(FixAllScope.Solution)]
