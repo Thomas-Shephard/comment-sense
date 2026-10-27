@@ -781,8 +781,9 @@ internal static class ExceptionAnalyzer
     private static IEnumerable<ITypeSymbol> GetExceptionsFromConversion(SyntaxNode node, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
         if (options.ScanCalledMethodsForExceptions && node is ExpressionSyntax expression &&
-            semanticModel.GetConversion(expression, token).MethodSymbol is { MethodKind: MethodKind.Constructor } constructor)
-            return GetExceptionsFromSymbol(constructor, semanticModel.Compilation, exceptionCache, token);
+            semanticModel.GetConversion(expression, token) is
+            { IsMethodGroup: false, MethodSymbol: { MethodKind: MethodKind.Constructor or MethodKind.Ordinary } creationMethod })
+            return GetExceptionsFromSymbol(creationMethod, semanticModel.Compilation, exceptionCache, token);
 
         return [];
     }
@@ -797,11 +798,9 @@ internal static class ExceptionAnalyzer
             ObjectCreationExpressionSyntax objectCreation => GetExceptionsFromObjectCreation(objectCreation, semanticModel, exceptionCache, token),
             ImplicitObjectCreationExpressionSyntax implicitObjectCreation => GetExceptionsFromImplicitObjectCreation(implicitObjectCreation, semanticModel, exceptionCache, token),
             CollectionExpressionSyntax when semanticModel.GetOperation(node, token) is ICollectionExpressionOperation collection => GetExceptionsFromSymbol(collection.ConstructMethod, semanticModel.Compilation, exceptionCache, token),
-            CastExpressionSyntax when semanticModel.GetOperation(node, token) is IConversionOperation { OperatorMethod.MethodKind: MethodKind.Constructor } conversion => GetExceptionsFromSymbol(conversion.OperatorMethod, semanticModel.Compilation, exceptionCache, token),
+            CastExpressionSyntax when semanticModel.GetOperation(node, token) is IConversionOperation { OperatorMethod.MethodKind: MethodKind.Constructor or MethodKind.Ordinary } conversion => GetExceptionsFromSymbol(conversion.OperatorMethod, semanticModel.Compilation, exceptionCache, token),
             ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache, token),
-            MemberAccessExpressionSyntax ma => GetExceptionsFromMemberAccess(ma, semanticModel, exceptionCache, token),
-            MemberBindingExpressionSyntax mb => GetExceptionsFromMemberBinding(mb, semanticModel, exceptionCache, token),
-            IdentifierNameSyntax id => GetExceptionsFromIdentifier(id, semanticModel, exceptionCache, token),
+            ExpressionSyntax member when member is MemberAccessExpressionSyntax or MemberBindingExpressionSyntax or IdentifierNameSyntax => GetExceptionsFromMemberReference(member, semanticModel, exceptionCache, token),
             ElementAccessExpressionSyntax elementAccess => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(elementAccess, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             ElementBindingExpressionSyntax eb => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(eb, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             _ => []
@@ -844,33 +843,16 @@ internal static class ExceptionAnalyzer
         return GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(implicitObjectCreation, token).Symbol, semanticModel.Compilation, exceptionCache, token);
     }
 
-    private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberAccess(MemberAccessExpressionSyntax ma, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberReference(ExpressionSyntax expression, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
     {
-        // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
-        return ma.Parent is InvocationExpressionSyntax
-            ? []
-            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ma, token).Symbol, semanticModel.Compilation, exceptionCache, token);
-    }
+        if (expression.Parent is InvocationExpressionSyntax ||
+            expression.Parent is MemberAccessExpressionSyntax memberAccess && memberAccess.Name == expression)
+            return [];
 
-    private static IEnumerable<ITypeSymbol?> GetExceptionsFromMemberBinding(MemberBindingExpressionSyntax mb, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
-    {
-        // Only process if it's NOT the expression of an invocation (that's handled by InvocationExpressionSyntax)
-        return mb.Parent is InvocationExpressionSyntax
+        var symbol = semanticModel.GetSymbolInfo(expression, token).Symbol;
+        return symbol is IMethodSymbol
             ? []
-            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(mb, token).Symbol, semanticModel.Compilation, exceptionCache, token);
-    }
-
-    private static IEnumerable<ITypeSymbol?> GetExceptionsFromIdentifier(IdentifierNameSyntax id, SemanticModel semanticModel, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
-    {
-        // Avoid redundant processing:
-        // 1. If it's the Name of a MemberAccessExpression, the MemberAccessExpression itself handles the symbol.
-        // 2. If it's the Expression of an InvocationExpression, the InvocationExpression handles it.
-        var isRedundant = (id.Parent is MemberAccessExpressionSyntax maParent && maParent.Name == id) ||
-                          (id.Parent is InvocationExpressionSyntax parentInvocation2 && parentInvocation2.Expression == id);
-
-        return isRedundant
-            ? []
-            : GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(id, token).Symbol, semanticModel.Compilation, exceptionCache, token);
+            : GetExceptionsFromSymbol(symbol, semanticModel.Compilation, exceptionCache, token);
     }
 
     private static IEnumerable<ITypeSymbol> GetExceptionsFromInvocation(InvocationExpressionSyntax invocation, SemanticModel semanticModel, ITypeSymbol exceptionType, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)

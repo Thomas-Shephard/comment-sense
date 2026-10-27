@@ -305,9 +305,9 @@ public class ExternalMethodExceptionTests : CommentSenseAnalyzerTestBase<Comment
             using System;
 
             /// <summary>This is the other class.</summary>
-            public class Other { 
+            public class Other {
                 /// <summary>This does something else.</summary>
-                public void M() {} 
+                public void M() {}
             }
 
             /// <summary>My class.</summary>
@@ -338,13 +338,13 @@ public class ExternalMethodExceptionTests : CommentSenseAnalyzerTestBase<Comment
             using System;
 
             /// <summary>This is a deep class.</summary>
-            public class Deep { 
+            public class Deep {
                 /// <summary>This does a deep thing.</summary>
-                public void M() {} 
+                public void M() {}
             }
 
             /// <summary>This is the other class.</summary>
-            public class Other 
+            public class Other
             {
                 /// <summary>Deep property.</summary>
                 /// <value>The value.</value>
@@ -406,6 +406,29 @@ public class ExternalMethodExceptionTests : CommentSenseAnalyzerTestBase<Comment
         await VerifyCSenseAsync(testCode,
             configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = "true" },
             referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [TestCase("Read();", true)]
+    [TestCase("System.Action read = Read;", false)]
+    [TestCase("var read = (System.Action)Read;", false)]
+    public async Task MethodGroupCreationDoesNotInvokeMethod(string body, bool reports)
+    {
+        var method = reports ? "{|CSENSE012:Create|}" : "Create";
+        var source = $$"""
+            /// <summary>Reads values.</summary>
+            public class Reader
+            {
+                /// <summary>Reads a value.</summary>
+                /// <exception cref="System.ArgumentException">Invalid value.</exception>
+                public static void Read() { }
+
+                /// <summary>Creates a reader.</summary>
+                public void {{method}}() { {{body}} }
+            }
+            """;
+
+        await VerifyCSenseAsync(source, expectDiagnostic: reports,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = "true" });
     }
 
     [Test]
