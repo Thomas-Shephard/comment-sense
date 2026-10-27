@@ -25,6 +25,7 @@
     <PackageVersion Include="Moq" Version="4.21.0"/>
     <PackageVersion Include="coverlet.MTP" Version="10.1.0"/>
     <PackageVersion Include="System.Formats.Asn1" Version="10.0.2"/>
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.22"/>
 
     <!-- Build -->
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="$(RoslynVersion)" />
