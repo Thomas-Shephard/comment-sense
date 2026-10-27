@@ -12,6 +12,13 @@ updates:
       - "Thomas-Shephard"
   - package-ecosystem: "nuget"
     directory: "/"
+    # Roslyn API versions are updated manually to preserve SDK compatibility.
+    ignore:
+      - dependency-name: "Microsoft.CodeAnalysis.Common"
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp"
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp.Workspaces"
+      - dependency-name: "Microsoft.CodeAnalysis.Workspaces.Common"
+      - dependency-name: "Microsoft.CodeAnalysis.Workspaces.MSBuild"
     schedule:
       interval: "daily"
     cooldown:
