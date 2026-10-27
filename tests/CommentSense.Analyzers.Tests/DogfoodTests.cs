@@ -78,7 +78,7 @@ public partial class DogfoodTests
 
         AddMockResources(test.TestState, srcDir);
 
-        Assert.DoesNotThrowAsync(async () => await test.RunAsync());
+        await Assert.DoesNotThrowAsync(async () => await test.RunAsync());
     }
 
     private static void AddMockResources(SolutionState testState, string srcDir)
