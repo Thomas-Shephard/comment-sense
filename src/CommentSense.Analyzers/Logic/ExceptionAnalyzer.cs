@@ -738,7 +738,7 @@ internal static class ExceptionAnalyzer
                     or ThrowExpressionSyntax
                     or InvocationExpressionSyntax
                     or ConstructorInitializerSyntax ||
-               (scanCalledMethods && node is ExpressionSyntax);
+               (scanCalledMethods && node is ExpressionSyntax or ListPatternSyntax or SlicePatternSyntax);
     }
 
     private static bool IsExcludedPrimaryConstructorMember(SyntaxNode n)
@@ -798,6 +798,8 @@ internal static class ExceptionAnalyzer
             ObjectCreationExpressionSyntax objectCreation => GetExceptionsFromObjectCreation(objectCreation, semanticModel, exceptionCache, token),
             ImplicitObjectCreationExpressionSyntax implicitObjectCreation => GetExceptionsFromImplicitObjectCreation(implicitObjectCreation, semanticModel, exceptionCache, token),
             CollectionExpressionSyntax when semanticModel.GetOperation(node, token) is ICollectionExpressionOperation collection => GetExceptionsFromSymbol(collection.ConstructMethod, semanticModel.Compilation, exceptionCache, token),
+            ListPatternSyntax when semanticModel.GetOperation(node, token) is IListPatternOperation list => GetExceptionsFromListPattern(list, semanticModel.Compilation, exceptionCache, token),
+            SlicePatternSyntax when semanticModel.GetOperation(node, token) is ISlicePatternOperation slice && NeedsPatternValue(slice.Pattern) => GetExceptionsFromSymbol(slice.SliceSymbol, semanticModel.Compilation, exceptionCache, token),
             CastExpressionSyntax when semanticModel.GetOperation(node, token) is IConversionOperation { OperatorMethod.MethodKind: MethodKind.Constructor or MethodKind.Ordinary } conversion => GetExceptionsFromSymbol(conversion.OperatorMethod, semanticModel.Compilation, exceptionCache, token),
             ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             ExpressionSyntax member when member is MemberAccessExpressionSyntax or MemberBindingExpressionSyntax or IdentifierNameSyntax => GetExceptionsFromMemberReference(member, semanticModel, exceptionCache, token),
@@ -806,6 +808,30 @@ internal static class ExceptionAnalyzer
             _ => []
         };
     }
+
+    private static IEnumerable<ITypeSymbol> GetExceptionsFromListPattern(IListPatternOperation pattern, Compilation compilation, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        if (pattern.InputType is IArrayTypeSymbol ||
+            pattern.Patterns.Length == 1 && pattern.Patterns[0] is ISlicePatternOperation slice && !NeedsPatternValue(slice.Pattern))
+            yield break;
+
+        foreach (var exception in GetExceptionsFromSymbol(pattern.LengthSymbol, compilation, exceptionCache, token))
+            yield return exception;
+
+        if (pattern.Patterns.Any(child => child is not ISlicePatternOperation && NeedsPatternValue(child)))
+        {
+            foreach (var exception in GetExceptionsFromSymbol(pattern.IndexerSymbol, compilation, exceptionCache, token))
+                yield return exception;
+        }
+    }
+
+    private static bool NeedsPatternValue(IPatternOperation? pattern) => pattern switch
+    {
+        null or IDiscardPatternOperation => false,
+        INegatedPatternOperation negated => NeedsPatternValue(negated.Pattern),
+        IBinaryPatternOperation binary => NeedsPatternValue(binary.LeftPattern) || NeedsPatternValue(binary.RightPattern),
+        _ => true
+    };
 
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromThrowStatement(ThrowStatementSyntax ts, SemanticModel semanticModel, ITypeSymbol exceptionType, CancellationToken token)
     {
