@@ -117,6 +117,63 @@ public class ExtensionIndexerTests
         await test.VerifyAsync("CSENSE012");
     }
 
+    [TestCase("=> storage is [0];", true, true)]
+    [TestCase("=> storage[0] == 0;", true, true)]
+    [TestCase("=> storage switch { [0] => true, _ => false };", true, true)]
+    [TestCase("=> storage is [0, ..];", true, true)]
+    [TestCase("=> storage is [0, .. var rest];", true, true, true)]
+    [TestCase("=> storage is [];", true, false)]
+    [TestCase("=> storage is [0];", false, false)]
+    [TestCase("{ try { return storage is [0]; } catch (System.ArgumentException) { return false; } }", true, false)]
+    [TestCase("{ System.Func<bool> match = () => storage is [0]; return false; }", true, false)]
+    public async Task ListPatternPropagatesExtensionIndexerExceptions(string body, bool scan, bool reports, bool slices = false)
+    {
+        using var test = new CompilerTest($$"""
+            /// <summary>Stores values.</summary>
+            public class Storage
+            {
+                /// <summary>Gets the length.</summary>
+                /// <value>The length.</value>
+                public int Length => 1;
+            }
+            /// <summary>Provides indexed access.</summary>
+            public static class Access
+            {
+                /// <summary>Extends storage.</summary>
+                /// <param name="storage">The storage.</param>
+                extension(Storage storage)
+                {
+                    /// <summary>Gets a value.</summary>
+                    /// <param name="index">The position.</param>
+                    /// <value>The stored value.</value>
+                    /// <exception cref="System.ArgumentException">Invalid position.</exception>
+                    public int this[int index] => throw new System.ArgumentException();
+                    /// <summary>Gets a slice.</summary>
+                    /// <param name="range">The positions.</param>
+                    /// <value>The slice.</value>
+                    /// <exception cref="System.NotSupportedException">Slicing is unsupported.</exception>
+                    public Storage this[System.Range range] => throw new System.NotSupportedException();
+                }
+            }
+            /// <summary>Matches storage.</summary>
+            public class Consumer
+            {
+                /// <summary>Matches stored values.</summary>
+                /// <param name="storage">The storage.</param>
+                /// <returns>Whether the values match.</returns>
+                public bool Match(Storage storage) {{body}}
+            }
+            """, options: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = scan.ToString() });
+        await test.VerifyAsync(slices ? ["CSENSE012", "CSENSE012"] : reports ? ["CSENSE012"] : []);
+        if (reports)
+        {
+            await test.FixAsync(new ContentGenerationCodeFixProvider(), "CSENSE012");
+            if (slices)
+                await test.FixAsync(new ContentGenerationCodeFixProvider(), "CSENSE012");
+            await test.VerifyAsync();
+        }
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task ChecksGenericBlockDocumentation(bool documented)
