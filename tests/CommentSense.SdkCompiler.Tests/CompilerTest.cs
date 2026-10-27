@@ -31,7 +31,7 @@ internal sealed class CompilerTest : IDisposable
 
         var configuration = new Dictionary<string, string>
         {
-            ["end_of_line"] = "crlf",
+            ["end_of_line"] = Environment.NewLine == "\r\n" ? "crlf" : "lf",
             ["comment_sense.scan_called_methods_for_exceptions"] = "true"
         };
         if (options != null)
@@ -135,7 +135,7 @@ internal sealed class CompilerTest : IDisposable
         }
     }
 
-    public static string Normalize(string source) => source.ReplaceLineEndings("\r\n");
+    public static string Normalize(string source) => source.ReplaceLineEndings();
 
     public void Dispose() => workspace.Dispose();
 
