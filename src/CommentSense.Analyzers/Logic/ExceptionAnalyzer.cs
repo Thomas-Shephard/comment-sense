@@ -738,14 +738,7 @@ internal static class ExceptionAnalyzer
                     or ThrowExpressionSyntax
                     or InvocationExpressionSyntax
                     or ConstructorInitializerSyntax ||
-               (scanCalledMethods && node is ObjectCreationExpressionSyntax
-                    or ImplicitObjectCreationExpressionSyntax
-                    or CollectionExpressionSyntax
-                    or MemberAccessExpressionSyntax
-                    or MemberBindingExpressionSyntax
-                    or IdentifierNameSyntax
-                    or ElementAccessExpressionSyntax
-                    or ElementBindingExpressionSyntax);
+               (scanCalledMethods && node is ExpressionSyntax);
     }
 
     private static bool IsExcludedPrimaryConstructorMember(SyntaxNode n)
@@ -767,6 +760,16 @@ internal static class ExceptionAnalyzer
         foreach (var node in nodes)
         {
             token.ThrowIfCancellationRequested();
+            if (options.ScanCalledMethodsForExceptions && node is ExpressionSyntax expression &&
+                semanticModel.GetConversion(expression, token).MethodSymbol is { MethodKind: MethodKind.Constructor } constructor)
+            {
+                foreach (var exception in GetExceptionsFromSymbol(constructor, semanticModel.Compilation, exceptionCache, token))
+                {
+                    if (!IsCaughtLocally(node, exception, semanticModel))
+                        yield return exception;
+                }
+            }
+
             var exceptions = GetExceptionsFromNode(node, semanticModel, options, exceptionType, exceptionCache, token);
             foreach (var exception in exceptions)
             {
@@ -789,6 +792,7 @@ internal static class ExceptionAnalyzer
             ObjectCreationExpressionSyntax objectCreation => GetExceptionsFromObjectCreation(objectCreation, semanticModel, exceptionCache, token),
             ImplicitObjectCreationExpressionSyntax implicitObjectCreation => GetExceptionsFromImplicitObjectCreation(implicitObjectCreation, semanticModel, exceptionCache, token),
             CollectionExpressionSyntax when semanticModel.GetOperation(node, token) is ICollectionExpressionOperation collection => GetExceptionsFromSymbol(collection.ConstructMethod, semanticModel.Compilation, exceptionCache, token),
+            CastExpressionSyntax when semanticModel.GetOperation(node, token) is IConversionOperation { OperatorMethod.MethodKind: MethodKind.Constructor } conversion => GetExceptionsFromSymbol(conversion.OperatorMethod, semanticModel.Compilation, exceptionCache, token),
             ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             MemberAccessExpressionSyntax ma => GetExceptionsFromMemberAccess(ma, semanticModel, exceptionCache, token),
             MemberBindingExpressionSyntax mb => GetExceptionsFromMemberBinding(mb, semanticModel, exceptionCache, token),

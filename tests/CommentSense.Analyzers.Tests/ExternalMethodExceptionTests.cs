@@ -168,6 +168,36 @@ public class ExternalMethodExceptionTests : CommentSenseAnalyzerTestBase<Comment
             referenceAssemblies: ReferenceAssemblies.Net.Net100);
     }
 
+    [TestCase("new Box(1)", true)]
+    [TestCase("(Box)1", false)]
+    public async Task ConversionOperatorDoesNotInheritConstructorExceptions(string expression, bool reports)
+    {
+        var method = reports ? "{|CSENSE012:Create|}" : "Create";
+        var source = $$"""
+            /// <summary>Stores a value.</summary>
+            public class Box
+            {
+                /// <summary>Creates storage.</summary>
+                /// <param name="value">The initial value.</param>
+                /// <exception cref="System.ArgumentException">Invalid value.</exception>
+                public Box(int value) { }
+                /// <summary>Converts a value.</summary>
+                /// <param name="value">The source value.</param>
+                /// <returns>The converted value.</returns>
+                public static explicit operator Box(int value) => null;
+            }
+            /// <summary>Creates storage.</summary>
+            public class Factory
+            {
+                /// <summary>Creates a stored value.</summary>
+                /// <returns>The stored value.</returns>
+                public Box {{method}}() => {{expression}};
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: reports,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = "true" });
+    }
+
     [Test]
     public async Task CallStandardLibraryMethodReportsDiagnostic()
     {

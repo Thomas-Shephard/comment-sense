@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>$(CurrentTargetFramework)</TargetFrameworks>
+        <SdkRoslynPath>$(MSBuildToolsPath)/DotnetTools/dotnet-format</SdkRoslynPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="../../src/CommentSense.Analyzers/CommentSense.Analyzers.csproj"/>
+        <ProjectReference Include="../../src/CommentSense.CodeFixes/CommentSense.CodeFixes.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="$(SdkRoslynPath)/Microsoft.CodeAnalysis.dll"/>
+        <Reference Include="$(SdkRoslynPath)/Microsoft.CodeAnalysis.CSharp.dll"/>
+        <Reference Include="$(SdkRoslynPath)/Microsoft.CodeAnalysis.Workspaces.dll"/>
+        <Reference Include="$(SdkRoslynPath)/Microsoft.CodeAnalysis.CSharp.Workspaces.dll"/>
+        <Reference Include="$(SdkRoslynPath)/System.Composition.*.dll"/>
+    </ItemGroup>
+
+</Project>
