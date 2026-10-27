@@ -46,6 +46,7 @@ public class ExtensionIndexerTests
         var diagnostics = await test.AnalyzeAsync();
         Assert.That(diagnostics, Has.Length.EqualTo(1));
         var diagnostic = diagnostics[0];
+        using var scope = Assert.EnterMultipleScope();
         Assert.That(diagnostic.Id, Is.EqualTo("CSENSE001"));
         Assert.That(diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture), Does.Contain("Access.extension(int[])"));
         Assert.That((await test.Document.GetTextAsync()).ToString(diagnostic.Location.SourceSpan), Is.EqualTo("extension"));

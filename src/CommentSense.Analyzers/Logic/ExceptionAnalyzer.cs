@@ -760,14 +760,10 @@ internal static class ExceptionAnalyzer
         foreach (var node in nodes)
         {
             token.ThrowIfCancellationRequested();
-            if (options.ScanCalledMethodsForExceptions && node is ExpressionSyntax expression &&
-                semanticModel.GetConversion(expression, token).MethodSymbol is { MethodKind: MethodKind.Constructor } constructor)
+            foreach (var exception in GetExceptionsFromConversion(node, semanticModel, options, exceptionCache, token))
             {
-                foreach (var exception in GetExceptionsFromSymbol(constructor, semanticModel.Compilation, exceptionCache, token))
-                {
-                    if (!IsCaughtLocally(node, exception, semanticModel))
-                        yield return exception;
-                }
+                if (!IsCaughtLocally(node, exception, semanticModel))
+                    yield return exception;
             }
 
             var exceptions = GetExceptionsFromNode(node, semanticModel, options, exceptionType, exceptionCache, token);
@@ -780,6 +776,15 @@ internal static class ExceptionAnalyzer
                 }
             }
         }
+    }
+
+    private static IEnumerable<ITypeSymbol> GetExceptionsFromConversion(SyntaxNode node, SemanticModel semanticModel, CommentSenseOptions options, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
+    {
+        if (options.ScanCalledMethodsForExceptions && node is ExpressionSyntax expression &&
+            semanticModel.GetConversion(expression, token).MethodSymbol is { MethodKind: MethodKind.Constructor } constructor)
+            return GetExceptionsFromSymbol(constructor, semanticModel.Compilation, exceptionCache, token);
+
+        return [];
     }
 
     private static IEnumerable<ITypeSymbol?> GetExceptionsFromNode(SyntaxNode node, SemanticModel semanticModel, CommentSenseOptions options, ITypeSymbol exceptionType, ConcurrentDictionary<ISymbol, IEnumerable<ITypeSymbol>> exceptionCache, CancellationToken token)
