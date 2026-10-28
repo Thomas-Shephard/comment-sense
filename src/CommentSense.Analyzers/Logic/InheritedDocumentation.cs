@@ -19,7 +19,7 @@ internal static class InheritedDocumentation
     public static Result Resolve(Compilation compilation, ISymbol symbol, CancellationToken cancellationToken)
     {
         var cache = Cache.GetValue(compilation, _ => new ConcurrentDictionary<ISymbol, Result>(SymbolEqualityComparer.Default));
-        return cache.GetOrAdd(symbol, s => Resolve(compilation, s, new HashSet<ISymbol>(SymbolEqualityComparer.Default), cancellationToken));
+        return cache.GetOrAdd(symbol, s => Resolve(compilation, s, [], [], cancellationToken, out _));
     }
 
     public static bool HasTag(Compilation compilation, ISymbol symbol, DocumentationComment documentation, string tag, string? name, CancellationToken cancellationToken)
@@ -35,13 +35,19 @@ internal static class InheritedDocumentation
             element.Name.LocalName == tag && (name is null || (string?)element.Attribute(DocumentationAttributes.Name) == name));
     }
 
-    private static Result Resolve(Compilation compilation, ISymbol symbol, HashSet<ISymbol> visited, CancellationToken cancellationToken)
+    private static Result Resolve(Compilation compilation, ISymbol symbol, HashSet<ISymbol> visited, Dictionary<ISymbol, Result> resolved, CancellationToken cancellationToken, out bool hasCycle)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        hasCycle = false;
         if (symbol is IMethodSymbol { PartialDefinitionPart: { } definition })
             symbol = definition;
+        if (resolved.TryGetValue(symbol, out var cached))
+            return cached;
         if (!visited.Add(symbol))
+        {
+            hasCycle = true;
             return new Result([], false, false);
+        }
 
         try
         {
@@ -49,6 +55,7 @@ internal static class InheritedDocumentation
                 return new Result([], false, false);
 
             var elements = ImmutableArray.CreateBuilder<XElement>();
+            var seenElements = new HashSet<XElement>(XNode.EqualityComparer);
             var unknown = false;
             var hasPathFilter = false;
             foreach (var element in DocumentationXmlExtensions.GetTargetElements(documentation))
@@ -57,6 +64,7 @@ internal static class InheritedDocumentation
                 if (element.Name.LocalName != DocumentationTags.InheritDoc)
                 {
                     elements.Add(element);
+                    seenElements.Add(element);
                     unknown |= element.Name.LocalName == DocumentationTags.Include;
                     continue;
                 }
@@ -64,21 +72,25 @@ internal static class InheritedDocumentation
                 var targets = GetTargets(compilation, symbol, element);
                 var path = (string?)element.Attribute(DocumentationAttributes.Path);
                 hasPathFilter |= !string.IsNullOrWhiteSpace(path);
-                if (targets.IsEmpty && symbol.DeclaringSyntaxReferences.IsEmpty && string.IsNullOrWhiteSpace(path))
-                    unknown = true;
+                unknown |= targets.IsEmpty && symbol.DeclaringSyntaxReferences.IsEmpty && string.IsNullOrWhiteSpace(path);
 
                 foreach (var target in targets)
                 {
-                    var inherited = Resolve(compilation, target, visited, cancellationToken);
+                    var inherited = Resolve(compilation, target, visited, resolved, cancellationToken, out var targetHasCycle);
+                    hasCycle |= targetHasCycle;
                     hasPathFilter |= inherited.HasPathFilter;
                     var selected = SelectElements(inherited.Elements, path);
-                    elements.AddRange(selected);
+                    elements.AddRange(selected.Where(seenElements.Add));
                     unknown |= selected.Any(selectedElement => selectedElement.Name.LocalName == DocumentationTags.Include) ||
                         inherited.HasUnknownInclude && string.IsNullOrWhiteSpace(path);
                 }
             }
 
-            return new Result(elements.ToImmutable(), unknown, hasPathFilter);
+            var result = new Result(elements.ToImmutable(), unknown, hasPathFilter);
+            // Cyclic results depend on the active ancestors and cannot be reused on another branch.
+            if (!hasCycle)
+                resolved[symbol] = result;
+            return result;
         }
         finally
         {
