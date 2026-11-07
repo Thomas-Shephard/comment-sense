@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+using CommentSense.Analyzers.Logic;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -273,6 +276,132 @@ public class InheritDocScopeTests : CommentSenseAnalyzerTestBase<CommentSenseAna
             """;
 
         await VerifyCSenseAsync(source);
+    }
+
+    [TestCase(6, "")]
+    [TestCase(14, "")]
+    [TestCase(14, " path=\"/summary\"")]
+    public void OverrideChainDoesNotMultiplyInheritedElements(int depth, string path)
+    {
+        var source = new StringBuilder("""
+            public class C0
+            {
+                /// <summary>Performs work.</summary>
+                public virtual void Execute() { }
+            }
+
+            """);
+        for (var i = 1; i <= depth; i++)
+        {
+            source.AppendLine(CultureInfo.InvariantCulture, $$"""
+                public class C{{i}} : C{{i - 1}}
+                {
+                    /// <inheritdoc{{path}}/>
+                    public override void Execute() { }
+                }
+                """);
+        }
+
+        var result = Resolve(source.ToString(), $"C{depth}", "Execute");
+
+        Assert.That(result.Elements.Select(element => element.ToString()), Is.EqualTo(["<summary>Performs work.</summary>"]));
+    }
+
+    [Test]
+    public void SharedTargetCanBeSelectedThroughSeparatePaths()
+    {
+        const string source = """
+            public class Example
+            {
+                /// <summary>Performs work.</summary>
+                /// <returns>The result.</returns>
+                public int Source() => 1;
+
+                /// <inheritdoc cref="Source" path="/summary"/>
+                public void First() { }
+
+                /// <inheritdoc cref="Source" path="/returns"/>
+                public void Second() { }
+
+                /// <inheritdoc cref="First"/>
+                /// <inheritdoc cref="Second"/>
+                public int Target() => 1;
+            }
+            """;
+
+        var result = Resolve(source, "Example", "Target");
+
+        Assert.That(result.Elements.Select(element => element.Name.LocalName), Is.EqualTo(["summary", "returns"]));
+    }
+
+    [Test]
+    public void DiamondInheritanceKeepsDistinctContractDocumentation()
+    {
+        const string source = """
+            public interface IRoot
+            {
+                /// <summary>Performs work.</summary>
+                void Execute();
+            }
+            public interface ILeft : IRoot
+            {
+                /// <inheritdoc/>
+                /// <remarks>Uses the left contract.</remarks>
+                new void Execute();
+            }
+            public interface IRight : IRoot
+            {
+                /// <inheritdoc/>
+                /// <remarks>Uses the right contract.</remarks>
+                new void Execute();
+            }
+            public class Example : ILeft, IRight
+            {
+                /// <inheritdoc/>
+                public void Execute() { }
+            }
+            """;
+
+        var result = Resolve(source, "Example", "Execute");
+
+        Assert.That(result.Elements.Select(element => element.Value), Is.EquivalentTo(
+            ["Performs work.", "Uses the left contract.", "Uses the right contract."]));
+    }
+
+    [Test]
+    public void CircularBranchDoesNotCacheIncompleteDocumentationForAnotherBranch()
+    {
+        const string source = """
+            public class Example
+            {
+                /// <inheritdoc cref="Second"/>
+                /// <summary>Performs work.</summary>
+                public void First() { }
+
+                /// <inheritdoc cref="First"/>
+                public void Second() { }
+
+                /// <inheritdoc cref="First" path="/returns"/>
+                /// <inheritdoc cref="Second" path="/summary"/>
+                public void Target() { }
+            }
+            """;
+
+        var result = Resolve(source, "Example", "Target");
+
+        Assert.That(result.Elements.Select(element => element.Name.LocalName), Is.EqualTo(["summary"]));
+    }
+
+    private static InheritedDocumentation.Result Resolve(string source, string typeName, string memberName)
+    {
+        var tree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(documentationMode: DocumentationMode.Parse));
+        var compilation = CSharpCompilation.Create("Test", [tree],
+            [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        Assert.That(compilation.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
+        var symbol = compilation.GetTypeByMetadataName(typeName)?.GetMembers(memberName).Single()
+            ?? throw new InvalidOperationException("Test member was not found.");
+        return InheritedDocumentation.Resolve(compilation, symbol, CancellationToken.None);
     }
 
     private static Solution AddReference(Solution solution, ProjectId projectId, string source)
