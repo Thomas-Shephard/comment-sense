@@ -392,6 +392,39 @@ public class InheritDocScopeTests : CommentSenseAnalyzerTestBase<CommentSenseAna
         Assert.That(result.Elements.Select(element => element.Name.LocalName), Is.EqualTo(["summary"]));
     }
 
+    [TestCase("", "")]
+    [TestCase(" path=\"/summary\"", " path=\"/returns\"")]
+    public void RepeatedCyclicTargetsDoNotMultiplyResolutionWork(string firstPath, string secondPath)
+    {
+        const int depth = 12;
+        var source = new StringBuilder("public class Example {\n");
+        for (var i = 0; i < depth; i++)
+        {
+            source.AppendLine(CultureInfo.InvariantCulture, $$"""
+                /// <inheritdoc cref="M{{i + 1}}"{{firstPath}}/>
+                /// <inheritdoc cref="M{{i + 1}}"{{secondPath}}/>
+                public int M{{i}}() => 1;
+                """);
+        }
+        source.AppendLine(CultureInfo.InvariantCulture, $$"""
+            /// <inheritdoc cref="M0"/>
+            /// <summary>Performs work.</summary>
+            /// <returns>The result.</returns>
+            public int M{{depth}}() => 1;
+            }
+            """);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var result = Resolve(source.ToString(), "Example", "M0");
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result.Elements.Select(element => element.Name.LocalName), Is.EqualTo(["summary", "returns"]));
+            Assert.That(allocated, Is.LessThan(16 * 1024 * 1024), "Repeated cyclic targets should not cause exponential allocations.");
+        }
+    }
+
     private static InheritedDocumentation.Result Resolve(string source, string typeName, string memberName)
     {
         var tree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(documentationMode: DocumentationMode.Parse));
