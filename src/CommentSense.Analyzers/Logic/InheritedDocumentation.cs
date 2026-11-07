@@ -56,6 +56,7 @@ internal static class InheritedDocumentation
 
             var elements = ImmutableArray.CreateBuilder<XElement>();
             var seenElements = new HashSet<XElement>(XNode.EqualityComparer);
+            Dictionary<ISymbol, (Result Documentation, bool HasCycle)>? targetResults = null;
             var unknown = false;
             var hasPathFilter = false;
             foreach (var element in DocumentationXmlExtensions.GetTargetElements(documentation))
@@ -76,7 +77,7 @@ internal static class InheritedDocumentation
 
                 foreach (var target in targets)
                 {
-                    var inherited = Resolve(compilation, target, visited, resolved, cancellationToken, out var targetHasCycle);
+                    var (inherited, targetHasCycle) = ResolveTarget(compilation, target, visited, resolved, ref targetResults, cancellationToken);
                     hasCycle |= targetHasCycle;
                     hasPathFilter |= inherited.HasPathFilter;
                     var selected = SelectElements(inherited.Elements, path);
@@ -96,6 +97,20 @@ internal static class InheritedDocumentation
         {
             visited.Remove(symbol);
         }
+    }
+
+    private static (Result Documentation, bool HasCycle) ResolveTarget(Compilation compilation, ISymbol target,
+        HashSet<ISymbol> visited, Dictionary<ISymbol, Result> resolved,
+        ref Dictionary<ISymbol, (Result Documentation, bool HasCycle)>? targetResults, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (targetResults is not null && targetResults.TryGetValue(target, out var cached))
+            return cached;
+
+        var documentation = Resolve(compilation, target, visited, resolved, cancellationToken, out var hasCycle);
+        var result = (documentation, hasCycle);
+        (targetResults ??= []).Add(target, result);
+        return result;
     }
 
     private static ImmutableArray<ISymbol> GetTargets(Compilation compilation, ISymbol symbol, XElement inheritDoc)
