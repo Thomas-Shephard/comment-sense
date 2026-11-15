@@ -75,7 +75,7 @@ public class TagOrderCodeFixProvider : CodeFixProviderBase
 
     internal static int GetTagPriority(XmlNodeSyntax tag, IReadOnlyDictionary<string, int> tagOrder)
     {
-        var tagName = tag.GetTagName().ToLowerInvariant();
+        var tagName = tag.GetTagName();
         if (string.IsNullOrEmpty(tagName))
             return 100;
 
