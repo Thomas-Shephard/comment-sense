@@ -98,7 +98,7 @@ internal static class GhostReferenceAnalyzer
         if (names.IsEmpty)
             return;
 
-        // Fast-path for extremely large parameter sets or long documentation blocks to avoid
+        // Avoid regex scanning for large parameter sets or documentation blocks.
         if (names.Length > 100 || context.XmlText.Span.Length > 50000)
         {
             AnalyzeReferencesFast(context, names, rule);
@@ -169,8 +169,7 @@ internal static class GhostReferenceAnalyzer
 
             if (isPart && start == -1)
             {
-                if (SyntaxFacts.IsIdentifierStartCharacter(ch))
-                    start = i;
+                start = i;
             }
             else if (!isPart && start != -1)
             {
