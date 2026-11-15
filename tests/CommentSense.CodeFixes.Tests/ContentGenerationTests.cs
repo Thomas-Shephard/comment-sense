@@ -461,8 +461,7 @@ public class ContentGenerationTests : CommentSenseCodeFixTestBase<CommentSenseAn
         var options = new Dictionary<string, string>(DisableUnrelatedRules)
         {
             ["dotnet_diagnostic.CSENSE001.severity"] = "warning",
-            ["dotnet_diagnostic.CSENSE022.severity"] = "warning",
-            ["commentsense.exclude_constants"] = "false"
+            ["dotnet_diagnostic.CSENSE022.severity"] = "warning"
         };
 
         await VerifyFixAllAsync(source, fixedSource, options);

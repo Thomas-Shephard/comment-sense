@@ -161,7 +161,7 @@ public class DocumentationModeTests : CommentSenseAnalyzerTestBase<CommentSenseA
         const string codeDisabled = "public partial class PartialClass { }";
 
         // One part in an enabled file
-        const string codeEnabled = "public partial class {|CSENSE001:PartialClass|} { }";
+        const string codeEnabled = "public partial class PartialClass { }";
 
         var treeDisabled = CSharpSyntaxTree.ParseText(codeDisabled, new CSharpParseOptions(documentationMode: DocumentationMode.None));
         var treeEnabled = CSharpSyntaxTree.ParseText(codeEnabled, new CSharpParseOptions(documentationMode: DocumentationMode.Parse));
