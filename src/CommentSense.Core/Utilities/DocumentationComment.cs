@@ -130,72 +130,24 @@ internal sealed class DocumentationComment
 
     private static IEnumerable<ISymbol> GetSymbolsToInspect(ISymbol symbol)
     {
-        if (symbol is not IMethodSymbol method)
+        symbol = symbol switch
         {
-            yield return symbol;
-            yield break;
-        }
+            IMethodSymbol { PartialDefinitionPart: { } definition } => definition,
+            IPropertySymbol { PartialDefinitionPart: { } definition } => definition,
+            IEventSymbol { PartialDefinitionPart: { } definition } => definition,
+            _ => symbol
+        };
 
-        foreach (var methodSymbol in GetMethodSymbolsToInspect(method))
-            yield return methodSymbol;
-    }
+        yield return symbol;
 
-    private static IEnumerable<IMethodSymbol> GetMethodSymbolsToInspect(IMethodSymbol method)
-    {
-        var directMethods = GetDirectMethodSymbols(method);
-        if (directMethods.Count > 1)
+        ISymbol? implementation = symbol switch
         {
-            foreach (var symbol in OrderMethodSymbols(directMethods))
-                yield return symbol;
-
-            yield break;
-        }
-
-        yield return method;
-    }
-
-    private static List<IMethodSymbol> GetDirectMethodSymbols(IMethodSymbol method)
-    {
-        var methods = new List<IMethodSymbol>(capacity: 3);
-        AddIfMissing(methods, method.PartialDefinitionPart);
-        AddIfMissing(methods, method);
-        AddIfMissing(methods, method.PartialImplementationPart);
-        return methods;
-    }
-
-    private static void AddIfMissing(List<IMethodSymbol> methods, IMethodSymbol? candidate)
-    {
-        if (candidate == null)
-            return;
-
-        if (methods.Any(existing => SymbolEqualityComparer.Default.Equals(existing, candidate)))
-            return;
-
-        methods.Add(candidate);
-    }
-
-    private static List<IMethodSymbol> OrderMethodSymbols(List<IMethodSymbol> methods)
-    {
-        if (methods.Count <= 1)
-            return methods;
-
-        var orderedMethods = methods
-            .Select((symbol, index) => (Symbol: symbol, Index: index))
-            .ToList();
-
-        orderedMethods.Sort(static (left, right) =>
-        {
-            int orderComparison = GetMethodDeclarationOrder(left.Symbol).CompareTo(GetMethodDeclarationOrder(right.Symbol));
-            return orderComparison != 0
-                ? orderComparison
-                : left.Index.CompareTo(right.Index);
-        });
-
-        return [.. orderedMethods.Select(static entry => entry.Symbol)];
-    }
-
-    private static int GetMethodDeclarationOrder(IMethodSymbol method)
-    {
-        return method.PartialImplementationPart != null ? 0 : 1;
+            IMethodSymbol method => method.PartialImplementationPart,
+            IPropertySymbol property => property.PartialImplementationPart,
+            IEventSymbol @event => @event.PartialImplementationPart,
+            _ => null
+        };
+        if (implementation != null)
+            yield return implementation;
     }
 }
