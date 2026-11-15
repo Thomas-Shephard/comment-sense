@@ -234,44 +234,8 @@ internal static class DocumentationSyntaxExtensions
 
         foreach (var token in xmlText.TextTokens)
         {
-            if (!IsPureWhitespaceOrPrefix(token.Text.AsSpan()))
+            if (!string.IsNullOrWhiteSpace(token.Text))
                 return false;
-        }
-
-        return true;
-    }
-
-    private static bool IsPureWhitespaceOrPrefix(ReadOnlySpan<char> text)
-    {
-        if (text.IsEmpty)
-            return true;
-
-        int i = 0;
-        while (i < text.Length)
-        {
-            char c = text[i];
-            if (char.IsWhiteSpace(c))
-            {
-                i++;
-                continue;
-            }
-
-            if (c == '/')
-            {
-                if (i + 2 >= text.Length || text[i + 1] != '/' || text[i + 2] != '/')
-                    return false;
-
-                i += 3;
-                continue;
-            }
-
-            if (c == '*')
-            {
-                i++;
-                continue;
-            }
-
-            return false;
         }
 
         return true;
