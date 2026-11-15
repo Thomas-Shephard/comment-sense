@@ -87,94 +87,29 @@ public class OrderSynchronizationCodeFixProvider : CodeFixProviderBase
 
     internal static Document ReorderTags(Document document, SyntaxNode root, DocumentationCommentTriviaSyntax docTrivia, string tagName, ImmutableArray<string> expectedOrder)
     {
-        var parentToTagNodes = CollectTagNodes(docTrivia, tagName);
-        var parentsToUpdate = parentToTagNodes.Where(kvp => kvp.Value.Count > 1).Select(kvp => kvp.Key).ToList();
-
-        if (parentsToUpdate.Count == 0)
-            return document;
-
-        var newRoot = root.ReplaceNodes(parentsToUpdate, (original, rewritten) =>
-        {
-            var tagNodes = parentToTagNodes[original];
-            return ReorderContent(rewritten, tagNodes, expectedOrder);
-        });
-
-        return document.WithSyntaxRoot(newRoot);
-    }
-
-    private static Dictionary<SyntaxNode, List<(XmlNodeSyntax Node, string Name, int Index)>> CollectTagNodes(DocumentationCommentTriviaSyntax docTrivia, string tagName)
-    {
-        var parentToTagNodes = new Dictionary<SyntaxNode, List<(XmlNodeSyntax Node, string Name, int Index)>>();
-        foreach (var xmlNode in docTrivia.DescendantNodes().OfType<XmlNodeSyntax>())
-        {
-            if (xmlNode.GetTagName() != tagName)
-                continue;
-
-            var name = xmlNode.GetNameAttribute();
-            if (name is null)
-                continue;
-
-            var (parent, content) = xmlNode.GetParentContent();
-
-            // Only consider tags that are direct children of the documentation comment
-            // to avoid reordering nested tags (e.g., inside <remarks> or <summary>).
-            if (parent is not DocumentationCommentTriviaSyntax)
-                continue;
-
-            var index = content.IndexOf(xmlNode);
-            if (index < 0)
-                continue;
-
-            if (!parentToTagNodes.TryGetValue(parent, out var list))
-            {
-                list = [];
-                parentToTagNodes[parent] = list;
-            }
-            list.Add((xmlNode, name, index));
-        }
-        return parentToTagNodes;
-    }
-
-    private static DocumentationCommentTriviaSyntax ReorderContent(SyntaxNode parent, List<(XmlNodeSyntax Node, string Name, int Index)> tagNodes, ImmutableArray<string> expectedOrder)
-    {
-        var docTrivia = (DocumentationCommentTriviaSyntax)parent;
         var content = docTrivia.Content;
-
-        var nodesByName = tagNodes
-            .GroupBy(x => x.Name, StringComparer.Ordinal)
-            .ToDictionary(
-                g => g.Key,
-                g => new Queue<XmlNodeSyntax>(g.Select(x => content[x.Index])),
-                StringComparer.Ordinal);
-
-        var originalNamesInOrder = tagNodes
-            .OrderBy(x => x.Index)
-            .Select(x => x.Name)
+        var tagNodes = content
+            .Select((node, index) => (Node: node, Name: node.GetNameAttribute(), Index: index))
+            .Where(tag => tag.Node.GetTagName() == tagName && tag.Name != null)
             .ToList();
+
+        if (tagNodes.Count <= 1)
+            return document;
 
         var expectedOrderIndices = expectedOrder
             .Select((name, index) => (name, index))
             .ToDictionary(x => x.name, x => x.index, StringComparer.Ordinal);
 
-        var sortedNames = originalNamesInOrder
-            .Where(expectedOrderIndices.ContainsKey)
-            .OrderBy(name => expectedOrderIndices[name])
+        var sortedNodes = tagNodes
+            .OrderBy(tag => expectedOrderIndices.TryGetValue(tag.Name!, out var index) ? index : int.MaxValue)
+            .Select(tag => tag.Node)
             .ToList();
 
-        var strayNames = originalNamesInOrder
-            .Where(name => !expectedOrderIndices.ContainsKey(name))
-            .ToList();
-
-        var finalOrderNames = sortedNames.Concat(strayNames).ToList();
-
-        var newContentList = content.ToList();
+        var newContent = content.ToList();
         for (int i = 0; i < tagNodes.Count; i++)
-        {
-            var targetName = finalOrderNames[i];
-            var targetIndex = tagNodes[i].Index;
-            newContentList[targetIndex] = nodesByName[targetName].Dequeue();
-        }
+            newContent[tagNodes[i].Index] = sortedNodes[i];
 
-        return docTrivia.WithContent(SyntaxFactory.List(newContentList));
+        var updatedTrivia = docTrivia.WithContent(SyntaxFactory.List(newContent));
+        return document.WithSyntaxRoot(root.ReplaceNode(docTrivia, updatedTrivia));
     }
 }
