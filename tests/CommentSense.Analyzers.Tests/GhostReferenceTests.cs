@@ -65,6 +65,26 @@ public class GhostReferenceTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
         ]);
     }
 
+    [TestCase(0)]
+    [TestCase(50001)]
+    public async Task ReferenceMustStartAtAWordBoundary(int paddingLength)
+    {
+        var padding = new string(' ', paddingLength);
+        var source = $$"""
+            public class Container
+            {
+                /// <summary>{{padding}}Handles 123p0 and {{"\u0301"}}p0, then {|CSENSE020:p0|}.</summary>
+                public void Execute(int p0) { }
+            }
+            """;
+
+        await VerifyCSenseAsync(source, diagnosticOptions:
+        [
+            (CommentSenseDiagnosticIds.MissingDocumentationId, ReportDiagnostic.Suppress),
+            (CommentSenseDiagnosticIds.MissingParameterDocumentationId, ReportDiagnostic.Suppress)
+        ]);
+    }
+
     [Test]
     public async Task FastPathDetectsGhostReferencesWithLongText()
     {

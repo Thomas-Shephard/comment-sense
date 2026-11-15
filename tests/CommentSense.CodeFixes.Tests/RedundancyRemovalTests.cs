@@ -16,6 +16,27 @@ public class RedundancyRemovalTests : CommentSenseCodeFixTestBase<CommentSenseAn
     };
 
     [Test]
+    public async Task RemoveStrayTagPreservesAdjacentLiteralSymbols()
+    {
+        const string source = """
+            public class Test
+            {
+                /// <summary>Summary</summary>*///{|CSENSE003:<param name="stray">Stray</param>|}
+                public void Method() { }
+            }
+            """;
+        const string fixedSource = """
+            public class Test
+            {
+                /// <summary>Summary</summary>*///
+                public void Method() { }
+            }
+            """;
+
+        await VerifyCodeFixAsync(source, fixedSource, DisableUnrelatedRules);
+    }
+
+    [Test]
     public async Task RemoveStrayParameterDocumentation()
     {
         const string source = """

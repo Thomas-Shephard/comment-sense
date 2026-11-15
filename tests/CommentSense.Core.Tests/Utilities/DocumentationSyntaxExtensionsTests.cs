@@ -647,10 +647,10 @@ public class DocumentationSyntaxExtensionsTests
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixWithTripleSlashReturnsTrue()
+    public void IsPureWhitespaceOrPrefixWithLiteralTripleSlashReturnsFalse()
     {
         var text = SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("///")));
-        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.True);
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.False);
     }
 
     [Test]
@@ -668,10 +668,10 @@ public class DocumentationSyntaxExtensionsTests
     }
 
     [Test]
-    public void IsPureWhitespaceOrPrefixWithStarOnlyReturnsTrue()
+    public void IsPureWhitespaceOrPrefixWithLiteralStarReturnsFalse()
     {
         var tree = CSharpSyntaxTree.ParseText("/** * */\npublic class C {}");
         var text = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlTextSyntax>().First();
-        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.True);
+        Assert.That(text.IsPureWhitespaceOrPrefix(), Is.False);
     }
 }

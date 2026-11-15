@@ -1,11 +1,9 @@
 using System.Xml.Linq;
-using System.Collections.Immutable;
 using CommentSense.Core.Utilities;
 using CommentSense.TestHelpers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Moq;
 using NUnit.Framework;
 
 namespace CommentSense.Core.Tests.Utilities;
@@ -287,35 +285,35 @@ public class DocumentationExtensionsTests
         }
     }
 
-    [Test]
-    public void GetMethodDeclarationOrderWithoutSyntaxReferencesReturnsImplementationOrder()
+    [TestCase("public partial void Member();", "public partial void Member() { }")]
+    [TestCase("public partial int Member { get; }", "public partial int Member => 1;")]
+    [TestCase("public partial event System.Action Member;", "public partial event System.Action Member { add { } remove { } }")]
+    public void PartialMemberDocumentationIsTheSameFromEitherPart(string definition, string implementation)
     {
-        var method = new Mock<IMethodSymbol>();
-        method.SetupGet(symbol => symbol.DeclaringSyntaxReferences).Returns(ImmutableArray<SyntaxReference>.Empty);
-
-        Assert.That(InvokeGetMethodDeclarationOrder(method.Object), Is.EqualTo(1));
-    }
-
-    [Test]
-    public void AddIfMissingIgnoresDuplicateSymbol()
-    {
-        var methodSymbol = (IMethodSymbol)RoslynTestUtils.GetSymbolFromSource("public class C { public void M() {} }", "M");
-        var methods = new List<IMethodSymbol> { methodSymbol };
-
-        InvokeAddIfMissing(methods, methodSymbol);
-        Assert.That(methods, Has.Count.EqualTo(1));
-    }
-
-    [Test]
-    public void OrderMethodSymbolsSingleMethodReturnsSameList()
-    {
-        var methodSymbol = (IMethodSymbol)RoslynTestUtils.GetSymbolFromSource("public class C { public void M() {} }", "M");
-        var result = InvokeOrderMethodSymbols([methodSymbol]);
-
-        using (Assert.EnterMultipleScope())
+        var source = $$"""
+            public partial class Container
+            {
+                /// <summary>Describes the member.</summary>
+                {{definition}}
+                /// <remarks>Additional information.</remarks>
+                {{implementation}}
+            }
+            """;
+        var symbol = GetSymbolFromSource(source, "Member");
+        ISymbol? implementationSymbol = symbol switch
         {
-            Assert.That(result, Has.Count.EqualTo(1));
-            Assert.That(SymbolEqualityComparer.Default.Equals(result[0], methodSymbol), Is.True);
+            IMethodSymbol method => method.PartialImplementationPart,
+            IPropertySymbol property => property.PartialImplementationPart,
+            IEventSymbol @event => @event.PartialImplementationPart,
+            _ => null
+        };
+        var expectedTags = new[] { "summary", "remarks" };
+        foreach (var part in new[] { symbol, implementationSymbol ?? throw new InvalidOperationException("Missing implementation.") })
+        {
+            var documentation = DocumentationComment.FromSymbol(part);
+            Assert.That(documentation, Is.Not.Null);
+            Assert.That(documentation.GetElements().Select(element => element.GetTagName()),
+                Is.EqualTo(expectedTags));
         }
     }
 
@@ -1184,30 +1182,6 @@ public class DocumentationExtensionsTests
     private static ISymbol GetSymbolFromSource(string source, string symbolName)
     {
         return RoslynTestUtils.GetSymbolFromSource(source, symbolName, parseDocumentation: true);
-    }
-
-    private static int InvokeGetMethodDeclarationOrder(IMethodSymbol methodSymbol)
-    {
-        var method = typeof(DocumentationComment).GetMethod("GetMethodDeclarationOrder", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                     ?? throw new InvalidOperationException("Could not find GetMethodDeclarationOrder.");
-
-        return (int)(method.Invoke(null, [methodSymbol]) ?? throw new InvalidOperationException("GetMethodDeclarationOrder returned null."));
-    }
-
-    private static void InvokeAddIfMissing(List<IMethodSymbol> methods, IMethodSymbol candidate)
-    {
-        var method = typeof(DocumentationComment).GetMethod("AddIfMissing", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                     ?? throw new InvalidOperationException("Could not find AddIfMissing.");
-
-        method.Invoke(null, [methods, candidate]);
-    }
-
-    private static List<IMethodSymbol> InvokeOrderMethodSymbols(List<IMethodSymbol> methods)
-    {
-        var method = typeof(DocumentationComment).GetMethod("OrderMethodSymbols", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                     ?? throw new InvalidOperationException("Could not find OrderMethodSymbols.");
-
-        return (List<IMethodSymbol>)(method.Invoke(null, [methods]) ?? throw new InvalidOperationException("OrderMethodSymbols returned null."));
     }
 
     private static ISymbol GetSymbolFromSources((string FilePath, string Source) first, (string FilePath, string Source) second, string symbolName)
