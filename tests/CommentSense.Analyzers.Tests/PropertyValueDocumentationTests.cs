@@ -6,6 +6,43 @@ namespace CommentSense.Analyzers.Tests;
 public class PropertyValueDocumentationTests : CommentSenseAnalyzerTestBase<CommentSenseAnalyzer>
 {
     [Test]
+    public async Task PartialPropertyCombinesDocumentationFromBothDeclarations()
+    {
+        const string source = """
+            /// <summary>Provides a value.</summary>
+            public partial class Container
+            {
+                /// <summary>Gets the current value.</summary>
+                public partial int Value { get; }
+
+                /// <value>The current value.</value>
+                public partial int Value => 1;
+            }
+            """;
+
+        await VerifyCSenseAsync(source, expectDiagnostic: false,
+            diagnosticOptions: [("CSENSE014", Microsoft.CodeAnalysis.ReportDiagnostic.Warn)]);
+    }
+
+    [Test]
+    public async Task PartialPropertyReportsExceptionsThrownByImplementation()
+    {
+        const string source = """
+            /// <summary>Provides a value.</summary>
+            public partial class Container
+            {
+                /// <summary>Gets the current value.</summary>
+                /// <value>The current value.</value>
+                public partial int Value { get; }
+
+                public partial int {|CSENSE012:Value|} => throw new System.InvalidOperationException();
+            }
+            """;
+
+        await VerifyCSenseAsync(source);
+    }
+
+    [Test]
     public async Task PropertyMissingValueTagReportsDiagnostic()
     {
         const string testCode = """

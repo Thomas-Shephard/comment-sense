@@ -24,6 +24,23 @@ public class DocumentationTagOrderCodeFixTests : CommentSenseCodeFixTestBase<Com
     };
 
     [Test]
+    public async Task DefaultTagOrderPreservesXmlCaseSensitivity()
+    {
+        const string source = """
+            /// <Summary>Custom content.</Summary>
+            /// {|CSENSE024:<summary>Describes the type.</summary>|}
+            public class Container { }
+            """;
+        const string fixedSource = """
+            /// <summary>Describes the type.</summary>
+            /// <Summary>Custom content.</Summary>
+            public class Container { }
+            """;
+
+        await VerifyFixAllAsync(source, fixedSource);
+    }
+
+    [Test]
     public async Task InheritDocIsMovedToFirst()
     {
         const string testCode = """
