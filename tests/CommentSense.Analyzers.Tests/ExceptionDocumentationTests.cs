@@ -1022,10 +1022,11 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
         await VerifyCSenseAsync(testCode, expectDiagnostic: false);
     }
 
-    [Test]
-    public async Task GenericFallbackWithNestedTypeAndNoUsingIsResolved()
+    [TestCase("N1.Outer.NestedEx", false)]
+    [TestCase("Outer.NestedEx", true)]
+    public async Task NestedGenericFallbackRespectsQualification(string cref, bool missing)
     {
-        const string testCode = """
+        var testCode = $$"""
             namespace N1
             {
                 /// <summary>This is a summary for the outer class.</summary>
@@ -1043,9 +1044,9 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
                 {
                     /// <summary>Method.</summary>
                     #pragma warning disable CSENSE007
-                    /// <exception cref="!:Outer.NestedEx">Nested generic fallback</exception>
+                    /// <exception cref="!:{{cref}}">Nested generic fallback</exception>
                     #pragma warning restore CSENSE007
-                    public void MyMethod()
+                    public void {{(missing ? "{|CSENSE012:MyMethod|}" : "MyMethod")}}()
                     {
                         throw new N1.Outer.NestedEx<int>();
                     }
@@ -1053,11 +1054,7 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
             }
             """;
 
-        // Suppress CSENSE001 for Outer and CSENSE012 for the thrown exception to focus on fallback logic
-        await VerifyCSenseAsync(testCode, expectDiagnostic: false, diagnosticOptions: [
-            ("CSENSE001", ReportDiagnostic.Suppress),
-            ("CSENSE012", ReportDiagnostic.Suppress)
-        ]);
+        await VerifyCSenseAsync(testCode, expectDiagnostic: missing);
     }
 
     [Test]
