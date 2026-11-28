@@ -15,7 +15,7 @@ internal static class QualityAnalyzer
         if (!TryGetContent(element, out var content))
             return false;
 
-        return IsLowQualityCore(content, symbol, targetSymbol, options);
+        return IsLowQualityCore(content, symbol, targetSymbol, GetFormattingOptions(element, options));
     }
 
     public static bool IsLowQuality(XmlNodeSyntax element, string symbolName, CommentSenseOptions options, string? tagName = null)
@@ -23,7 +23,7 @@ internal static class QualityAnalyzer
         if (!TryGetContent(element, out var content))
             return false;
 
-        return IsLowQuality(content, symbolName, options, tagName);
+        return IsLowQuality(content, symbolName, GetFormattingOptions(element, options), tagName);
     }
 
     public static bool IsLowQuality(string? content, string symbolName, CommentSenseOptions options, string? tagName = null)
@@ -44,7 +44,7 @@ internal static class QualityAnalyzer
         if (!TryGetContent(element, out var content))
             return false;
 
-        return IsLowQualityForAnyFormat(content, displayName, minimallyQualifiedName, options, tagName);
+        return IsLowQualityForAnyFormat(content, displayName, minimallyQualifiedName, GetFormattingOptions(element, options), tagName);
     }
 
     public static bool IsLowQualityForAnyFormat(string content, string displayName, string minimallyQualifiedName, CommentSenseOptions options, string? tagName = null)
@@ -96,6 +96,13 @@ internal static class QualityAnalyzer
 
         var simpleTypeName = type.Name;
         return simpleTypeName != typeName && IsLowQuality(content, simpleTypeName, options, tagName: tagName);
+    }
+
+    private static CommentSenseOptions GetFormattingOptions(XmlNodeSyntax element, CommentSenseOptions options)
+    {
+        return options.RequireCapitalization && element.GetCapitalizationNode() is null
+            ? options with { RequireCapitalization = false }
+            : options;
     }
 
     private static bool TryGetContent(XmlNodeSyntax element, out string content)

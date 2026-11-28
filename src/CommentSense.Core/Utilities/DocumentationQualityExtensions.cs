@@ -75,36 +75,21 @@ internal static class DocumentationQualityExtensions
         };
     }
 
-    public static bool HasAnyLetter(this SyntaxList<XmlNodeSyntax> content)
+    public static XmlNodeSyntax? GetCapitalizationNode(this XmlNodeSyntax element)
     {
-        foreach (var node in content)
+        foreach (var node in element.DescendantNodes().OfType<XmlNodeSyntax>())
         {
-            if (node is XmlTextSyntax or XmlCDataSectionSyntax)
-            {
-                foreach (var token in node.GetTextTokens())
-                {
-                    if (HasAnyLetter(token.ValueText.AsSpan()))
-                        return true;
-                }
-            }
-            else if (node is XmlElementSyntax xmlElement && xmlElement.Content.HasAnyLetter())
-            {
-                return true;
-            }
+            if (node.GetTextTokens().All(token => string.IsNullOrWhiteSpace(token.ValueText)))
+                continue;
+
+            // Leading code is part of the sentence, but its casing must be preserved.
+            return node.Ancestors().OfType<XmlElementSyntax>()
+                .Any(parent => parent.GetTagName() is DocumentationTags.C or DocumentationTags.Code)
+                ? null
+                : node;
         }
 
-        return false;
-    }
-
-    private static bool HasAnyLetter(ReadOnlySpan<char> content)
-    {
-        foreach (char c in content)
-        {
-            if (char.IsLetter(c))
-                return true;
-        }
-
-        return false;
+        return null;
     }
 
     public static bool StartsWithLowercase(string content) => StartsWithLowercase(content.AsSpan());

@@ -401,8 +401,49 @@ public class LowQualityDocumentationCodeFixTests : CommentSenseCodeFixTestBase<C
         await VerifyCodeFixAsync(source, fixedSource, QualityOptions);
     }
 
+    [TestCase("<c>true</c>")]
+    [TestCase("<code>true</code>")]
+    [TestCase("<para><c>true</c></para>")]
+    [TestCase("<code><![CDATA[return true;]]></code>")]
+    public async Task PreservesLeadingCodeWhenAddingPunctuation(string code)
+    {
+        var content = $"{code} indicates success";
+        var source = $"/// {{|CSENSE016:<summary>{content}</summary>|}}\npublic class C {{ }}";
+        var fixedSource = $"/// <summary>{content}.</summary>\npublic class C {{ }}";
+        await VerifyFixAllAsync(source, fixedSource, QualityOptions);
+    }
+
+    [TestCase("c")]
+    [TestCase("code")]
+    public async Task LeadingCodeDoesNotRequireCapitalization(string tag)
+    {
+        var source = $"/// <summary><{tag}>true</{tag}> indicates success.</summary>\npublic class C {{ }}";
+        await VerifyNoCodeFixAsync(source, QualityOptions);
+    }
+
+    [TestCase("c")]
+    [TestCase("code")]
+    public async Task CodeOnlyDocumentationDoesNotRequireCapitalization(string tag)
+    {
+        var source = $"/// <summary><{tag}>return true;</{tag}></summary>\npublic class C {{ }}";
+        var options = new Dictionary<string, string>(QualityOptions)
+        {
+            ["comment_sense.require_ending_punctuation"] = "false"
+        };
+        await VerifyNoCodeFixAsync(source, options);
+    }
+
+    [TestCase("c")]
+    [TestCase("code")]
+    public async Task CapitalizesProseWithoutChangingCode(string tag)
+    {
+        var source = $"/// {{|CSENSE016:<summary>returns <{tag}>true</{tag}> on success</summary>|}}\npublic class C {{ }}";
+        var fixedSource = $"/// <summary>Returns <{tag}>true</{tag}> on success.</summary>\npublic class C {{ }}";
+        await VerifyFixAllAsync(source, fixedSource, QualityOptions);
+    }
+
     [Test]
-    public async Task StartsWithNonLetterElementCapitalizesNextText()
+    public async Task LeadingNumericCodePreservesFollowingText()
     {
         const string source = """
             /// <summary>Class.</summary>
@@ -416,7 +457,7 @@ public class LowQualityDocumentationCodeFixTests : CommentSenseCodeFixTestBase<C
             /// <summary>Class.</summary>
             public class C
             {
-                /// <summary><c>123</c> Text.</summary>
+                /// <summary><c>123</c> text.</summary>
                 public void M() { }
             }
             """;

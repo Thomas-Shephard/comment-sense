@@ -139,22 +139,18 @@ public class DocumentationQualityExtensionsTests
         yield return new TestCaseData(SyntaxFactory.List<XmlNodeSyntax>([WhitespaceNode]), DocumentationQualityExtensions.PunctuationState.Meaningless, false).SetName("GetPunctuationState_List_WhitespaceOnly_ReturnsMeaningless");
     }
 
-    [TestCaseSource(nameof(HasAnyLetterCases))]
-    public void HasAnyLetterReturnsExpectedValue(SyntaxList<XmlNodeSyntax> list, bool expected)
+    [TestCase("<c>true</c> indicates success.", null)]
+    [TestCase("<code><![CDATA[return true;]]></code>", null)]
+    [TestCase("<para><c>true</c> indicates success.</para>", null)]
+    [TestCase(" ", null)]
+    [TestCase("<c> </c> returns a value.", " returns a value.")]
+    [TestCase("<!-- comment --><para>returns a value.</para>", "returns a value.")]
+    [TestCase("<![CDATA[returns a value.]]>", "returns a value.")]
+    public void SelectsProseForCapitalization(string content, string? expected)
     {
-        Assert.That(list.HasAnyLetter(), Is.EqualTo(expected));
-    }
-
-    private static IEnumerable<TestCaseData> HasAnyLetterCases()
-    {
-        yield return new TestCaseData(SyntaxFactory.List<XmlNodeSyntax>([TextWithPuncNode]), true).SetName("HasAnyLetter_TextWithLetter_ReturnsTrue");
-        yield return new TestCaseData(SyntaxFactory.List<XmlNodeSyntax>([SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("123"))), CDataWithPuncNode]), true).SetName("HasAnyLetter_CDataWithLetter_ReturnsTrue");
-        yield return new TestCaseData(SyntaxFactory.List<XmlNodeSyntax>([SyntaxFactory.XmlText(SyntaxFactory.TokenList(SyntaxFactory.XmlTextLiteral("123")))]), false).SetName("HasAnyLetter_NoLetters_ReturnsFalse");
-
-        var elementWithLetter = SyntaxFactory.XmlElement(SyntaxFactory.XmlName("c"), SyntaxFactory.SingletonList<XmlNodeSyntax>(TextWithPuncNode));
-        yield return new TestCaseData(SyntaxFactory.List<XmlNodeSyntax>([elementWithLetter]), true).SetName("HasAnyLetter_NestedElementWithLetter_ReturnsTrue");
-
-        var elementWithoutLetter = SyntaxFactory.XmlElement(SyntaxFactory.XmlName("c"), SyntaxFactory.SingletonList<XmlNodeSyntax>(WhitespaceNode));
-        yield return new TestCaseData(SyntaxFactory.List<XmlNodeSyntax>([elementWithoutLetter]), false).SetName("HasAnyLetter_NestedElementWithoutLetter_ReturnsFalse");
+        var tree = CSharpSyntaxTree.ParseText($"/// <summary>{content}</summary>\nclass C {{ }}");
+        var element = tree.GetRoot().DescendantNodes(descendIntoTrivia: true).OfType<XmlElementSyntax>().First();
+        var node = element.GetCapitalizationNode();
+        Assert.That(node?.GetInnerText(), Is.EqualTo(expected));
     }
 }
