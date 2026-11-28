@@ -613,7 +613,7 @@ internal static class ExceptionAnalyzer
             var syntax = syntaxReference.GetSyntax(cancellationToken);
             var semanticModel = compilation.GetSemanticModel(syntax.SyntaxTree);
 
-            var nodes = GetDescendantNodesOfInterest(syntax, isPrimaryCtor, options.ScanCalledMethodsForExceptions, cancellationToken);
+            var nodes = GetDescendantNodesOfInterest(syntax, semanticModel, isPrimaryCtor, options.ScanCalledMethodsForExceptions, cancellationToken);
             var exceptions = IdentifyThrownExceptions(nodes, semanticModel, options, exceptionCache, cancellationToken);
 
             thrownTypes.UnionWith(exceptions);
@@ -655,11 +655,11 @@ internal static class ExceptionAnalyzer
                semanticModel.GetSymbolInfo(initializer, token).Symbol is IMethodSymbol { IsImplicitlyDeclared: true };
     }
 
-    private static IEnumerable<SyntaxNode> GetDescendantNodesOfInterest(SyntaxNode root, bool isPrimaryCtor, bool scanCalledMethods, CancellationToken cancellationToken)
+    private static IEnumerable<SyntaxNode> GetDescendantNodesOfInterest(SyntaxNode root, SemanticModel semanticModel, bool isPrimaryCtor, bool scanCalledMethods, CancellationToken cancellationToken)
     {
         foreach (var analysisRoot in GetAnalysisRoots(root, isPrimaryCtor))
         {
-            foreach (var node in analysisRoot.DescendantNodesAndSelf(n => ShouldDescendIntoNode(analysisRoot, n, isPrimaryCtor)))
+            foreach (var node in analysisRoot.DescendantNodesAndSelf(n => ShouldDescendIntoNode(analysisRoot, n, isPrimaryCtor, semanticModel, cancellationToken)))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (IsNodeOfInterest(node, scanCalledMethods))
@@ -717,8 +717,12 @@ internal static class ExceptionAnalyzer
             yield return indexerAccessorList;
     }
 
-    private static bool ShouldDescendIntoNode(SyntaxNode analysisRoot, SyntaxNode node, bool isPrimaryCtor)
+    private static bool ShouldDescendIntoNode(SyntaxNode analysisRoot, SyntaxNode node, bool isPrimaryCtor, SemanticModel semanticModel, CancellationToken token)
     {
+        if (node is InvocationExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.ValueText: "nameof" } } &&
+            semanticModel.GetOperation(node, token) is INameOfOperation)
+            return false;
+
         // Ensure we don't block the root node (ClassDeclaration is BaseTypeDeclaration)
         if (node == analysisRoot)
             return true;
