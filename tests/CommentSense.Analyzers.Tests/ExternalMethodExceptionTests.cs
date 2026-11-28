@@ -265,6 +265,34 @@ public class ExternalMethodExceptionTests : CommentSenseAnalyzerTestBase<Comment
             referenceAssemblies: ReferenceAssemblies.Net.Net100);
     }
 
+    [TestCase("nameof(Value)", false)]
+    [TestCase("nameof(Value.Length)", false)]
+    [TestCase("@nameof(Value)", true)]
+    public async Task NameOfSkipsPropertyExceptionsUnlessItIsAMethodCall(string expression, bool isMethodCall)
+    {
+        var methodName = isMethodCall ? "{|CSENSE012:GetName|}" : "GetName";
+        var source = $$"""
+            using System;
+
+            /// <summary>Provides a name.</summary>
+            public class C
+            {
+                /// <summary>Gets the value.</summary>
+                /// <value>The value.</value>
+                /// <exception cref="InvalidOperationException">The value is unavailable.</exception>
+                public string Value => throw new InvalidOperationException();
+
+                /// <summary>Gets the name.</summary>
+                /// <returns>The name.</returns>
+                public string {{methodName}}() => {{expression}};
+
+                {{(isMethodCall ? "private static string @nameof(string value) => value;" : "")}}
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: isMethodCall,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = "true" });
+    }
+
     [Test]
     public async Task AccessDocumentedIndexerReportsDiagnostic()
     {
