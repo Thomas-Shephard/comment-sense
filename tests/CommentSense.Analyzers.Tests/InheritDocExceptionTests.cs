@@ -60,6 +60,45 @@ public class InheritDocExceptionTests : CommentSenseAnalyzerTestBase<CommentSens
             configOptions: new Dictionary<string, string> { ["comment_sense.visibility_level"] = "private" });
     }
 
+    [TestCase("<inheritdoc/>", true, true)]
+    [TestCase("<inheritdoc/>", true, false)]
+    [TestCase("<inheritdoc cref=\"IContract.Execute\"/>", true, true)]
+    [TestCase("<inheritdoc cref=\"IContract.Execute\"/>", true, false)]
+    [TestCase("<inheritdoc cref=\"Middle\"/>", true, true)]
+    [TestCase("<inheritdoc cref=\"Middle\"/>", true, false)]
+    [TestCase("<inheritdoc path=\"/exception\"/>", true, true)]
+    [TestCase("<inheritdoc path=\"/exception\"/>", true, false)]
+    [TestCase("<inheritdoc path=\"/summary\"/>", false, true)]
+    [TestCase("<inheritdoc path=\"/summary\"/>", false, false)]
+    public async Task CalledMethodUsesInheritedExceptions(string inheritDoc, bool hasException, bool scan)
+    {
+        var missing = hasException && scan;
+        var source = $$"""
+            /// <summary>Defines the operation.</summary>
+            public interface IContract
+            {
+                /// <summary>Executes the operation.</summary>
+                /// <exception cref="System.InvalidOperationException">The operation fails.</exception>
+                void Execute();
+            }
+
+            /// <summary>Implements the operation.</summary>
+            public class Worker : IContract
+            {
+                /// {{inheritDoc}}
+                public void Execute() { }
+
+                /// <inheritdoc cref="IContract.Execute"/>
+                public void Middle() { }
+
+                /// <summary>Runs the operation.</summary>
+                public void {{(missing ? "{|CSENSE012:Run|}" : "Run")}}() => Execute();
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: missing,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = scan.ToString() });
+    }
+
     [Test]
     public async Task InheritDocWithCrefUsesReferencedMethodExceptionDocumentation()
     {

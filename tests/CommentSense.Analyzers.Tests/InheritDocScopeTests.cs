@@ -212,6 +212,36 @@ public class InheritDocScopeTests : CommentSenseAnalyzerTestBase<CommentSenseAna
             solutionTransform: (solution, projectId) => AddReference(solution, projectId, referenced));
     }
 
+    [TestCase("/exception", true)]
+    [TestCase("/summary", false)]
+    public async Task CallsToMetadataOverridesUseInheritedExceptions(string path, bool missing)
+    {
+        var source = $$"""
+            /// <summary>Runs operations.</summary>
+            public class Runner
+            {
+                /// <summary>Executes the operation.</summary>
+                public void {{(missing ? "{|CSENSE012:Run|}" : "Run")}}() => new Worker().Execute();
+            }
+            """;
+        var referenced = $$"""
+            public class Base
+            {
+                /// <summary>Executes the operation.</summary>
+                /// <exception cref="System.InvalidOperationException">The operation fails.</exception>
+                public virtual void Execute() { }
+            }
+            public class Worker : Base
+            {
+                /// <inheritdoc path="{{path}}"/>
+                public override void Execute() { }
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: missing,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = "true" },
+            solutionTransform: (solution, projectId) => AddReference(solution, projectId, referenced));
+    }
+
     [TestCase("/summary", false)]
     [TestCase("", true)]
     public async Task SummaryPathDoesNotInheritUnknownMetadataDocumentation(string path, bool documented)

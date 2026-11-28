@@ -32,7 +32,7 @@ internal static class ExceptionAnalyzer
 
     public static void Analyze(SymbolAnalysisContext context, ISymbol symbol, DocumentationComment documentation, CommentSenseOptions options, bool isPrimaryCtor = false)
     {
-        var effectiveDocumentation = GetEffectiveDocumentedExceptionTypes(context, symbol, documentation);
+        var effectiveDocumentation = GetEffectiveDocumentedExceptionTypes(context.Compilation, symbol, documentation, context.CancellationToken);
         var thrownTypes = GetThrownTypes(context, symbol, isPrimaryCtor, options);
 
         ReportMissingExceptions(context, symbol, documentation, options, thrownTypes, effectiveDocumentation);
@@ -185,17 +185,19 @@ internal static class ExceptionAnalyzer
         return documentation.GetElements(DocumentationTags.Include, recursive: false).Any();
     }
 
-    private static EffectiveDocumentedExceptions GetEffectiveDocumentedExceptionTypes(SymbolAnalysisContext context, ISymbol symbol, DocumentationComment documentation)
+    private static EffectiveDocumentedExceptions GetEffectiveDocumentedExceptionTypes(Compilation compilation, ISymbol symbol, DocumentationComment? documentation, CancellationToken token)
     {
-        var documentedTypes = GetDocumentedExceptionTypes(context.Compilation, documentation, context.CancellationToken);
-        if (!documentation.GetElements(DocumentationTags.InheritDoc).Any())
+        var documentedTypes = documentation is null
+            ? new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default)
+            : GetDocumentedExceptionTypes(compilation, documentation, token);
+        if (documentation is not null && !documentation.GetElements(DocumentationTags.InheritDoc).Any())
             return new EffectiveDocumentedExceptions(documentedTypes, HasUnknownInheritedDocumentation: false);
 
-        var inherited = InheritedDocumentation.Resolve(context.Compilation, symbol, context.CancellationToken);
+        var inherited = InheritedDocumentation.Resolve(compilation, symbol, token);
         foreach (var element in inherited.Elements)
         {
             if (element.Name.LocalName == DocumentationTags.Exception &&
-                ResolveExceptionType((string?)element.Attribute(DocumentationAttributes.Cref), context.Compilation, context.CancellationToken) is { } type)
+                ResolveExceptionType((string?)element.Attribute(DocumentationAttributes.Cref), compilation, token) is { } type)
                 documentedTypes.Add(type);
         }
         return new EffectiveDocumentedExceptions(documentedTypes, inherited.HasUnknownInclude);
@@ -929,27 +931,14 @@ internal static class ExceptionAnalyzer
 
         if (DocumentationComment.FromSymbol(symbol, token) is { } documentation && !documentation.IsMalformedFor(symbol, token))
         {
-            var seen = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
-            foreach (var exceptionElement in documentation.GetElements(DocumentationTags.Exception, recursive: false))
-            {
-                token.ThrowIfCancellationRequested();
-                if (ResolveExceptionType(exceptionElement, compilation, token) is { } resolved && seen.Add(resolved))
-                {
-                    yield return resolved;
-                }
-            }
+            foreach (var type in GetEffectiveDocumentedExceptionTypes(compilation, symbol, documentation, token).Types)
+                yield return type;
 
             yield break;
         }
 
-        foreach (var cref in DocumentationXmlExtensions.GetExceptionCrefs(symbol.GetDocumentationCommentXml(cancellationToken: token)))
-        {
-            token.ThrowIfCancellationRequested();
-            if (ResolveExceptionType(cref, compilation, token) is { } resolved)
-            {
-                yield return resolved;
-            }
-        }
+        foreach (var type in GetEffectiveDocumentedExceptionTypes(compilation, symbol, null, token).Types)
+            yield return type;
     }
 
     private static ITypeSymbol? GetExceptionTypeFromGuardClause(InvocationExpressionSyntax invocation, ISymbol? symbol, ITypeSymbol exceptionType)
