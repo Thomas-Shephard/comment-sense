@@ -64,113 +64,31 @@ public class LowQualityDocumentationCodeFixProvider : CodeFixProviderBase
 
     private static XmlElementSyntax FixElement(XmlElementSyntax xmlElement, CommentSenseOptions options)
     {
-        var content = xmlElement.Content;
-        if (content.Count == 0)
-            return xmlElement;
-
-        var newContent = content;
-
-        if (options.RequireCapitalization)
-            newContent = CapitalizeFirstLetter(newContent);
-
-        if (options.RequireEndingPunctuation)
-            newContent = AddMissingPeriod(newContent);
-
-        return newContent == content
-            ? xmlElement
-            : xmlElement.WithContent(newContent);
-    }
-
-    private static SyntaxList<XmlNodeSyntax> CapitalizeFirstLetter(SyntaxList<XmlNodeSyntax> content)
-    {
-        foreach (XmlNodeSyntax node in content)
+        if (options.RequireCapitalization && xmlElement.GetCapitalizationNode() is { } textNode &&
+            TryCapitalizeTokens(textNode.GetTextTokens(), out var newTokens))
         {
-            if (TryProcessNodeForCapitalization(node, content, out var newContent, out var shouldStop))
-                return newContent;
-
-            if (shouldStop)
-                return content;
+            xmlElement = xmlElement.ReplaceNode(textNode, textNode.WithTextTokens(newTokens));
         }
 
-        return content;
+        return options.RequireEndingPunctuation
+            ? xmlElement.WithContent(AddMissingPeriod(xmlElement.Content))
+            : xmlElement;
     }
 
-    private static bool TryProcessNodeForCapitalization(XmlNodeSyntax node, SyntaxList<XmlNodeSyntax> content, out SyntaxList<XmlNodeSyntax> newContent, out bool shouldStop)
-    {
-        newContent = default;
-        shouldStop = false;
-
-        switch (node)
-        {
-            case XmlTextSyntax or XmlCDataSectionSyntax:
-                {
-                    if (!TryCapitalizeTokens(node.GetTextTokens(), out var newTokens, out shouldStop))
-                        return false;
-
-                    newContent = content.Replace(node, node.WithTextTokens(newTokens));
-                    return true;
-                }
-            case XmlElementSyntax xmlElement:
-                {
-                    var newElementContent = CapitalizeFirstLetter(xmlElement.Content);
-                    if (newElementContent != xmlElement.Content)
-                    {
-                        newContent = content.Replace(xmlElement, xmlElement.WithContent(newElementContent));
-                        return true;
-                    }
-
-                    if (xmlElement.Content.HasAnyLetter())
-                        shouldStop = true;
-                    break;
-                }
-        }
-
-        return false;
-    }
-
-    private static bool TryCapitalizeTokens(SyntaxTokenList tokens, out SyntaxTokenList newTokens, out bool shouldStop)
+    private static bool TryCapitalizeTokens(SyntaxTokenList tokens, out SyntaxTokenList newTokens)
     {
         newTokens = default;
-        shouldStop = false;
 
-        for (int j = 0; j < tokens.Count; j++)
-        {
-            var token = tokens[j];
-            var text = token.Text;
-            var valueText = token.ValueText;
+        var token = tokens.First(token => !string.IsNullOrWhiteSpace(token.ValueText));
+        var valueText = token.ValueText;
+        var k = valueText.Length - valueText.TrimStart().Length;
+        if (!char.IsLetter(valueText[k]) || char.IsUpper(valueText[k]))
+            return false;
 
-            for (int k = 0; k < valueText.Length; k++)
-            {
-                if (char.IsWhiteSpace(valueText[k]))
-                    continue;
-
-                if (!char.IsLetter(valueText[k]) || char.IsUpper(valueText[k]))
-                {
-                    shouldStop = true;
-                    return false;
-                }
-
-                string newText;
-                string newValueText;
-
-                if (text == valueText)
-                {
-                    newText = text.Substring(0, k) + char.ToUpperInvariant(text[k]) + text.Substring(k + 1);
-                    newValueText = newText;
-                }
-                else
-                {
-                    newValueText = valueText.Substring(0, k) + char.ToUpperInvariant(valueText[k]) + valueText.Substring(k + 1);
-                    newText = newValueText;
-                }
-
-                var newToken = SyntaxFactory.XmlTextLiteral(token.LeadingTrivia, newText, newValueText, token.TrailingTrivia);
-                newTokens = tokens.Replace(token, newToken);
-                return true;
-            }
-        }
-
-        return false;
+        var newValueText = valueText.Substring(0, k) + char.ToUpperInvariant(valueText[k]) + valueText.Substring(k + 1);
+        var newToken = SyntaxFactory.XmlTextLiteral(token.LeadingTrivia, newValueText, newValueText, token.TrailingTrivia);
+        newTokens = tokens.Replace(token, newToken);
+        return true;
     }
 
     private static SyntaxList<XmlNodeSyntax> AddMissingPeriod(SyntaxList<XmlNodeSyntax> content)

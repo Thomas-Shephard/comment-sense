@@ -353,6 +353,25 @@ public class QualityOptionsTests : CommentSenseAnalyzerTestBase<CommentSenseAnal
     }
 
     [Test]
+    public async Task CapitalizationPreservesLeadingCodeAcrossDocumentationTags()
+    {
+        const string source = """
+            /// <summary>Provides operations.</summary>
+            public class C
+            {
+                /// <summary><c>true</c> indicates success.</summary>
+                /// <param name="value"><c>true</c> enables the operation.</param>
+                /// <returns><c>true</c> on success.</returns>
+                /// <exception cref="System.InvalidOperationException"><c>false</c> is not accepted.</exception>
+                /// <remarks><code>return true;</code> is a valid implementation.</remarks>
+                public bool Run(bool value) => value;
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: false,
+            configOptions: new Dictionary<string, string> { ["comment_sense.require_capitalization"] = "true" });
+    }
+
+    [Test]
     public async Task RequireCapitalizationDisabledByDefault()
     {
         const string testCode = """
