@@ -198,6 +198,37 @@ public class ExternalMethodExceptionTests : CommentSenseAnalyzerTestBase<Comment
             configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = "true" });
     }
 
+    [TestCase("explicit operator int(C value)", "_ = (int)value;")]
+    [TestCase("implicit operator int(C value)", "int result = value;")]
+    [TestCase("C operator +(C value, C other)", "_ = value + value;")]
+    [TestCase("C operator -(C value)", "_ = -value;")]
+    [TestCase("C operator ++(C value)", "value++;")]
+    [TestCase("C operator ++(C value)", "++value;")]
+    [TestCase("C operator +(C value, C other)", "value += value;")]
+    public async Task CallsToDocumentedOperatorsReportExceptions(string declaration, string statement)
+    {
+        var source = $$"""
+            /// <summary>Represents a value.</summary>
+            public class C
+            {
+                /// <summary>Transforms the value.</summary>
+                /// <param name="value">The input.</param>
+                {{(declaration.Contains("other", StringComparison.Ordinal) ? "/// <param name=\"other\">The other input.</param>" : "///")}}
+                /// <returns>The transformed value.</returns>
+                /// <exception cref="System.InvalidOperationException">The operation fails.</exception>
+                public static {{declaration}} => throw new System.InvalidOperationException();
+
+                /// <summary>Runs the operation.</summary>
+                /// <param name="value">The input.</param>
+                public void {|CSENSE012:Run|}(C value) { {{statement}} }
+            }
+            """;
+        await VerifyCSenseAsync(source,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = "true" });
+        await VerifyCSenseAsync(source.Replace("{|CSENSE012:Run|}", "Run", StringComparison.Ordinal), expectDiagnostic: false,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = "false" });
+    }
+
     [Test]
     public async Task CallStandardLibraryMethodReportsDiagnostic()
     {
