@@ -741,7 +741,8 @@ internal static class ExceptionAnalyzer
         return node is ThrowStatementSyntax
                     or ThrowExpressionSyntax
                     or InvocationExpressionSyntax
-                    or ConstructorInitializerSyntax ||
+                    or ConstructorInitializerSyntax
+                    or PrimaryConstructorBaseTypeSyntax ||
                (scanCalledMethods && node is ExpressionSyntax or ListPatternSyntax or SlicePatternSyntax);
     }
 
@@ -805,7 +806,7 @@ internal static class ExceptionAnalyzer
             ListPatternSyntax when semanticModel.GetOperation(node, token) is IListPatternOperation list => GetExceptionsFromListPattern(list, semanticModel.Compilation, exceptionCache, token),
             SlicePatternSyntax when semanticModel.GetOperation(node, token) is ISlicePatternOperation slice && NeedsPatternValue(slice.Pattern) => GetExceptionsFromSymbol(slice.SliceSymbol, semanticModel.Compilation, exceptionCache, token),
             CastExpressionSyntax when semanticModel.GetOperation(node, token) is IConversionOperation { OperatorMethod.MethodKind: MethodKind.Constructor or MethodKind.Ordinary } conversion => GetExceptionsFromSymbol(conversion.OperatorMethod, semanticModel.Compilation, exceptionCache, token),
-            ConstructorInitializerSyntax ci when options.ScanCalledMethodsForExceptions => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(ci, token).Symbol, semanticModel.Compilation, exceptionCache, token),
+            ConstructorInitializerSyntax or PrimaryConstructorBaseTypeSyntax when options.ScanCalledMethodsForExceptions => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(node, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             ExpressionSyntax member when member is MemberAccessExpressionSyntax or MemberBindingExpressionSyntax or IdentifierNameSyntax => GetExceptionsFromMemberReference(member, semanticModel, exceptionCache, token),
             ElementAccessExpressionSyntax elementAccess => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(elementAccess, token).Symbol, semanticModel.Compilation, exceptionCache, token),
             ElementBindingExpressionSyntax eb => GetExceptionsFromSymbol(semanticModel.GetSymbolInfo(eb, token).Symbol, semanticModel.Compilation, exceptionCache, token),

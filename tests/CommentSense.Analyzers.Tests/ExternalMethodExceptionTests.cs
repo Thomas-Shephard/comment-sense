@@ -552,6 +552,29 @@ public class ExternalMethodExceptionTests : CommentSenseAnalyzerTestBase<Comment
     }
 
     [Test]
+    public async Task PrimaryConstructorBaseCallRespectsScanningOption(
+        [Values("class", "record")] string kind, [Values] bool scan)
+    {
+        var source = $$"""
+            using System;
+
+            /// <summary>Provides base behavior.</summary>
+            public {{kind}} Base
+            {
+                /// <summary>Initializes the instance.</summary>
+                /// <exception cref="ArgumentException">Construction fails.</exception>
+                public Base() => throw new ArgumentException();
+            }
+
+            /// <summary>Provides derived behavior.</summary>
+            public {{kind}} {{(scan ? "{|CSENSE012:Derived|}" : "Derived")}}() : Base();
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: scan,
+            configOptions: new Dictionary<string, string> { ["comment_sense.scan_called_methods_for_exceptions"] = scan.ToString() },
+            referenceAssemblies: ReferenceAssemblies.Net.Net100);
+    }
+
+    [Test]
     public async Task ImplicitObjectCreationWithScanningDisabledDoesNotReportDiagnostic()
     {
         const string testCode = """
