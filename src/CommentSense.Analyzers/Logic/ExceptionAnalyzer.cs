@@ -727,7 +727,7 @@ internal static class ExceptionAnalyzer
         if (node == analysisRoot)
             return true;
 
-        if (node is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax or BaseTypeDeclarationSyntax)
+        if (node is AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax or BaseTypeDeclarationSyntax or CatchFilterClauseSyntax)
             return false;
 
         if (isPrimaryCtor && IsExcludedPrimaryConstructorMember(node))

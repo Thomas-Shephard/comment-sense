@@ -1364,6 +1364,37 @@ public class ExceptionDocumentationTests : CommentSenseAnalyzerTestBase<CommentS
         await VerifyCSenseAsync(testCode);
     }
 
+    [TestCase("true ? throw new InvalidOperationException() : false", false)]
+    [TestCase("Filter()", true)]
+    public async Task ExceptionsFromCatchFiltersDoNotEscape(string filter, bool scanCalledMethods)
+    {
+        var source = $$"""
+            using System;
+            /// <summary>Provides operations.</summary>
+            public class C
+            {
+                /// <summary>Runs the operation.</summary>
+                /// <exception cref="ArgumentException">The original exception escapes.</exception>
+                public void Run()
+                {
+                    try
+                    {
+                        throw new ArgumentException();
+                    }
+                    catch (ArgumentException) when ({{filter}}) { }
+                }
+
+                /// <exception cref="InvalidOperationException">The filter fails.</exception>
+                private static bool Filter() => throw new InvalidOperationException();
+            }
+            """;
+        await VerifyCSenseAsync(source, expectDiagnostic: false,
+            configOptions: new Dictionary<string, string>
+            {
+                ["comment_sense.scan_called_methods_for_exceptions"] = scanCalledMethods.ToString()
+            });
+    }
+
     [Test]
     public async Task ExceptionCaughtByOuterTryIsIgnored()
     {
